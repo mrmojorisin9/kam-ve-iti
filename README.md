@@ -13,6 +13,17 @@ repozitorija.
 - [Tailwind CSS 4](https://tailwindcss.com)
 - ESLint (`eslint-config-next`) + Prettier
 
+## Baza podataka (Supabase)
+
+1. Kreiraj projekt na [database.new](https://database.new)
+2. U **SQL Editor** pokreni redom: `supabase/migrations/0001_init_schema.sql`, zatim `supabase/seed.sql`
+3. Iz **Project Settings → API Keys** popuni `.env.local` (vidi `.env.example` za objašnjenje svake varijable)
+4. TypeScript tipovi generiraju se iz sheme, ne pišu se ručno:
+   ```bash
+   npx supabase login
+   npx supabase gen types typescript --project-id TVOJ-PROJECT-REF > src/types/database.ts
+   ```
+
 ## Environment varijable
 
 ```bash
