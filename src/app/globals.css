@@ -1,26 +1,30 @@
 @import "tailwindcss";
 
+/*
+ * Dizajn tokeni — "Kam ve iti"
+ * Paleta inspirirana međimurskim vinogradskim bregima i žetvom,
+ * ne generičkim SaaS defaultom. Vidi CHANGELOG.md (Faza 4, Dan 1).
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-night: #1e2b22; /* pozadina — vinogradska noć */
+  --color-oak: #332a1e; /* površina redova/kartica — bačva */
+  --color-parchment: #f2e8d5; /* glavni tekst */
+  --color-parchment-muted: #a9ac9a; /* sekundarni tekst */
+  --color-gold: #d4a94a; /* akcent — žetva */
+  --color-wine: #8b2635; /* akcent — vino, isticanje "danas" */
+  --color-line: #3c4a38; /* hairline razdjelnici */
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-night: var(--color-night);
+  --color-oak: var(--color-oak);
+  --color-parchment: var(--color-parchment);
+  --color-parchment-muted: var(--color-parchment-muted);
+  --color-gold: var(--color-gold);
+  --color-wine: var(--color-wine);
+  --color-line: var(--color-line);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  --font-display: var(--font-space-grotesk);
 }
