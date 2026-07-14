@@ -13,6 +13,16 @@ repozitorija.
 - [Tailwind CSS 4](https://tailwindcss.com)
 - ESLint (`eslint-config-next`) + Prettier
 
+## Environment varijable
+
+```bash
+cp .env.example .env.local
+```
+
+Trenutno nema obaveznih vrijednosti za popuniti (Supabase dolazi u Fazi 3) —
+`.env.local` je pripremljen unaprijed da se izbjegne dodatni korak kasnije.
+Vidi komentare u `.env.example` za objašnjenje svake varijable.
+
 ## Pokretanje
 
 Preduvjet: Node.js 20+ (preporučeno 22 LTS).
@@ -47,5 +57,16 @@ src/
 
 ## Status
 
-Faza 2 (razvojno okruženje) u tijeku. Javni prikaz događanja dolazi u Fazi 4 —
+Faza 2 (razvojno okruženje) dovršena. Javni prikaz događanja dolazi u Fazi 4 —
 vidi `PROJECT_BRIEF.md` za pregled svih faza.
+
+## Deploy
+
+Hosting: [Vercel](https://vercel.com), spojen izravno na ovaj GitHub
+repozitorij.
+
+- Push na `main` → produkcijski deploy.
+- Svaki branch / pull request → automatski preview deploy s vlastitim URL-om.
+- Environment varijable (kad zatrebaju, od Faze 3) postavljaju se u
+  Vercel dashboardu: **Project → Settings → Environment Variables** —
+  ne u kodu, ne u `.env.local` (taj je samo lokalan).
