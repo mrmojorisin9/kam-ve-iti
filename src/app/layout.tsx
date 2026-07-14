@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Međimurje Events",
+  title: "Kam ve iti",
   description: "Sva javna događanja u Međimurskoj županiji na jednom mjestu.",
 };
 

@@ -1,4 +1,4 @@
-# Međimurje Events
+# Kam ve iti
 
 Web portal koji objedinjuje sva javno dostupna događanja na području
 Međimurske županije na jednom mjestu.
@@ -26,14 +26,14 @@ Otvori [http://localhost:3000](http://localhost:3000).
 
 ## Skripte
 
-| Skripta                | Opis                                   |
-| ----------------------- | --------------------------------------- |
-| `npm run dev`           | razvojni server (Turbopack)             |
-| `npm run build`         | produkcijski build                      |
-| `npm run start`         | pokretanje produkcijskog builda         |
-| `npm run lint`          | ESLint provjera                         |
-| `npm run format`        | Prettier — automatsko formatiranje      |
-| `npm run format:check`  | Prettier — samo provjera, bez pisanja   |
+| Skripta                | Opis                                  |
+| ---------------------- | ------------------------------------- |
+| `npm run dev`          | razvojni server (Turbopack)           |
+| `npm run build`        | produkcijski build                    |
+| `npm run start`        | pokretanje produkcijskog builda       |
+| `npm run lint`         | ESLint provjera                       |
+| `npm run format`       | Prettier — automatsko formatiranje    |
+| `npm run format:check` | Prettier — samo provjera, bez pisanja |
 
 ## Struktura foldera
 

@@ -5,7 +5,7 @@ export default function Home() {
         Međimurska županija
       </p>
       <h1 className="mt-3 text-4xl font-semibold tracking-tight text-zinc-900 sm:text-5xl dark:text-zinc-50">
-        Međimurje Events
+        Kam ve iti
       </h1>
       <p className="mt-4 max-w-md text-lg text-zinc-600 dark:text-zinc-400">
         Sva javna događanja Međimurske županije na jednom mjestu. Portal je u
