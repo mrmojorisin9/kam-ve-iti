@@ -42,7 +42,7 @@ export default async function DeleteEventPage({
       </p>
 
       {error && (
-        <p className="text-wine mt-4 text-sm" role="alert">
+        <p className="text-wine-light mt-4 text-sm" role="alert">
           {error}
         </p>
       )}
@@ -52,7 +52,7 @@ export default async function DeleteEventPage({
           <input type="hidden" name="id" value={event.id} />
           <button
             type="submit"
-            className="border-wine text-wine hover:bg-wine rounded-md border px-4 py-2 text-sm font-medium hover:text-white"
+            className="border-wine-light text-wine-light hover:bg-wine rounded-md border px-4 py-2 text-sm font-medium hover:text-white"
           >
             Da, obriši
           </button>

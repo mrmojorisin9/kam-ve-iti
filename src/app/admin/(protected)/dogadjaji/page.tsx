@@ -82,7 +82,7 @@ export default async function AdminEventsPage({
                 </Link>
                 <Link
                   href={`/admin/dogadjaji/${event.id}/obrisi`}
-                  className="border-line text-wine rounded-md border px-3 py-1.5"
+                  className="border-line text-wine-light rounded-md border px-3 py-1.5"
                 >
                   Obriši
                 </Link>

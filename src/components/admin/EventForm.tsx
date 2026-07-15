@@ -192,7 +192,7 @@ export function EventForm({
       </label>
 
       {error && (
-        <p className="text-wine text-sm" role="alert">
+        <p className="text-wine-light text-sm" role="alert">
           {error}
         </p>
       )}

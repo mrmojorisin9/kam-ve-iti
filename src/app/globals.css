@@ -11,7 +11,9 @@
   --color-parchment: #f2e8d5; /* glavni tekst */
   --color-parchment-muted: #a9ac9a; /* sekundarni tekst */
   --color-gold: #d4a94a; /* akcent — žetva */
-  --color-wine: #8b2635; /* akcent — vino, isticanje "danas" */
+  --color-wine: #8b2635; /* opasnost — POZADINA (npr. hover:bg-wine + bijeli tekst, 8.65:1) */
+  --color-wine-light: #ea7181; /* opasnost — TEKST/BORDER na night/oak (5.0/4.8:1, WCAG AA);
+    #8b2635 kao tekst na night daje samo 1.7:1, zato odvojen token */
   --color-line: #3c4a38; /* hairline razdjelnici */
 }
 
@@ -22,6 +24,7 @@
   --color-parchment-muted: var(--color-parchment-muted);
   --color-gold: var(--color-gold);
   --color-wine: var(--color-wine);
+  --color-wine-light: var(--color-wine-light);
   --color-line: var(--color-line);
 
   --font-sans: var(--font-geist-sans);
