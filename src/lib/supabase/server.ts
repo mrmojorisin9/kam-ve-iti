@@ -7,8 +7,8 @@ import { cookies } from "next/headers";
  * nosi cookie kontekst trenutnog korisnika.
  *
  * Napomena: Server Components ne mogu pisati cookie (samo čitati), zato je
- * setAll u try/catch — to je očekivano i bezopasno dok ne dodamo pravi
- * session-refresh sloj (proxy.ts) u Fazi 5 uz admin login.
+ * setAll u try/catch — bezopasno jer stvarni session-refresh radi
+ * `src/proxy.ts` (Faza 5, Dan 1) prije nego zahtjev stigne ovamo.
  */
 export async function createClient() {
   const cookieStore = await cookies();
