@@ -1,31 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
 import { zagrebLocalToUtcIso } from "@/lib/zagreb-time";
+import { uniqueSlug } from "@/lib/admin-events";
 
 function readText(formData: FormData, field: string): string | null {
   const value = String(formData.get(field) ?? "").trim();
   return value || null;
-}
-
-async function uniqueSlug(
-  supabase: SupabaseClient,
-  baseSlug: string,
-): Promise<string> {
-  const { data } = await supabase
-    .from("events")
-    .select("slug")
-    .like("slug", `${baseSlug}%`);
-
-  const existing = new Set((data ?? []).map((row) => row.slug as string));
-  if (!existing.has(baseSlug)) return baseSlug;
-
-  let suffix = 2;
-  while (existing.has(`${baseSlug}-${suffix}`)) suffix++;
-  return `${baseSlug}-${suffix}`;
 }
 
 function fail(message: string): never {

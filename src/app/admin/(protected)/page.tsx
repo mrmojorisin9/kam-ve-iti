@@ -13,7 +13,7 @@ export default async function AdminDashboardPage({
         Nadzorna ploča
       </h1>
       <p className="text-parchment-muted mt-3">
-        CSV uvoz i pregled na čekanju dolaze u sljedećim koracima Faze 5.
+        Pregled na čekanju dolazi u sljedećim koracima Faze 5.
       </p>
 
       {created && (
@@ -25,12 +25,20 @@ export default async function AdminDashboardPage({
         </p>
       )}
 
-      <Link
-        href="/admin/dogadjaji/novi"
-        className="border-gold text-gold hover:bg-gold hover:text-night mt-6 self-start rounded-md border px-4 py-2 text-sm font-medium"
-      >
-        Novi događaj
-      </Link>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Link
+          href="/admin/dogadjaji/novi"
+          className="border-gold text-gold hover:bg-gold hover:text-night self-start rounded-md border px-4 py-2 text-sm font-medium"
+        >
+          Novi događaj
+        </Link>
+        <Link
+          href="/admin/dogadjaji/uvoz"
+          className="border-line text-parchment-muted hover:text-parchment self-start rounded-md border px-4 py-2 text-sm font-medium"
+        >
+          CSV uvoz
+        </Link>
+      </div>
     </main>
   );
 }
