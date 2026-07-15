@@ -23,15 +23,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       : event.description
     : `${event.title} u ${event.location_name}, ${formatEventDateTime(event.start_at)}.`;
 
+  const path = `/dogadjaji/${event.slug}`;
+
   return {
     title,
     description,
-    alternates: {
-      canonical: `${process.env.NEXT_PUBLIC_SITE_URL}/dogadjaji/${event.slug}`,
-    },
+    alternates: { canonical: path },
     openGraph: {
       title,
       description,
+      url: path,
       type: "article",
       images: event.image_url ? [event.image_url] : undefined,
     },

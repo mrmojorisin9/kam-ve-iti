@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { DayView } from "@/components/DayView";
 import { tomorrowInZagreb, type EventFilters } from "@/lib/events";
 
@@ -5,9 +6,14 @@ type Props = {
   searchParams: Promise<{ kategorija?: string; lokacija?: string }>;
 };
 
-export const metadata = {
-  title: "Sutra — Kam ve iti",
-  description: "Događanja sutra u Međimurskoj županiji.",
+const title = "Sutra — Kam ve iti";
+const description = "Događanja sutra u Međimurskoj županiji.";
+
+export const metadata: Metadata = {
+  title,
+  description,
+  alternates: { canonical: "/sutra" },
+  openGraph: { title, description, url: "/sutra" },
 };
 
 export default async function TomorrowPage({ searchParams }: Props) {

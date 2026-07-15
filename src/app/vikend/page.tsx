@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { RangeView } from "@/components/RangeView";
 import { weekendRangeInZagreb, type EventFilters } from "@/lib/events";
 
@@ -5,9 +6,14 @@ type Props = {
   searchParams: Promise<{ kategorija?: string; lokacija?: string }>;
 };
 
-export const metadata = {
-  title: "Ovaj vikend — Kam ve iti",
-  description: "Događanja ovaj vikend u Međimurskoj županiji.",
+const title = "Ovaj vikend — Kam ve iti";
+const description = "Događanja ovaj vikend u Međimurskoj županiji.";
+
+export const metadata: Metadata = {
+  title,
+  description,
+  alternates: { canonical: "/vikend" },
+  openGraph: { title, description, url: "/vikend" },
 };
 
 export default async function WeekendPage({ searchParams }: Props) {

@@ -196,6 +196,34 @@ export async function getCategories(): Promise<FilterOption[]> {
   return data ?? [];
 }
 
+export type SitemapEntry = { slug: string; updatedAt: string };
+
+/**
+ * Slug + zadnja izmjena svih objavljenih događaja, za `sitemap.ts`. RLS
+ * ("events_public_read_published") već ograničava na objavljene za
+ * neautenticirani zahtjev kojim crawler dohvaća /sitemap.xml — eksplicitni
+ * filter ovdje samo dokumentira namjeru.
+ */
+export async function getPublishedEventsForSitemap(): Promise<
+  SitemapEntry[]
+> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("events")
+    .select("slug, updated_at")
+    .eq("status", "published");
+
+  if (error) {
+    console.error("getPublishedEventsForSitemap:", error.message);
+    return [];
+  }
+
+  return (data ?? []).map((row) => ({
+    slug: row.slug,
+    updatedAt: row.updated_at,
+  }));
+}
+
 /** Sve lokacije, za filter UI, poredane abecedno. */
 export async function getLocations(): Promise<FilterOption[]> {
   const supabase = await createClient();
