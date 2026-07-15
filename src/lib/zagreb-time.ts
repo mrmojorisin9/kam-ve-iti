@@ -15,6 +15,30 @@ export function zagrebLocalToUtcIso(localDateTime: string): string {
   return new Date(naiveUtc.getTime() - offsetMinutes * 60_000).toISOString();
 }
 
+/**
+ * Obrat od `zagrebLocalToUtcIso` — pretvara ISO instant (iz baze) u
+ * "YYYY-MM-DDTHH:mm" string za `defaultValue` u `<input type="datetime-local">`
+ * na admin formi za uređivanje, u Europe/Zagreb lokalnom vremenu.
+ */
+export function utcIsoToZagrebLocalInput(iso: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Zagreb",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(iso));
+
+  const get = (type: string) =>
+    parts.find((part) => part.type === type)?.value ?? "00";
+  // Intl ponekad vrati "24" za ponoć umjesto "00" (poznata quirk).
+  const hour = get("hour") === "24" ? "00" : get("hour");
+
+  return `${get("year")}-${get("month")}-${get("day")}T${hour}:${get("minute")}`;
+}
+
 function zagrebOffsetMinutes(instant: Date): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Europe/Zagreb",
