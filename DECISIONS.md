@@ -181,6 +181,24 @@ Lighthouse audit (Faza 8, Dan 5) na `/dogadjaji/[slug]` prijavio je SEO 91/100 �
 Lighthouse SEO 100/100 na `/dogadjaji/[slug]` (bilo 91/100), bez mjerljive štete na performance (LCP čak neznatno bolji u testu: 2.7s naspram 2.9s prije). Svaka buduća stranica koja koristi async `generateMetadata` automatski dobiva ovo ponašanje, nema dodatnog rada po ruti.
 
 ---
+
+## ADR-010: Rekonstrukcija nedostajuće migracije `events_on_date`
+**Datum:** 2026-07-16
+**Status:** Prihvaćeno
+
+**Kontekst:**
+Priprema za Vercel/produkcijski deploy (Faza 8) otkrila je da `supabase/migrations/` sadrži `0001_init_schema.sql` i `0003_events_in_range.sql`, ali ne i `0002` — iako `src/lib/events.ts` (`getEventsForDate`) i sam komentar u `0003_events_in_range.sql` referenciraju `events_on_date (0002)`. Funkcija je u Fazi 4, Dan 1 očito primijenjena izravno kroz Supabase SQL Editor, a migracija nikad nije spremljena u repozitorij. Da je repo migracije primijenjen na svježu bazu (npr. da je odabrana strategija "novi produkcijski Supabase projekt"), `/` i `/sutra` bili bi potpuno slomljeni (RPC funkcija ne postoji).
+
+**Odluka:**
+Umjesto nagađanja, zatražena je stvarna definicija iz Supabase baze (`select pg_get_functiondef('events_on_date'::regproc)`) i spremljena bez izmjena kao `supabase/migrations/0002_events_on_date.sql`. Otkriveno je da `events_on_date` NE castа `start_at` na datum (kako je pogrešno tvrdio komentar u `0003`), nego uspoređuje `start_at >= /< ` s Europe/Zagreb ponoćnim granicama dana — ispravljen i taj komentar u `0003`.
+
+**Razmotrene alternative:**
+- Rekonstrukcija po analogiji s `0003` (cast na datum) — odbačeno nakon što je stvarna definicija pokazala drugačiji (ispravan) pristup; nagađanje bi ovdje uvelo suptilnu razliku u ponašanju oko granica dana koja ne bi bila odmah uočena testiranjem.
+
+**Posljedice:**
+Migracije u repozitoriju sada su potpune i primjenjive na svježu bazu (bitno ako se ikad odluči za odvojeni prod Supabase projekt umjesto dev=prod pristupa — vidi CHANGELOG Faza 8, Dan 6). Ubuduće: svaka SQL izmjena kroz Supabase dashboard mora odmah dobiti pripadajuću migraciju u repu, ne naknadno.
+
+---
 _Format za nove zapise:_
 ```
 ## ADR-00X: [naslov odluke]

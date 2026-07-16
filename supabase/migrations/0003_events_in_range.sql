@@ -1,6 +1,7 @@
 -- Kam ve iti — događaji unutar datumskog raspona (Faza 4, "vikend"/"tjedan").
--- Isti pristup kao events_on_date (0002): Postgres direktno konvertira
--- timestamptz u Europe/Zagreb kalendarski dan, DST se rješava sam.
+-- Za razliku od events_on_date (0002, usporedba raspona start_at), ovdje se
+-- start_at castа na Europe/Zagreb kalendarski dan jer je raspon (range_start/
+-- range_end) već izražen u danima, ne u točnom trenutku — DST se rješava sam.
 
 create or replace function events_in_range(range_start date, range_end date)
 returns table (
