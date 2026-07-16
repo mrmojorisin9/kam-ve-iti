@@ -13,7 +13,12 @@ export const metadata: Metadata = {
   title,
   description,
   alternates: { canonical: "/vikend" },
-  openGraph: { title, description, url: "/vikend" },
+  openGraph: {
+    title,
+    description,
+    url: "/vikend",
+    images: ["/opengraph-image"],
+  },
 };
 
 export default async function WeekendPage({ searchParams }: Props) {

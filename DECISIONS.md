@@ -222,6 +222,24 @@ Ostale v2 stavke bez sukoba (dugoročna vizija — "najveći lokalni vodič za s
 Kod i dokumentacija dosljedno koriste "Kam denes". README napominje da infrastruktura (repo/Vercel/domena) čeka preimenovanje. Kad domena `kamdenes.hr` bude kupljena, treba: preimenovati Vercel projekt, dodati custom domenu, ažurirati `NEXT_PUBLIC_SITE_URL`, po želji preimenovati GitHub repo (mijenja git remote URL za sve lokalne kopije).
 
 ---
+
+## ADR-012: OG slika po file-konvenciji ne stiže do stranica koje override-aju `openGraph`
+**Datum:** 2026-07-16
+**Status:** Prihvaćeno
+
+**Kontekst:**
+Dodana `src/app/opengraph-image.tsx` (Next.js file-based OG image konvencija, `next/og` `ImageResponse`) trebala je automatski ubrizgati `<meta property="og:image">` na svim javnim stranicama. Ruta `/opengraph-image` je ispravno generirala sliku (potvrđeno direktnim pozivom i vizualnim pregledom), ali `og:image` tag se nije pojavljivao ni na jednoj stvarnoj stranici (provjereno `curl` na `<head>`). Uzrok: sve četiri javne rute i stranica događaja već definiraju vlastiti `openGraph: { title, description, url }` metadata objekt (Faza 8, Dan 1). Next.js metadata "Merging" pravilo (`node_modules/next/dist/docs/01-app/03-api-reference/04-functions/generate-metadata.md`) kaže da su ugniježđena polja poput `openGraph` **shallow merge-ana po segmentu, ne duboko** — segment koji definira `openGraph` u potpunosti zamjenjuje roditeljski `openGraph` objekt, uključujući automatski ubrizganu `images` vrijednost iz file-konvencije korijenskog layouta.
+
+**Odluka:**
+Svaka stranica koja definira vlastiti `openGraph` objekt mora eksplicitno navesti `images` polje: `images: ["/opengraph-image"]` za generičke stranice (`/`, `/sutra`, `/vikend`, `/tjedan`), `images: [event.image_url ?? "/opengraph-image"]` za stranicu događaja (prioritet vlastitoj slici događaja, fallback na site-wide sliku kad `image_url` nije postavljen).
+
+**Razmotrene alternative:**
+- Ukloniti page-level `openGraph` override i osloniti se isključivo na root layout — odbačeno; gubi se per-stranica `og:title`/`og:description` (bitno za SEO/social-sharing svake pojedine rute), bez sigurnosti da bi Next.js auto-derivirao te vrijednosti iz top-level `title`/`description` bez eksplicitnog `openGraph` objekta.
+
+**Posljedice:**
+Svaka buduća nova javna ruta koja definira vlastiti `openGraph` objekt mora ručno dodati `images` polje — file-konvencija (`opengraph-image.tsx`) sama po sebi to više ne pokriva čim stranica ima svoj `openGraph` override. Vrijedi i za buduću dinamičku po-događaju OG sliku ako se ikad implementira (PROJECT_BRIEF backlog).
+
+---
 _Format za nove zapise:_
 ```
 ## ADR-00X: [naslov odluke]

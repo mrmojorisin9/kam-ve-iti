@@ -28,6 +28,9 @@ export const metadata: Metadata = {
     locale: "hr_HR",
     type: "website",
   },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default function RootLayout({

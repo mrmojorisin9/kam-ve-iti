@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   title,
   description,
   alternates: { canonical: "/" },
-  openGraph: { title, description, url: "/" },
+  openGraph: { title, description, url: "/", images: ["/opengraph-image"] },
 };
 
 export default async function Home({ searchParams }: Props) {

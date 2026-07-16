@@ -13,7 +13,12 @@ export const metadata: Metadata = {
   title,
   description,
   alternates: { canonical: "/sutra" },
-  openGraph: { title, description, url: "/sutra" },
+  openGraph: {
+    title,
+    description,
+    url: "/sutra",
+    images: ["/opengraph-image"],
+  },
 };
 
 export default async function TomorrowPage({ searchParams }: Props) {

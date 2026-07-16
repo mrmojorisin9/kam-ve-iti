@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: path,
       type: "article",
-      images: event.image_url ? [event.image_url] : undefined,
+      images: [event.image_url ?? "/opengraph-image"],
     },
   };
 }
@@ -95,9 +95,7 @@ export default async function EventPage({ params }: Props) {
 
         {event.organizer_name && (
           <div className="flex gap-2">
-            <dt className="text-parchment-muted w-24 shrink-0">
-              Organizator
-            </dt>
+            <dt className="text-parchment-muted w-24 shrink-0">Organizator</dt>
             <dd className="text-parchment">
               {event.organizer_name}
               {event.organizer_contact ? ` — ${event.organizer_contact}` : ""}
