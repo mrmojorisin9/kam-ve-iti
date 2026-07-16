@@ -199,6 +199,29 @@ Umjesto nagađanja, zatražena je stvarna definicija iz Supabase baze (`select p
 Migracije u repozitoriju sada su potpune i primjenjive na svježu bazu (bitno ako se ikad odluči za odvojeni prod Supabase projekt umjesto dev=prod pristupa — vidi CHANGELOG Faza 8, Dan 6). Ubuduće: svaka SQL izmjena kroz Supabase dashboard mora odmah dobiti pripadajuću migraciju u repu, ne naknadno.
 
 ---
+
+## ADR-011: Ažuriranje prema master promptu v2 — naziv, search, javna prijava
+**Datum:** 2026-07-16
+**Status:** Prihvaćeno
+
+**Kontekst:**
+Korisnik je dostavio ažuriranu verziju master prompta (v2, izvorno pod radnim nazivom "KAM DENES"), s razlikama u odnosu na v1 iz kojeg su nastali `PROJECT_BRIEF.md`/`DECISIONS.md`. Tri stavke izravno diraju već donesene odluke ili identitet projekta i traže eksplicitnu potvrdu prije unosa u dokumentaciju.
+
+**Odluka:**
+1. **Naziv:** Radni naziv mijenja se drugi put — "Kam ve iti" → "Kam denes" (stil: velika prva riječ, kao i prije). Ažurirano posvuda u kodu (metadata, UI tekst, `package.json`), `README.md`, `PROJECT_BRIEF.md`. Domena `kamdenes.hr` iz v2 još nije kupljena — ostaje plan, ne mijenjamo `NEXT_PUBLIC_SITE_URL`/Vercel domain postavke dok stvarno ne postoji. GitHub repo i Vercel projekt (trenutno `kam-ve-iti`) namjerno NISU preimenovani u ovom koraku — to je infrastrukturna promjena s vlastitim rizicima (rewrite URL-ova, mogući downtime) koju korisnik provodi zasebno kad odluči.
+2. **Pretraživanje (search):** Eksplicitno izbačeno, ne ide čak ni u backlog — korisnik je to zatražio nakon što je ADR-008 filter po kategoriji/lokaciji ocijenjen dovoljnim za trenutnu veličinu baze.
+3. **Javni obrazac "Prijavi događaj":** Ide u backlog (`PROJECT_BRIEF.md` §11), ADR-004 (unos isključivo putem admina) ostaje na snazi bez izmjena. Prije ikakve implementacije treba nov ADR jer zahtijeva stvarnu role-provjeru (trenutni RLS iz ADR-007 tretira svakog autenticiranog korisnika kao admina — javni obrazac bi to učinio nesigurnim).
+
+Ostale v2 stavke bez sukoba (dugoročna vizija — "najveći lokalni vodič za slobodno vrijeme", backlog ideja poput karte/oznaka/countdowna) dodane su izravno u `PROJECT_BRIEF.md` §10–11 kao referenca za buduće planiranje, bez rasprave jer ne mijenjaju ništa već odlučeno.
+
+**Razmotrene alternative:**
+- Čuvati poseban `master-prompt.md` u repu kao treći izvor istine — odbačeno; `PROJECT_BRIEF.md` + `DECISIONS.md` + `CHANGELOG.md` već služe toj svrsi od Faze 1, dodatna datoteka bi značila dvostruko održavanje istog sadržaja.
+- Preimenovati i GitHub repo/Vercel projekt odmah — odbačeno za sada; nema kupljene domene na koju bi se prešlo, pa bi preimenovanje samo promijenilo jedan `.vercel.app` URL u drugi bez stvarne koristi, uz rizik (postojeći linkovi/bookmarci na `kam-ve-iti.vercel.app`).
+
+**Posljedice:**
+Kod i dokumentacija dosljedno koriste "Kam denes". README napominje da infrastruktura (repo/Vercel/domena) čeka preimenovanje. Kad domena `kamdenes.hr` bude kupljena, treba: preimenovati Vercel projekt, dodati custom domenu, ažurirati `NEXT_PUBLIC_SITE_URL`, po želji preimenovati GitHub repo (mijenja git remote URL za sve lokalne kopije).
+
+---
 _Format za nove zapise:_
 ```
 ## ADR-00X: [naslov odluke]

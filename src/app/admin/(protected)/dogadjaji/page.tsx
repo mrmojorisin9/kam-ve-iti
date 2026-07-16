@@ -4,7 +4,7 @@ import { listEventsForAdmin } from "@/lib/admin-events";
 import { formatEventDateTime } from "@/lib/format";
 
 export const metadata: Metadata = {
-  title: "Događaji — Kam ve iti admin",
+  title: "Događaji — Kam denes admin",
 };
 
 const STATUS_LABELS: Record<string, string> = {

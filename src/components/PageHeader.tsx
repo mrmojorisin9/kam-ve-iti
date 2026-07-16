@@ -5,7 +5,7 @@ export function PageHeader({ subtitle }: { subtitle: string }) {
         Međimurska županija
       </p>
       <h1 className="font-display text-parchment mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">
-        Kam ve iti
+        Kam denes
       </h1>
       <p className="text-gold mt-3 font-mono text-sm capitalize">
         {subtitle}

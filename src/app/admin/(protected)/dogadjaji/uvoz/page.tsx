@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { importCsv } from "./actions";
 
 export const metadata: Metadata = {
-  title: "CSV uvoz — Kam ve iti admin",
+  title: "CSV uvoz — Kam denes admin",
 };
 
 const EXAMPLE_CSV = `title,category_slug,location_slug,start_at,venue_name

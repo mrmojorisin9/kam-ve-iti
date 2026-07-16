@@ -7,6 +7,7 @@ Format se temelji na [Keep a Changelog](https://keepachangelog.com/), a projekt 
 
 ### Changed
 - Radni naziv projekta promijenjen: **Međimurje Events → Kam ve iti** (uključuje `package.json`, metadata stranice, README, PROJECT_BRIEF.md).
+- **2026-07-16 — radni naziv projekta ponovno promijenjen: Kam ve iti → Kam denes**, prema ažuriranom master promptu (v2) — vidi `DECISIONS.md` ADR-011. Ažurirano u kodu (`package.json`, sve `metadata`/UI naslove u `src/app/**`, `PageHeader.tsx`, `globals.css` komentar), `README.md`, `PROJECT_BRIEF.md` (bump na v0.2, dodana §10 Dugoročna vizija i §11 Backlog ideja). SQL migracije i povijesni CHANGELOG zapisi namjerno NISU mijenjani (povijesni zapis, isto kao git commit poruke). Infrastruktura (GitHub repo `kam-ve-iti`, Vercel projekt, domena — plan `kamdenes.hr`, još nekupljena) ostaje neizmijenjena dok korisnik to zasebno ne provede. Usput: pretraživanje (search) eksplicitno izbačeno iz plana; javni obrazac "Prijavi događaj" ide u backlog (zahtijeva novi ADR prije rada, sudara se s ADR-004/ADR-007).
 
 ### Added
 - Definiran master prompt i pravila razvoja projekta (uloga AI partnera, tehnološki stack, faze razvoja, način komunikacije).

@@ -1,4 +1,4 @@
-# Kam ve iti
+# Kam denes
 
 Web portal koji objedinjuje sva javno dostupna događanja na području
 Međimurske županije na jednom mjestu.
@@ -68,7 +68,10 @@ src/
 
 ## Status
 
-Live: [kam-ve-iti.vercel.app](https://kam-ve-iti.vercel.app). Faze 1–5 (portal,
+Live: [kam-ve-iti.vercel.app](https://kam-ve-iti.vercel.app) — GitHub repo,
+Vercel projekt i domena (planirano: `kamdenes.hr`, još nekupljena) i dalje
+čekaju preimenovanje u "Kam denes" na razini infrastrukture; kod i
+dokumentacija su već ažurirani (vidi `CHANGELOG.md`). Faze 1–5 (portal,
 admin sustav) i Faza 8 (SEO, pristupačnost, deploy) dovršene — vidi
 `CHANGELOG.md` za detalje i `PROJECT_BRIEF.md` za pregled svih faza.
 

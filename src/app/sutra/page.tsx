@@ -6,7 +6,7 @@ type Props = {
   searchParams: Promise<{ kategorija?: string; lokacija?: string }>;
 };
 
-const title = "Sutra — Kam ve iti";
+const title = "Sutra — Kam denes";
 const description = "Događanja sutra u Međimurskoj županiji.";
 
 export const metadata: Metadata = {

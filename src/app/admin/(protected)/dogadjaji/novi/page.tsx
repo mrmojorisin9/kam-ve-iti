@@ -4,7 +4,7 @@ import { EventForm } from "@/components/admin/EventForm";
 import { createEvent } from "./actions";
 
 export const metadata: Metadata = {
-  title: "Novi događaj — Kam ve iti admin",
+  title: "Novi događaj — Kam denes admin",
 };
 
 export default async function NewEventPage({

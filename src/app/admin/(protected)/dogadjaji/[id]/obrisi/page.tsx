@@ -6,7 +6,7 @@ import { formatEventDateTime } from "@/lib/format";
 import { deleteEvent } from "./actions";
 
 export const metadata: Metadata = {
-  title: "Obriši događaj — Kam ve iti admin",
+  title: "Obriši događaj — Kam denes admin",
 };
 
 export default async function DeleteEventPage({

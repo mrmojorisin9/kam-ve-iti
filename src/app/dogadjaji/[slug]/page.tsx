@@ -16,10 +16,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const event = await getEventBySlug(slug);
 
   if (!event) {
-    return { title: "Događaj nije pronađen — Kam ve iti" };
+    return { title: "Događaj nije pronađen — Kam denes" };
   }
 
-  const title = `${event.title} — Kam ve iti`;
+  const title = `${event.title} — Kam denes`;
   const description = event.description
     ? event.description.length > 160
       ? `${event.description.slice(0, 157)}...`

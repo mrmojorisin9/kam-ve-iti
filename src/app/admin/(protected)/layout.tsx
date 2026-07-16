@@ -21,7 +21,7 @@ export default async function AdminLayout({
     <div className="flex min-h-full flex-1 flex-col">
       <header className="border-line flex items-center justify-between border-b px-6 py-4">
         <p className="text-parchment-muted font-mono text-xs tracking-[0.2em] uppercase">
-          Kam ve iti — admin
+          Kam denes — admin
         </p>
         <form action={logout} className="flex items-center gap-3">
           <span className="text-parchment-muted text-sm">{user.email}</span>

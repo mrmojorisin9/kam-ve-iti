@@ -21,10 +21,10 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   ),
-  title: "Kam ve iti",
+  title: "Kam denes",
   description: "Sva javna događanja u Međimurskoj županiji na jednom mjestu.",
   openGraph: {
-    siteName: "Kam ve iti",
+    siteName: "Kam denes",
     locale: "hr_HR",
     type: "website",
   },

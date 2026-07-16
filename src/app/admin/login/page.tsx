@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { login } from "./actions";
 
 export const metadata: Metadata = {
-  title: "Prijava administratora — Kam ve iti",
+  title: "Prijava administratora — Kam denes",
 };
 
 export default async function AdminLoginPage({
@@ -15,7 +15,7 @@ export default async function AdminLoginPage({
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-6 py-12">
       <p className="text-parchment-muted font-mono text-xs tracking-[0.2em] uppercase">
-        Kam ve iti
+        Kam denes
       </p>
       <h1 className="font-display text-parchment mt-2 text-3xl font-semibold tracking-tight">
         Prijava administratora
