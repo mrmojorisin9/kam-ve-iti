@@ -68,8 +68,9 @@ src/
 
 ## Status
 
-Faza 2 (razvojno okruženje) dovršena. Javni prikaz događanja dolazi u Fazi 4 —
-vidi `PROJECT_BRIEF.md` za pregled svih faza.
+Live: [kam-ve-iti.vercel.app](https://kam-ve-iti.vercel.app). Faze 1–5 (portal,
+admin sustav) i Faza 8 (SEO, pristupačnost, deploy) dovršene — vidi
+`CHANGELOG.md` za detalje i `PROJECT_BRIEF.md` za pregled svih faza.
 
 ## Deploy
 
