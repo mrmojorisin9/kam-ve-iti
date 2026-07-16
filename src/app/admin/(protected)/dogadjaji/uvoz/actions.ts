@@ -7,7 +7,13 @@ import { zagrebLocalToUtcIso } from "@/lib/zagreb-time";
 import { uniqueSlug } from "@/lib/admin-events";
 import { parseCsv, detectDelimiter, stripBom } from "@/lib/csv";
 
-const REQUIRED_COLUMNS = ["title", "category_slug", "location_slug", "start_at"];
+const REQUIRED_COLUMNS = [
+  "title",
+  "category_slug",
+  "location_slug",
+  "start_at",
+  "image_url",
+];
 const VALID_STATUSES = new Set(["draft", "pending_review", "published"]);
 const DATETIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const MAX_LISTED_ERRORS = 8;
@@ -80,9 +86,10 @@ export async function importCsv(formData: FormData) {
     const locationSlug = cell(row, index, "location_slug");
     const startAtLocal = cell(row, index, "start_at");
     const endAtLocal = cell(row, index, "end_at");
+    const imageUrl = cell(row, index, "image_url");
     const statusRaw = cell(row, index, "status");
 
-    if (!title || !categorySlug || !locationSlug || !startAtLocal) {
+    if (!title || !categorySlug || !locationSlug || !startAtLocal || !imageUrl) {
       errors.push(`red ${sheetRow}: nedostaje obavezno polje`);
       continue;
     }
@@ -137,7 +144,7 @@ export async function importCsv(formData: FormData) {
       organizer_name: cell(row, index, "organizer_name"),
       organizer_contact: cell(row, index, "organizer_contact"),
       source_url: cell(row, index, "source_url"),
-      image_url: cell(row, index, "image_url"),
+      image_url: imageUrl,
       status,
       created_by: user?.id ?? null,
     });

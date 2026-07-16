@@ -5,8 +5,8 @@ export const metadata: Metadata = {
   title: "CSV uvoz — Kam denes admin",
 };
 
-const EXAMPLE_CSV = `title,category_slug,location_slug,start_at,venue_name
-Vinska cesta - degustacija,gastronomija-i-vino,strigova,2026-09-12T17:00,Podrum Strigova`;
+const EXAMPLE_CSV = `title,category_slug,location_slug,start_at,image_url,venue_name
+Vinska cesta - degustacija,gastronomija-i-vino,strigova,2026-09-12T17:00,https://primjer.hr/slika.jpg,Podrum Strigova`;
 
 export default async function ImportCsvPage({
   searchParams,
@@ -32,7 +32,7 @@ export default async function ImportCsvPage({
         <p>
           Obavezni stupci:{" "}
           <code className="text-parchment">
-            title, category_slug, location_slug, start_at
+            title, category_slug, location_slug, start_at, image_url
           </code>
           .
         </p>
@@ -40,7 +40,7 @@ export default async function ImportCsvPage({
           Opcionalni stupci:{" "}
           <code className="text-parchment">
             description, venue_name, end_at, organizer_name,
-            organizer_contact, source_url, image_url, status
+            organizer_contact, source_url, status
           </code>{" "}
           (status: draft / pending_review / published, zadano published).
         </p>

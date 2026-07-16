@@ -167,10 +167,11 @@ export function EventForm({
       </label>
 
       <label className="text-sm">
-        <span className={labelClass}>URL slike</span>
+        <span className={labelClass}>URL slike *</span>
         <input
           type="url"
           name="image_url"
+          required
           defaultValue={defaultValues?.image_url}
           className={inputClass}
         />

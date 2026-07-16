@@ -21,10 +21,11 @@ export async function createEvent(formData: FormData) {
   const locationId = readText(formData, "location_id");
   const startAtLocal = readText(formData, "start_at");
   const endAtLocal = readText(formData, "end_at");
+  const imageUrl = readText(formData, "image_url");
   const status = readText(formData, "status") ?? "published";
 
-  if (!title || !categoryId || !locationId || !startAtLocal) {
-    fail("Naslov, kategorija, lokacija i početak su obavezni.");
+  if (!title || !categoryId || !locationId || !startAtLocal || !imageUrl) {
+    fail("Naslov, kategorija, lokacija, početak i URL slike su obavezni.");
   }
 
   const startAt = zagrebLocalToUtcIso(startAtLocal);
@@ -57,7 +58,7 @@ export async function createEvent(formData: FormData) {
     organizer_name: readText(formData, "organizer_name"),
     organizer_contact: readText(formData, "organizer_contact"),
     source_url: readText(formData, "source_url"),
-    image_url: readText(formData, "image_url"),
+    image_url: imageUrl,
     status,
     created_by: user?.id ?? null,
   });

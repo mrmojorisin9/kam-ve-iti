@@ -25,14 +25,15 @@ export async function updateEvent(formData: FormData) {
   const locationId = readText(formData, "location_id");
   const startAtLocal = readText(formData, "start_at");
   const endAtLocal = readText(formData, "end_at");
+  const imageUrl = readText(formData, "image_url");
   const status = readText(formData, "status") ?? "published";
 
   if (!id) {
     redirect("/admin/dogadjaji");
   }
 
-  if (!title || !categoryId || !locationId || !startAtLocal) {
-    fail(id, "Naslov, kategorija, lokacija i početak su obavezni.");
+  if (!title || !categoryId || !locationId || !startAtLocal || !imageUrl) {
+    fail(id, "Naslov, kategorija, lokacija, početak i URL slike su obavezni.");
   }
 
   const startAt = zagrebLocalToUtcIso(startAtLocal);
@@ -56,7 +57,7 @@ export async function updateEvent(formData: FormData) {
       organizer_name: readText(formData, "organizer_name"),
       organizer_contact: readText(formData, "organizer_contact"),
       source_url: readText(formData, "source_url"),
-      image_url: readText(formData, "image_url"),
+      image_url: imageUrl,
       status,
     })
     .eq("id", id);

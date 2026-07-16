@@ -24,6 +24,12 @@ export default async function Home({ searchParams }: Props) {
   };
 
   return (
-    <DayView date={todayInZagreb()} active="danas" path="/" filters={filters} />
+    <DayView
+      date={todayInZagreb()}
+      active="danas"
+      path="/"
+      filters={filters}
+      showCategoryStrip
+    />
   );
 }

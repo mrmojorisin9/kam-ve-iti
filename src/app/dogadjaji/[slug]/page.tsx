@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { getEventBySlug } from "@/lib/events";
 import { formatEventDateTime, formatEventEnd } from "@/lib/format";
 import { buildEventJsonLd, jsonLdToScriptString } from "@/lib/structured-data";
+import { CategoryIcon } from "@/components/CategoryIcon";
+import { PinIcon } from "@/components/PinIcon";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -66,7 +68,14 @@ export default async function EventPage({ params }: Props) {
         ← Natrag na popis
       </Link>
 
-      <span className="border-line text-parchment-muted w-fit rounded-full border px-3 py-1 text-xs tracking-wide uppercase">
+      <img
+        src={event.image_url ?? "/event-placeholder.svg"}
+        alt=""
+        className="border-line mb-6 aspect-video w-full rounded-lg border object-cover"
+      />
+
+      <span className="border-gold/40 bg-gold/10 text-gold inline-flex w-fit items-center gap-1.5 rounded-full border px-3 py-1 text-xs tracking-wide uppercase">
+        <CategoryIcon slug={event.category_slug} className="h-3.5 w-3.5" />
         {event.category_name}
       </span>
 
@@ -87,7 +96,8 @@ export default async function EventPage({ params }: Props) {
 
         <div className="flex gap-2">
           <dt className="text-parchment-muted w-24 shrink-0">Gdje</dt>
-          <dd className="text-parchment">
+          <dd className="text-parchment inline-flex items-center gap-1.5">
+            <PinIcon className="h-4 w-4 shrink-0" />
             {event.venue_name ? `${event.venue_name}, ` : ""}
             {event.location_name}
           </dd>

@@ -1,0 +1,18 @@
+<svg viewBox="0 0 1200 900" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Fotografija dolazi uskoro">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e2b22" />
+      <stop offset="100%" stop-color="#332a1e" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="900" fill="url(#bg)" />
+
+  <g transform="translate(500,375)" stroke="#d4a94a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.55">
+    <rect x="0" y="0" width="200" height="150" rx="10" />
+    <circle cx="45" cy="42" r="14" />
+    <path d="M0 115 L60 60 L110 100 L145 70 L200 110" />
+  </g>
+
+  <rect x="560" y="565" width="80" height="6" fill="#d4a94a" opacity="0.55" />
+</svg>

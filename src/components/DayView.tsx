@@ -10,17 +10,20 @@ import { EmptyState } from "@/components/EmptyState";
 import { DateNav, type DateNavKey } from "@/components/DateNav";
 import { PageHeader } from "@/components/PageHeader";
 import { FilterBar } from "@/components/FilterBar";
+import { CategoryStrip } from "@/components/CategoryStrip";
 
 export async function DayView({
   date,
   active,
   path,
   filters,
+  showCategoryStrip = false,
 }: {
   date: string;
   active: DateNavKey;
   path: string;
   filters: EventFilters;
+  showCategoryStrip?: boolean;
 }) {
   const [events, categories, locations] = await Promise.all([
     getEventsForDate(date, filters),
@@ -33,12 +36,20 @@ export async function DayView({
       <PageHeader subtitle={formatHeaderDate(date)} />
       <DateNav active={active} />
 
+      {showCategoryStrip && (
+        <CategoryStrip
+          categories={categories}
+          activeSlug={filters.categorySlug}
+        />
+      )}
+
       <FilterBar
         categories={categories}
         locations={locations}
         action={path}
         selectedCategory={filters.categorySlug}
         selectedLocation={filters.locationSlug}
+        showCategory={!showCategoryStrip}
       />
 
       {events.length === 0 ? (
