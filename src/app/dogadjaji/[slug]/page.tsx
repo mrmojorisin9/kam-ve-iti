@@ -3,6 +3,9 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getEventBySlug } from "@/lib/events";
 import { formatEventDateTime, formatEventEnd } from "@/lib/format";
+import { buildEventJsonLd, jsonLdToScriptString } from "@/lib/structured-data";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -47,8 +50,15 @@ export default async function EventPage({ params }: Props) {
     notFound();
   }
 
+  const jsonLd = buildEventJsonLd(event, SITE_URL);
+
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdToScriptString(jsonLd) }}
+      />
+
       <Link
         href="/"
         className="text-parchment-muted hover:text-gold focus-visible:outline-gold mb-8 inline-flex w-fit items-center gap-1 text-sm focus-visible:outline-2 focus-visible:outline-offset-4"
