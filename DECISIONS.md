@@ -162,6 +162,25 @@ Filtriranje se radi u aplikacijskom sloju (TypeScript, nakon dohvata iz `events_
 Prihvatljivo dok je broj događaja malen (kuriran ručni/CSV unos, jedna županija). Ako baza naraste, filtriranje treba prebaciti u SQL (WHERE + indeksi na category_id/location_id, već postoje iz ADR-007).
 
 ---
+
+## ADR-009: Isključivanje streaming metadata (Next.js 16 `htmlLimitedBots`)
+**Datum:** 2026-07-16
+**Status:** Prihvaćeno
+
+**Kontekst:**
+Lighthouse audit (Faza 8, Dan 5) na `/dogadjaji/[slug]` prijavio je SEO 91/100 — "Document does not have a meta description". Istraga (`curl` na sirov HTML) pokazala je da `<meta name="description">`, OG i Twitter tagovi fizički završe *iza* `</head>`, u `<body>`. Uzrok: Next.js 16 po defaultu stream-a `generateMetadata` rezultat i ubrizgava ga u `<body>` za sve klijente osim interne liste botova koji izvršavaju JS ili su verificirani (Googlebot, Bingbot, Twitterbot, Slackbot) — vidi `node_modules/next/dist/docs/.../htmlLimitedBots.md`. Google/Bing/Twitter/Slack rade ispravno u oba slučaja, ali alati koji ne izvršavaju JS i nisu na toj listi (npr. LinkedIn, Discord, WhatsApp preview scraperi, mnogi SEO checkeri) ne bi vidjeli title/description/OG tagove na stranici pojedinog događaja — upravo ondje gdje su najvažniji (ADR iz Faze 8, Dan 1).
+
+**Odluka:**
+`htmlLimitedBots: /.*/` u `next.config.ts` — tretira sve klijente kao "HTML-limited", vraćajući pre-16 ponašanje (blokirajuće renderiranje metapodataka, uvijek u `<head>`).
+
+**Razmotrene alternative:**
+- Zadržati default (streaming) — odbačeno; korist (brži TTFB) je zanemariva jer je Supabase upit za `getEventBySlug` već brz (~20ms, izmjereno istim Lighthouse audit-om), dok je cijena (nepouzdan social-sharing preview i SEO alati izvan Google/Bing/Twitter/Slack) neprihvatljiva za portal kojem je SEO temeljni zahtjev (PROJECT_BRIEF §6).
+- Suziti `htmlLimitedBots` na specifičan popis dodatnih botova umjesto `/.*/ ` — odbačeno, previše krhko (nova lista za održavati, propušta buduće/nepoznate crawlere).
+
+**Posljedice:**
+Lighthouse SEO 100/100 na `/dogadjaji/[slug]` (bilo 91/100), bez mjerljive štete na performance (LCP čak neznatno bolji u testu: 2.7s naspram 2.9s prije). Svaka buduća stranica koja koristi async `generateMetadata` automatski dobiva ovo ponašanje, nema dodatnog rada po ruti.
+
+---
 _Format za nove zapise:_
 ```
 ## ADR-00X: [naslov odluke]
