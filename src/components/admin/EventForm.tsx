@@ -166,16 +166,36 @@ export function EventForm({
         />
       </label>
 
-      <label className="text-sm">
-        <span className={labelClass}>URL slike *</span>
+      <div className="text-sm">
+        <span className={labelClass}>Fotografija * (URL ili datoteka)</span>
+
+        {defaultValues?.image_url && (
+          <img
+            src={defaultValues.image_url}
+            alt=""
+            className="border-line mb-2 h-20 w-20 rounded-md border object-cover"
+          />
+        )}
+
         <input
           type="url"
           name="image_url"
-          required
+          placeholder="https://..."
           defaultValue={defaultValues?.image_url}
           className={inputClass}
         />
-      </label>
+
+        <input
+          type="file"
+          name="image_file"
+          accept="image/*"
+          className={`${inputClass} mt-2`}
+        />
+
+        <span className="text-parchment-muted mt-1 block text-xs">
+          Ako priložiš datoteku, ona ima prednost pred URL poljem.
+        </span>
+      </div>
 
       <label className="text-sm">
         <span className={labelClass}>Status</span>

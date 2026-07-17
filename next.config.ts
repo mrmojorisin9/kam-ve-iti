@@ -10,6 +10,13 @@ const nextConfig: NextConfig = {
   // (~20ms, izmjereno Lighthouseom), pa cijena blokirajućeg renderiranja
   // metapodataka zanemariva — vraćamo staro (pre-16) ponašanje za sve.
   htmlLimitedBots: /.*/,
+  experimental: {
+    // Default 1MB je premalo za upload fotografije s mobitela u admin formi
+    // (Faza 8, Dan 22) — vidi node_modules/next/dist/docs .../serverActions.md.
+    serverActions: {
+      bodySizeLimit: "5mb",
+    },
+  },
 };
 
 export default nextConfig;

@@ -180,6 +180,74 @@ export async function getEventsInRange(
   return applyFilters(data ?? [], filters);
 }
 
+type NextEventRow = {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  venue_name: string | null;
+  start_at: string;
+  end_at: string | null;
+  image_url: string | null;
+  category: { name: string; slug: string } | null;
+  location: { name: string; slug: string } | null;
+};
+
+/**
+ * Prvi sljedeći nadolazeći objavljeni događaj (start_at >= sad), bez obzira
+ * na kategoriju/lokaciju filtere — koristi se za istaknuti događaj u hero
+ * sekciji naslovne stranice.
+ */
+export async function getNextUpcomingEvent(): Promise<EventListItem | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("events")
+    .select(
+      `
+      id,
+      title,
+      slug,
+      description,
+      venue_name,
+      start_at,
+      end_at,
+      image_url,
+      category:categories ( name, slug ),
+      location:locations ( name, slug )
+    `,
+    )
+    .gte("start_at", new Date().toISOString())
+    .order("start_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("getNextUpcomingEvent:", error.message);
+    return null;
+  }
+
+  const row = data as NextEventRow | null;
+
+  if (!row || !row.category || !row.location) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    description: row.description,
+    venue_name: row.venue_name,
+    start_at: row.start_at,
+    end_at: row.end_at,
+    image_url: row.image_url,
+    category_name: row.category.name,
+    category_slug: row.category.slug,
+    location_name: row.location.name,
+    location_slug: row.location.slug,
+  };
+}
+
 /** Sve kategorije, za filter UI, poredane po sort_order (ADR-005). */
 export async function getCategories(): Promise<FilterOption[]> {
   const supabase = await createClient();

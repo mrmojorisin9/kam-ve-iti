@@ -31,3 +31,20 @@
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-space-grotesk);
 }
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .animate-fade-in {
+    animation: fade-in 0.4s ease-out both;
+  }
+}

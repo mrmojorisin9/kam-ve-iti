@@ -28,11 +28,11 @@ export function EventsLoading() {
 
         <div className="border-line mb-8 h-16 rounded-md border" />
 
-        <ul>
+        <ul className="space-y-3">
           {[0, 1, 2, 3].map((i) => (
             <li
               key={i}
-              className="border-line flex items-center gap-4 border-b py-4 last:border-b-0"
+              className="border-line bg-oak flex items-center gap-4 rounded-lg border p-4"
             >
               <div className="bg-line h-8 w-16 shrink-0 rounded" />
               <div className="min-w-0 flex-1">

@@ -4,23 +4,39 @@ import type { EventListItem } from "@/lib/events";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { PinIcon } from "@/components/PinIcon";
 
+const STARTS_SOON_WINDOW_MS = 60 * 60 * 1000;
+
 export function EventRow({ event }: { event: EventListItem }) {
+  const msUntilStart = new Date(event.start_at).getTime() - Date.now();
+  const startsSoon = msUntilStart > 0 && msUntilStart <= STARTS_SOON_WINDOW_MS;
+
   return (
-    <li className="border-line border-b last:border-b-0">
+    <li className="animate-fade-in">
       <Link
         href={`/dogadjaji/${event.slug}`}
-        className="group focus-visible:outline-gold flex items-center gap-4 py-4 focus-visible:outline-2 focus-visible:outline-offset-4 sm:gap-6"
+        className="group border-line bg-oak focus-visible:outline-gold hover:border-gold/40 flex items-center gap-4 rounded-lg border p-4 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/30 focus-visible:outline-2 focus-visible:outline-offset-4 sm:gap-6"
       >
         <span className="text-gold font-mono text-2xl tabular-nums sm:text-3xl">
           {formatEventTime(event.start_at)}
         </span>
 
-        <img
-          src={event.image_url ?? "/event-placeholder.svg"}
-          alt=""
-          loading="lazy"
-          className="border-line h-14 w-14 shrink-0 rounded-md border object-cover sm:h-16 sm:w-16"
-        />
+        <span className="relative shrink-0">
+          <img
+            src={event.image_url ?? "/event-placeholder.svg"}
+            alt=""
+            loading="lazy"
+            className="border-line h-20 w-20 rounded-md border object-cover sm:h-24 sm:w-24"
+          />
+          {startsSoon && (
+            <span
+              className="absolute -top-1 -right-1 flex h-3 w-3"
+              title="Uskoro počinje"
+            >
+              <span className="bg-gold absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" />
+              <span className="bg-gold border-oak relative inline-flex h-3 w-3 rounded-full border" />
+            </span>
+          )}
+        </span>
 
         <span className="min-w-0 flex-1">
           <span className="font-display text-parchment group-hover:text-gold block text-lg font-medium text-balance sm:text-xl">

@@ -75,7 +75,7 @@ export async function RangeView({
               <h2 className="text-parchment-muted font-mono text-xs tracking-[0.15em] uppercase">
                 {formatHeaderDate(day)}
               </h2>
-              <ul className="mt-2">
+              <ul className="mt-2 space-y-3">
                 {dayEvents.map((event) => (
                   <EventRow key={event.id} event={event} />
                 ))}

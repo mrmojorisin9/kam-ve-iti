@@ -2,6 +2,7 @@ import {
   getEventsForDate,
   getCategories,
   getLocations,
+  getNextUpcomingEvent,
   type EventFilters,
 } from "@/lib/events";
 import { formatHeaderDate } from "@/lib/format";
@@ -18,22 +19,25 @@ export async function DayView({
   path,
   filters,
   showCategoryStrip = false,
+  showFeatured = false,
 }: {
   date: string;
   active: DateNavKey;
   path: string;
   filters: EventFilters;
   showCategoryStrip?: boolean;
+  showFeatured?: boolean;
 }) {
-  const [events, categories, locations] = await Promise.all([
+  const [events, categories, locations, featured] = await Promise.all([
     getEventsForDate(date, filters),
     getCategories(),
     getLocations(),
+    showFeatured ? getNextUpcomingEvent() : Promise.resolve(null),
   ]);
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20">
-      <PageHeader subtitle={formatHeaderDate(date)} />
+      <PageHeader subtitle={formatHeaderDate(date)} featured={featured} />
       <DateNav active={active} />
 
       {showCategoryStrip && (
@@ -55,7 +59,7 @@ export async function DayView({
       {events.length === 0 ? (
         <EmptyState />
       ) : (
-        <ul>
+        <ul className="space-y-3">
           {events.map((event) => (
             <EventRow key={event.id} event={event} />
           ))}

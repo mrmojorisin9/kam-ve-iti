@@ -80,11 +80,7 @@ export default async function ImportCsvPage({
         </div>
       )}
 
-      <form
-        action={importCsv}
-        encType="multipart/form-data"
-        className="mt-8 flex flex-col gap-4"
-      >
+      <form action={importCsv} className="mt-8 flex flex-col gap-4">
         <label className="text-sm">
           <span className="text-parchment-muted mb-1 block">
             CSV datoteka

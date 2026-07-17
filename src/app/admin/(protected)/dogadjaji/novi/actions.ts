@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
 import { zagrebLocalToUtcIso } from "@/lib/zagreb-time";
-import { uniqueSlug } from "@/lib/admin-events";
+import { uniqueSlug, uploadEventImage } from "@/lib/admin-events";
 
 function readText(formData: FormData, field: string): string | null {
   const value = String(formData.get(field) ?? "").trim();
@@ -21,11 +21,21 @@ export async function createEvent(formData: FormData) {
   const locationId = readText(formData, "location_id");
   const startAtLocal = readText(formData, "start_at");
   const endAtLocal = readText(formData, "end_at");
-  const imageUrl = readText(formData, "image_url");
+  const imageUrlText = readText(formData, "image_url");
+  const imageFile = formData.get("image_file");
+  const hasImageFile = imageFile instanceof File && imageFile.size > 0;
   const status = readText(formData, "status") ?? "published";
 
-  if (!title || !categoryId || !locationId || !startAtLocal || !imageUrl) {
-    fail("Naslov, kategorija, lokacija, početak i URL slike su obavezni.");
+  if (
+    !title ||
+    !categoryId ||
+    !locationId ||
+    !startAtLocal ||
+    (!imageUrlText && !hasImageFile)
+  ) {
+    fail(
+      "Naslov, kategorija, lokacija, početak i fotografija (URL ili datoteka) su obavezni.",
+    );
   }
 
   const startAt = zagrebLocalToUtcIso(startAtLocal);
@@ -39,6 +49,16 @@ export async function createEvent(formData: FormData) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // Priložena datoteka ima prednost pred URL poljem (korisnikov odabir).
+  let imageUrl = imageUrlText;
+  if (hasImageFile) {
+    try {
+      imageUrl = await uploadEventImage(supabase, imageFile);
+    } catch (err) {
+      fail((err as Error).message);
+    }
+  }
 
   const baseSlug = slugify(title);
   if (!baseSlug) {

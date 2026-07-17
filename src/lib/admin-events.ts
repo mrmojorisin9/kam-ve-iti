@@ -97,6 +97,31 @@ export async function getEventForEdit(
 }
 
 /**
+ * Uploada fotografiju u `event-images` Supabase Storage bucket (Faza 8,
+ * Dan 22, vidi 0004_event_images_bucket.sql) i vraća njen javni URL.
+ * Naziv datoteke je nasumičan (ne slug) jer slug pri kreiranju događaja
+ * u tom trenutku možda još nije poznat.
+ */
+export async function uploadEventImage(
+  supabase: SupabaseClient,
+  file: File,
+): Promise<string> {
+  const ext = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
+  const path = `${crypto.randomUUID()}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from("event-images")
+    .upload(path, file, { contentType: file.type || undefined });
+
+  if (error) {
+    throw new Error(`Slika: ${error.message}`);
+  }
+
+  return supabase.storage.from("event-images").getPublicUrl(path).data
+    .publicUrl;
+}
+
+/**
  * Nalazi slobodan slug dodavanjem numeriranog sufiksa ("naslov-2", "-3", ...)
  * kad bazni slug već postoji. Dijeli ga ručna forma i CSV uvoz (Faza 5,
  * Dan 2/3) — poziva se sekvencijalno (ne Promise.all) kako bi svaki upit
