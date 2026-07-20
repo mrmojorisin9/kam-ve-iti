@@ -29,6 +29,10 @@ function cell(row: string[], index: Record<string, number>, name: string): strin
   return value || null;
 }
 
+function cellBool(row: string[], index: Record<string, number>, name: string): boolean {
+  return (cell(row, index, name) ?? "").toLowerCase() === "true";
+}
+
 export async function importCsv(formData: FormData) {
   const file = formData.get("file");
 
@@ -118,6 +122,14 @@ export async function importCsv(formData: FormData) {
       continue;
     }
 
+    const isHiddenGem = cellBool(row, index, "is_hidden_gem");
+    if (isHiddenGem && categorySlug === "manifestacije-i-feste") {
+      errors.push(
+        `red ${sheetRow}: "skriveni dragulj" ne može biti uz kategoriju "Velike Manifestacije"`,
+      );
+      continue;
+    }
+
     const startAt = zagrebLocalToUtcIso(startAtLocal);
     const endAt = endAtLocal ? zagrebLocalToUtcIso(endAtLocal) : null;
     if (endAt && endAt < startAt) {
@@ -147,6 +159,12 @@ export async function importCsv(formData: FormData) {
       image_url: imageUrl,
       status,
       created_by: user?.id ?? null,
+      is_free: cellBool(row, index, "is_free"),
+      is_family_friendly: cellBool(row, index, "is_family_friendly"),
+      is_dog_friendly: cellBool(row, index, "is_dog_friendly"),
+      is_solo_friendly: cellBool(row, index, "is_solo_friendly"),
+      is_romantic: cellBool(row, index, "is_romantic"),
+      is_hidden_gem: isHiddenGem,
     });
 
     if (error) {

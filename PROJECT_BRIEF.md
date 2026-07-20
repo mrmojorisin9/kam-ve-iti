@@ -21,7 +21,7 @@ Jedinstven web portal koji objedinjuje sva javno dostupna događanja na jednom m
 
 ## 4. MVP opseg (v1) — ULAZI
 - Javni prikaz događanja: danas / sutra / ovaj vikend / ovaj tjedan.
-- Filtriranje po kategoriji (8 kategorija — vidi `DECISIONS.md`, ADR-005).
+- Filtriranje po kategoriji (6 kategorija — vidi `DECISIONS.md`, ADR-013, zamjenjuje ADR-005).
 - Filtriranje po lokaciji — pokriva se cijela Međimurska županija od starta (ADR-004).
 - Stranica pojedinog događaja (detalji, vrijeme, lokacija, organizator).
 - Administratorski unos događaja: ručna forma **i** CSV uvoz, oboje bez AI-a (ADR-004).
@@ -54,7 +54,7 @@ Next.js + TypeScript, Supabase/PostgreSQL, Vercel, n8n, Python, Claude API — d
 
 ## 9. Riješene odluke (bivša otvorena pitanja)
 Sve tri točke potvrđene 2026-07-14, detalji i obrazloženje u `DECISIONS.md`:
-- Kategorije događanja → ADR-005 (8 kategorija).
+- Kategorije događanja → ADR-005 (8 kategorija), zamijenjeno ADR-013 (6 kategorija, 2026-07-20) uvođenjem trorazinskog filter sustava.
 - Geografski opseg → ADR-004 (cijela županija od starta).
 - Način unosa događaja → ADR-004 (ručna forma + CSV uvoz, bez AI u v1).
 - Radni naziv projekta → "Kam denes" (2026-07-16, master prompt v2; prije "Kam ve iti", prije toga "Međimurje Events").

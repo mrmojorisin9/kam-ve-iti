@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { LOCATION_TO_REGION } from "@/lib/regions";
 
 export type EventListItem = {
   id: string;
@@ -14,6 +15,12 @@ export type EventListItem = {
   category_slug: string;
   location_name: string;
   location_slug: string;
+  is_free: boolean;
+  is_family_friendly: boolean;
+  is_dog_friendly: boolean;
+  is_solo_friendly: boolean;
+  is_romantic: boolean;
+  is_hidden_gem: boolean;
 };
 
 export type EventDetail = EventListItem & {
@@ -24,8 +31,80 @@ export type EventDetail = EventListItem & {
 
 export type EventFilters = {
   categorySlug?: string;
-  locationSlug?: string;
+  regionSlug?: string;
+  isFree?: boolean;
+  isFamilyFriendly?: boolean;
+  isDogFriendly?: boolean;
+  isSoloFriendly?: boolean;
+  isRomantic?: boolean;
+  isHiddenGem?: boolean;
 };
+
+/**
+ * Definicije 6 pametnih filtera (Razina 3) — dijele je FilterBar
+ * (checkboxovi) i ActiveFilters (uklonjivi chipovi) da naziv/oznaka
+ * postoje na jednom mjestu.
+ */
+export const SMART_TAG_DEFS: {
+  key: "isFree" | "isFamilyFriendly" | "isDogFriendly" | "isSoloFriendly" | "isRomantic" | "isHiddenGem";
+  param: string;
+  label: string;
+}[] = [
+  { key: "isFree", param: "besplatno", label: "Potpuno besplatno" },
+  { key: "isFamilyFriendly", param: "obitelj", label: "Za obitelji s djecom" },
+  { key: "isDogFriendly", param: "dog", label: "Dog-friendly" },
+  { key: "isSoloFriendly", param: "solo", label: "Idem solo" },
+  { key: "isRomantic", param: "romanticno", label: "Romantični izlazak" },
+  { key: "isHiddenGem", param: "dragulj", label: "💎 Skriveni dragulji" },
+];
+
+/** Sirovi (string) GET query parametri s javnih ruta prije parsiranja. */
+export type RawEventSearchParams = {
+  kategorija?: string;
+  regija?: string;
+  besplatno?: string;
+  obitelj?: string;
+  dog?: string;
+  solo?: string;
+  romanticno?: string;
+  dragulj?: string;
+};
+
+/**
+ * Pretvara query parametre GET forme (FilterBar) u EventFilters. Dijele je
+ * sve 4 javne rute da se ovo parsiranje ne ponavlja — checkboxovi šalju
+ * "on" kad su označeni, izostaju iz query stringa kad nisu.
+ */
+export function parseEventFilters(params: RawEventSearchParams): EventFilters {
+  return {
+    categorySlug: params.kategorija || undefined,
+    regionSlug: params.regija || undefined,
+    isFree: params.besplatno === "on" || undefined,
+    isFamilyFriendly: params.obitelj === "on" || undefined,
+    isDogFriendly: params.dog === "on" || undefined,
+    isSoloFriendly: params.solo === "on" || undefined,
+    isRomantic: params.romanticno === "on" || undefined,
+    isHiddenGem: params.dragulj === "on" || undefined,
+  };
+}
+
+/**
+ * Obrat od parseEventFilters — pretvara EventFilters natrag u query
+ * parametre. Koristi ga ActiveFilters za izradu linkova koji uklanjaju
+ * samo jedan filtar, zadržavajući ostale.
+ */
+export function filtersToParams(filters: EventFilters): Record<string, string> {
+  const params: Record<string, string> = {};
+  if (filters.categorySlug) params.kategorija = filters.categorySlug;
+  if (filters.regionSlug) params.regija = filters.regionSlug;
+  if (filters.isFree) params.besplatno = "on";
+  if (filters.isFamilyFriendly) params.obitelj = "on";
+  if (filters.isDogFriendly) params.dog = "on";
+  if (filters.isSoloFriendly) params.solo = "on";
+  if (filters.isRomantic) params.romanticno = "on";
+  if (filters.isHiddenGem) params.dragulj = "on";
+  return params;
+}
 
 export type FilterOption = {
   slug: string;
@@ -46,6 +125,12 @@ type EventBySlugRow = {
   source_url: string | null;
   category: { name: string; slug: string } | null;
   location: { name: string; slug: string } | null;
+  is_free: boolean;
+  is_family_friendly: boolean;
+  is_dog_friendly: boolean;
+  is_solo_friendly: boolean;
+  is_romantic: boolean;
+  is_hidden_gem: boolean;
 };
 
 function zagrebDateFromInstant(instant: Date): string {
@@ -69,8 +154,12 @@ function addDaysToZagrebDate(dateStr: string, days: number): string {
 }
 
 /**
- * Filtrira listu događaja po kategoriji/lokaciji u aplikacijskom sloju
- * (ne u SQL-u) — vidi DECISIONS.md ADR-008 za obrazloženje.
+ * Filtrira listu događaja po kategoriji/regiji/pametnim filtrima u
+ * aplikacijskom sloju (ne u SQL-u) — vidi DECISIONS.md ADR-008 za
+ * obrazloženje. Regija se provjerava preko LOCATION_TO_REGION (naselje →
+ * regija), ne izravnom usporedbom sluga — vidi src/lib/regions.ts.
+ * Pametni filtri (Razina 3) kombiniraju se AND logikom — svaki odabrani
+ * tag mora biti zadovoljen, ne dovoljan je bilo koji.
  */
 function applyFilters(
   events: EventListItem[],
@@ -86,13 +175,68 @@ function applyFilters(
       return false;
     }
     if (
-      filters.locationSlug &&
-      event.location_slug !== filters.locationSlug
+      filters.regionSlug &&
+      LOCATION_TO_REGION[event.location_slug] !== filters.regionSlug
     ) {
       return false;
     }
+    if (filters.isFree && !event.is_free) return false;
+    if (filters.isFamilyFriendly && !event.is_family_friendly) return false;
+    if (filters.isDogFriendly && !event.is_dog_friendly) return false;
+    if (filters.isSoloFriendly && !event.is_solo_friendly) return false;
+    if (filters.isRomantic && !event.is_romantic) return false;
+    if (filters.isHiddenGem && !event.is_hidden_gem) return false;
     return true;
   });
+}
+
+export type EventQueryResult = {
+  events: EventListItem[];
+  /** Postavljeno kad je točan presjek dao 0 rezultata pa je sustav progresivno
+   * popustio filtre (nikad kategoriju) da ponudi nešto umjesto prazne stranice. */
+  relaxedFrom?: "tags" | "region";
+};
+
+function hasActiveSmartFilters(filters?: EventFilters): boolean {
+  if (!filters) return false;
+  return SMART_TAG_DEFS.some((tag) => filters[tag.key]);
+}
+
+/**
+ * Kao applyFilters, ali kad točan presjek svih razina da 0 rezultata,
+ * progresivno popušta od najmanje bitnog filtra prema najbitnijem:
+ * prvo pametni tagovi (Razina 3), zatim regija (Razina 2), kategorija
+ * (Razina 1) se nikad ne miče jer je to primarna namjera korisnika.
+ */
+function applyFiltersWithFallback(
+  events: EventListItem[],
+  filters?: EventFilters,
+): EventQueryResult {
+  const exact = applyFilters(events, filters);
+  if (exact.length > 0 || !filters) {
+    return { events: exact };
+  }
+
+  if (hasActiveSmartFilters(filters)) {
+    const withoutTags = applyFilters(events, {
+      categorySlug: filters.categorySlug,
+      regionSlug: filters.regionSlug,
+    });
+    if (withoutTags.length > 0) {
+      return { events: withoutTags, relaxedFrom: "tags" };
+    }
+  }
+
+  if (filters.regionSlug) {
+    const withoutRegion = applyFilters(events, {
+      categorySlug: filters.categorySlug,
+    });
+    if (withoutRegion.length > 0) {
+      return { events: withoutRegion, relaxedFrom: "region" };
+    }
+  }
+
+  return { events: [] };
 }
 
 /** Današnji datum (YYYY-MM-DD) po Europe/Zagreb vremenu. */
@@ -124,25 +268,27 @@ export function weekendRangeInZagreb(): { start: string; end: string } {
 }
 
 /**
- * Raspon (YYYY-MM-DD) ovog tjedna: od danas do nedjelje istog tjedna
- * (tjedan počinje ponedjeljkom; prošli dani se ne prikazuju).
+ * Raspon (YYYY-MM-DD) za naslovnu (/, "Tjedan" tab): rolling 11-dnevni
+ * prozor od danas do danas+10 (uključivo), ne kalendarski tjedan (izmjena,
+ * ranije je bio ponedjeljak-nedjelja istog tjedna, potom zaseban /tjedan
+ * prije nego je naslovna preuzela isti raspon — vidi CHANGELOG).
  */
 export function weekRangeInZagreb(): { start: string; end: string } {
   const today = todayInZagreb();
-  const day = weekdayOf(today);
-  const daysUntilSunday = day === 0 ? 0 : 7 - day;
-  return { start: today, end: addDaysToZagrebDate(today, daysUntilSunday) };
+  return { start: today, end: addDaysToZagrebDate(today, 10) };
 }
 
 /**
  * Dohvaća objavljene događaje za zadani dan (Europe/Zagreb) preko
  * `events_on_date` SQL funkcije, uz opcionalno filtriranje po
- * kategoriji/lokaciji (aplikacijski sloj — vidi applyFilters).
+ * kategoriji/regiji/pametnim filtrima (aplikacijski sloj — vidi
+ * applyFiltersWithFallback). RPC poziv ne ovisi o filterima (samo o
+ * datumu) pa se popuštanje filtara radi lokalno bez dodatnog upita.
  */
 export async function getEventsForDate(
   date: string,
   filters?: EventFilters,
-): Promise<EventListItem[]> {
+): Promise<EventQueryResult> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("events_on_date", {
     target_date: date,
@@ -150,22 +296,23 @@ export async function getEventsForDate(
 
   if (error) {
     console.error("getEventsForDate:", error.message);
-    return [];
+    return { events: [] };
   }
 
-  return applyFilters(data ?? [], filters);
+  return applyFiltersWithFallback(data ?? [], filters);
 }
 
 /**
  * Dohvaća objavljene događaje unutar datumskog raspona (uključivo) preko
  * `events_in_range` SQL funkcije, uz opcionalno filtriranje po
- * kategoriji/lokaciji (aplikacijski sloj — vidi applyFilters).
+ * kategoriji/regiji/pametnim filtrima (aplikacijski sloj — vidi
+ * applyFiltersWithFallback).
  */
 export async function getEventsInRange(
   start: string,
   end: string,
   filters?: EventFilters,
-): Promise<EventListItem[]> {
+): Promise<EventQueryResult> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("events_in_range", {
     range_start: start,
@@ -174,78 +321,10 @@ export async function getEventsInRange(
 
   if (error) {
     console.error("getEventsInRange:", error.message);
-    return [];
+    return { events: [] };
   }
 
-  return applyFilters(data ?? [], filters);
-}
-
-type NextEventRow = {
-  id: string;
-  title: string;
-  slug: string;
-  description: string | null;
-  venue_name: string | null;
-  start_at: string;
-  end_at: string | null;
-  image_url: string | null;
-  category: { name: string; slug: string } | null;
-  location: { name: string; slug: string } | null;
-};
-
-/**
- * Prvi sljedeći nadolazeći objavljeni događaj (start_at >= sad), bez obzira
- * na kategoriju/lokaciju filtere — koristi se za istaknuti događaj u hero
- * sekciji naslovne stranice.
- */
-export async function getNextUpcomingEvent(): Promise<EventListItem | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("events")
-    .select(
-      `
-      id,
-      title,
-      slug,
-      description,
-      venue_name,
-      start_at,
-      end_at,
-      image_url,
-      category:categories ( name, slug ),
-      location:locations ( name, slug )
-    `,
-    )
-    .gte("start_at", new Date().toISOString())
-    .order("start_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    console.error("getNextUpcomingEvent:", error.message);
-    return null;
-  }
-
-  const row = data as NextEventRow | null;
-
-  if (!row || !row.category || !row.location) {
-    return null;
-  }
-
-  return {
-    id: row.id,
-    title: row.title,
-    slug: row.slug,
-    description: row.description,
-    venue_name: row.venue_name,
-    start_at: row.start_at,
-    end_at: row.end_at,
-    image_url: row.image_url,
-    category_name: row.category.name,
-    category_slug: row.category.slug,
-    location_name: row.location.name,
-    location_slug: row.location.slug,
-  };
+  return applyFiltersWithFallback(data ?? [], filters);
 }
 
 /** Sve kategorije, za filter UI, poredane po sort_order (ADR-005). */
@@ -292,22 +371,6 @@ export async function getPublishedEventsForSitemap(): Promise<
   }));
 }
 
-/** Sve lokacije, za filter UI, poredane abecedno. */
-export async function getLocations(): Promise<FilterOption[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("locations")
-    .select("slug, name")
-    .order("name", { ascending: true });
-
-  if (error) {
-    console.error("getLocations:", error.message);
-    return [];
-  }
-
-  return data ?? [];
-}
-
 /**
  * Dohvaća jedan događaj po slugu, s nazivom kategorije i lokacije.
  * `cache()` sprječava dvostruki upit prema bazi kad i `generateMetadata`
@@ -340,7 +403,13 @@ export const getEventBySlug = cache(
         organizer_contact,
         source_url,
         category:categories ( name, slug ),
-        location:locations ( name, slug )
+        location:locations ( name, slug ),
+        is_free,
+        is_family_friendly,
+        is_dog_friendly,
+        is_solo_friendly,
+        is_romantic,
+        is_hidden_gem
       `,
       )
       .eq("slug", slug)
@@ -373,6 +442,12 @@ export const getEventBySlug = cache(
       category_slug: row.category.slug,
       location_name: row.location.name,
       location_slug: row.location.slug,
+      is_free: row.is_free,
+      is_family_friendly: row.is_family_friendly,
+      is_dog_friendly: row.is_dog_friendly,
+      is_solo_friendly: row.is_solo_friendly,
+      is_romantic: row.is_romantic,
+      is_hidden_gem: row.is_hidden_gem,
     };
   },
 );

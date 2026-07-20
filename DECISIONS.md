@@ -78,7 +78,7 @@ Admin sustav (Faza 5) mora podržati i ručni unos i CSV uvoz bez oslanjanja na 
 
 ## ADR-005: Kategorije događanja
 **Datum:** 2026-07-14
-**Status:** Prihvaćeno
+**Status:** Zamijenjeno ADR-013
 
 **Kontekst:**
 Filtriranje po kategoriji je jedan od temeljnih zahtjeva portala. Korisnik je zatražio 5–8 kategorija uz procjenu optimalnog broja.
@@ -238,6 +238,25 @@ Svaka stranica koja definira vlastiti `openGraph` objekt mora eksplicitno navest
 
 **Posljedice:**
 Svaka buduća nova javna ruta koja definira vlastiti `openGraph` objekt mora ručno dodati `images` polje — file-konvencija (`opengraph-image.tsx`) sama po sebi to više ne pokriva čim stranica ima svoj `openGraph` override. Vrijedi i za buduću dinamičku po-događaju OG sliku ako se ikad implementira (PROJECT_BRIEF backlog).
+
+---
+
+## ADR-013: Kategorije v2 — 6 kategorija za trorazinski filter sustav
+**Datum:** 2026-07-20
+**Status:** Prihvaćeno
+
+**Kontekst:**
+Uvodi se napredni trorazinski filter sustav (tematska kategorija + mikro-lokacija + pametni filtri raspoloženja/logistike). Korisnik je za Razinu 1 (kategorija) dostavio novi popis od 6 stavki koji se ne poklapa s ADR-005 (8 kategorija): "Obitelj i djeca" izlazi kao zaseban filtar (postaje pametni tag `is_family_friendly` u budućoj shemi), "Ostalo" ventil se uklanja, "Manifestacije i fešte" postaje "Velike Manifestacije", a preostale četiri dobivaju nove dvočlane nazive (npr. "Kultura & Kazalište").
+
+**Odluka:**
+6 kategorija, redom (`sort_order`): Glazba & Party · Kultura & Kazalište · Sport & Rekreacija · Gastro & Wine · Edukacija & Radionice · Velike Manifestacije. Provedeno kao `UPDATE` (preimenovanje) na 6 postojećih redaka + `DELETE` na "obitelj-i-djeca"/"ostalo" (`supabase/migrations/0006_kategorije_v2.sql`), ne kao drop-and-recreate — prije brisanja potvrđeno upitom da 0 događaja u produkciji koristi ta dva sluga, pa nije bilo potrebe za re-tagiranjem postojećih podataka. Slugovi ostalih 6 kategorija namjerno nisu mijenjani (samo `name`/`sort_order`) da postojeći `?kategorija=` linkovi ne puknu.
+
+**Razmotrene alternative:**
+- Zadržati 8 kategorija i samo vizualno skratiti prikaz (kao `CARD_LABELS` iz Faze 8 Dan 19) — odbačeno; korisnik eksplicitno traži da "Obitelj i djeca" postane pametni filtar (multiselect tag), ne kategorija, što je stvarna promjena taksonomije, ne samo prikaza.
+- Zadržati "Manifestacije i fešte" kao naziv — odbačeno; "Velike Manifestacije" nosi drugačiju semantiku (razmjer/poznatost događaja, izravno suprotstavljeno "Skrivenim draguljima" iz Razine 3 pametnih filtara), korisnikov izbor naziva to odražava.
+
+**Posljedice:**
+Broj kategorija (6) ostaje unutar preporučenog raspona iz ADR-005 (5–9) pa se UI logika za prikaz (grid/pill red) ne mijenja zbog broja stavki. `src/components/CategoryIcon.tsx` gubi `IconObitelj` funkciju i `obitelj-i-djeca`/`ostalo` unose u mapi ikona (mrtav kod nakon brisanja kategorija). "Obitelj i djeca" i "Ostalo" kao koncepti ne nestaju iz produkta — prvo postaje pametni filtar (Razina 3, buduća shema), drugo se namjerno gasi bez zamjene (ventil se pokazao nepotrebnim, 0 iskorištenih događaja u praksi).
 
 ---
 _Format za nove zapise:_

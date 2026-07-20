@@ -3,10 +3,10 @@ import Link from "next/link";
 export type DateNavKey = "danas" | "sutra" | "vikend" | "tjedan";
 
 const ITEMS: { key: DateNavKey; label: string; href: string }[] = [
-  { key: "danas", label: "Danas", href: "/" },
+  { key: "tjedan", label: "Tjedan", href: "/" },
+  { key: "danas", label: "Danas", href: "/danas" },
   { key: "sutra", label: "Sutra", href: "/sutra" },
   { key: "vikend", label: "Vikend", href: "/vikend" },
-  { key: "tjedan", label: "Tjedan", href: "/tjedan" },
 ];
 
 export function DateNav({ active }: { active: DateNavKey }) {

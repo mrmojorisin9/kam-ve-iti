@@ -11,6 +11,10 @@ function readText(formData: FormData, field: string): string | null {
   return value || null;
 }
 
+function readBool(formData: FormData, field: string): boolean {
+  return formData.get(field) === "on";
+}
+
 function fail(message: string): never {
   redirect(`/admin/dogadjaji/novi?error=${encodeURIComponent(message)}`);
 }
@@ -45,10 +49,25 @@ export async function createEvent(formData: FormData) {
     fail("Kraj događaja ne može biti prije početka.");
   }
 
+  const isHiddenGem = readBool(formData, "is_hidden_gem");
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (isHiddenGem) {
+    const { data: category } = await supabase
+      .from("categories")
+      .select("slug")
+      .eq("id", categoryId)
+      .maybeSingle();
+    if (category?.slug === "manifestacije-i-feste") {
+      fail(
+        '"Skriveni dragulj" ne može biti označen uz kategoriju "Velike Manifestacije" (proturječno).',
+      );
+    }
+  }
 
   // Priložena datoteka ima prednost pred URL poljem (korisnikov odabir).
   let imageUrl = imageUrlText;
@@ -81,6 +100,12 @@ export async function createEvent(formData: FormData) {
     image_url: imageUrl,
     status,
     created_by: user?.id ?? null,
+    is_free: readBool(formData, "is_free"),
+    is_family_friendly: readBool(formData, "is_family_friendly"),
+    is_dog_friendly: readBool(formData, "is_dog_friendly"),
+    is_solo_friendly: readBool(formData, "is_solo_friendly"),
+    is_romantic: readBool(formData, "is_romantic"),
+    is_hidden_gem: isHiddenGem,
   });
 
   if (error) {

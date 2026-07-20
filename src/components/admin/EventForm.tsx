@@ -21,7 +21,21 @@ export type EventFormValues = {
   source_url?: string;
   image_url?: string;
   status?: string;
+  is_free?: boolean;
+  is_family_friendly?: boolean;
+  is_dog_friendly?: boolean;
+  is_solo_friendly?: boolean;
+  is_romantic?: boolean;
+  is_hidden_gem?: boolean;
 };
+
+const SMART_TAG_FIELDS: { name: string; label: string }[] = [
+  { name: "is_free", label: "Potpuno besplatno" },
+  { name: "is_family_friendly", label: "Za obitelji s djecom" },
+  { name: "is_dog_friendly", label: "Dog-friendly" },
+  { name: "is_solo_friendly", label: "Idem solo" },
+  { name: "is_romantic", label: "Romantični izlazak" },
+];
 
 export function EventForm({
   categories,
@@ -196,6 +210,47 @@ export function EventForm({
           Ako priložiš datoteku, ona ima prednost pred URL poljem.
         </span>
       </div>
+
+      <fieldset className="border-line rounded-md border p-4">
+        <legend className="text-parchment-muted px-1 text-sm">
+          Pametni filtri
+        </legend>
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {SMART_TAG_FIELDS.map((field) => (
+            <label
+              key={field.name}
+              className="text-parchment flex items-center gap-2 text-sm"
+            >
+              <input
+                type="checkbox"
+                name={field.name}
+                defaultChecked={
+                  defaultValues?.[field.name as keyof EventFormValues] as
+                    | boolean
+                    | undefined
+                }
+              />
+              {field.label}
+            </label>
+          ))}
+        </div>
+
+        <label className="mt-3 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="is_hidden_gem"
+            defaultChecked={defaultValues?.is_hidden_gem}
+          />
+          <span className="text-parchment">💎 Skriveni dragulj</span>
+        </label>
+        <p className="text-parchment-muted mt-1 text-xs">
+          Označi samo za manje, intimne događaje u naselju ili lokalnom
+          prostoru (ne glavni trg/dvorana grada), koje organizira mjesni
+          odbor/udruga/OPG (ne grad/TZ), s okvirnim kapacitetom do ~150-200
+          ljudi. Nikad zajedno s kategorijom &quot;Velike Manifestacije&quot;.
+        </p>
+      </fieldset>
 
       <label className="text-sm">
         <span className={labelClass}>Status</span>

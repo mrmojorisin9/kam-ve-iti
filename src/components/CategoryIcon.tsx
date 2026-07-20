@@ -73,25 +73,6 @@ function IconManifestacije(props: IconProps) {
   );
 }
 
-function IconObitelj(props: IconProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <circle cx="9" cy="7" r="3" />
-      <circle cx="17" cy="9.5" r="2.3" />
-      <path d="M3 21c0-3.3 2.7-6 6-6s6 2.7 6 6" />
-      <path d="M14.5 21c0-2.6 1.8-4.7 4-5.1" />
-    </svg>
-  );
-}
-
 function IconEdukacija(props: IconProps) {
   return (
     <svg
@@ -141,10 +122,8 @@ const CATEGORY_ICONS: Record<string, FC<IconProps>> = {
   "glazba-i-koncerti": IconGlazba,
   "sport-i-rekreacija": IconSport,
   "manifestacije-i-feste": IconManifestacije,
-  "obitelj-i-djeca": IconObitelj,
   "edukacija-i-radionice": IconEdukacija,
   "gastronomija-i-vino": IconGastro,
-  ostalo: IconOstalo,
 };
 
 /** Ručno pisana linijska SVG ikona po kategoriji (ADR-006 — bez ikonografske biblioteke). */

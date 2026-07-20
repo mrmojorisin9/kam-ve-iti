@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { DayView } from "@/components/DayView";
 import {
-  tomorrowInZagreb,
+  todayInZagreb,
   parseEventFilters,
   type RawEventSearchParams,
 } from "@/lib/events";
@@ -10,29 +10,29 @@ type Props = {
   searchParams: Promise<RawEventSearchParams>;
 };
 
-const title = "Sutra — Kam denes";
-const description = "Događanja sutra u Međimurskoj županiji.";
+const title = "Danas — Kam denes";
+const description = "Događanja danas u Međimurskoj županiji.";
 
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: "/sutra" },
+  alternates: { canonical: "/danas" },
   openGraph: {
     title,
     description,
-    url: "/sutra",
+    url: "/danas",
     images: ["/opengraph-image"],
   },
 };
 
-export default async function TomorrowPage({ searchParams }: Props) {
+export default async function TodayPage({ searchParams }: Props) {
   const filters = parseEventFilters(await searchParams);
 
   return (
     <DayView
-      date={tomorrowInZagreb()}
-      active="sutra"
-      path="/sutra"
+      date={todayInZagreb()}
+      active="danas"
+      path="/danas"
       filters={filters}
     />
   );

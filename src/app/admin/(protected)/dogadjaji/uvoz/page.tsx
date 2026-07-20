@@ -40,9 +40,12 @@ export default async function ImportCsvPage({
           Opcionalni stupci:{" "}
           <code className="text-parchment">
             description, venue_name, end_at, organizer_name,
-            organizer_contact, source_url, status
+            organizer_contact, source_url, status, is_free,
+            is_family_friendly, is_dog_friendly, is_solo_friendly,
+            is_romantic, is_hidden_gem
           </code>{" "}
-          (status: draft / pending_review / published, zadano published).
+          (status: draft / pending_review / published, zadano published;
+          is_* stupci: true/false, zadano false).
         </p>
         <p className="mt-2">
           Datum i vrijeme u formatu{" "}

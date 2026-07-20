@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
 import { RangeView } from "@/components/RangeView";
-import { weekendRangeInZagreb, type EventFilters } from "@/lib/events";
+import {
+  weekendRangeInZagreb,
+  parseEventFilters,
+  type RawEventSearchParams,
+} from "@/lib/events";
 
 type Props = {
-  searchParams: Promise<{ kategorija?: string; lokacija?: string }>;
+  searchParams: Promise<RawEventSearchParams>;
 };
 
 const title = "Ovaj vikend — Kam denes";
@@ -22,19 +26,14 @@ export const metadata: Metadata = {
 };
 
 export default async function WeekendPage({ searchParams }: Props) {
-  const { kategorija, lokacija } = await searchParams;
   const { start, end } = weekendRangeInZagreb();
-  const filters: EventFilters = {
-    categorySlug: kategorija || undefined,
-    locationSlug: lokacija || undefined,
-  };
+  const filters = parseEventFilters(await searchParams);
 
   return (
     <RangeView
       start={start}
       end={end}
       active="vikend"
-      subtitle="Ovaj vikend"
       path="/vikend"
       filters={filters}
     />

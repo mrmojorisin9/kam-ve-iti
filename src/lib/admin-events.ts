@@ -71,6 +71,12 @@ export type AdminEventDetail = {
   source_url: string | null;
   image_url: string | null;
   status: string;
+  is_free: boolean;
+  is_family_friendly: boolean;
+  is_dog_friendly: boolean;
+  is_solo_friendly: boolean;
+  is_romantic: boolean;
+  is_hidden_gem: boolean;
 };
 
 /** Jedan događaj (bilo kojeg statusa) za admin formu za uređivanje. */
@@ -83,7 +89,8 @@ export async function getEventForEdit(
     .select(
       `id, slug, title, description, category_id, location_id, venue_name,
        start_at, end_at, organizer_name, organizer_contact, source_url,
-       image_url, status`,
+       image_url, status, is_free, is_family_friendly, is_dog_friendly,
+       is_solo_friendly, is_romantic, is_hidden_gem`,
     )
     .eq("id", id)
     .maybeSingle();

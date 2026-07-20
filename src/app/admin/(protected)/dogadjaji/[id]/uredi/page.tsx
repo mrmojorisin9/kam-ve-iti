@@ -65,6 +65,12 @@ export default async function EditEventPage({
           source_url: event.source_url ?? undefined,
           image_url: event.image_url ?? undefined,
           status: event.status,
+          is_free: event.is_free,
+          is_family_friendly: event.is_family_friendly,
+          is_dog_friendly: event.is_dog_friendly,
+          is_solo_friendly: event.is_solo_friendly,
+          is_romantic: event.is_romantic,
+          is_hidden_gem: event.is_hidden_gem,
         }}
       />
     </main>

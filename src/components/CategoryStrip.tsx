@@ -2,49 +2,56 @@ import Link from "next/link";
 import type { FilterOption } from "@/lib/events";
 import { CategoryIcon } from "@/components/CategoryIcon";
 
-/**
- * Kraći nazivi za prikaz na kartici (jednake veličine kartica zahtijevaju
- * predvidljivu, kratku duljinu teksta) — pun naziv kategorije i dalje se
- * koristi u FilterBar dropdownu, kategorija-chipu i na stranici događaja.
- */
-const CARD_LABELS: Record<string, string> = {
-  "glazba-i-koncerti": "Glazba",
-  "sport-i-rekreacija": "Sport",
-  "manifestacije-i-feste": "Manifestacije",
-  "obitelj-i-djeca": "Obitelj",
-  "edukacija-i-radionice": "Edukacija",
-  "gastronomija-i-vino": "Gastronomija",
-};
+const PILL_BASE =
+  "focus-visible:outline-gold flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2";
+const PILL_ACTIVE = "border-gold bg-gold/10 text-gold";
+const PILL_INACTIVE = "border-line bg-oak text-parchment hover:border-gold/60";
+
+/** Zadržava postojeći ?regija= filter kad se mijenja kategorija (Razina 1 + 2 kombiniraju se). */
+function buildHref(categorySlug: string | undefined, selectedRegion?: string) {
+  const params = new URLSearchParams();
+  if (categorySlug) params.set("kategorija", categorySlug);
+  if (selectedRegion) params.set("regija", selectedRegion);
+  const query = params.toString();
+  return query ? `/?${query}` : "/";
+}
 
 export function CategoryStrip({
   categories,
   activeSlug,
+  selectedRegion,
 }: {
   categories: FilterOption[];
   activeSlug?: string;
+  selectedRegion?: string;
 }) {
   return (
-    <nav aria-label="Kategorije" className="mb-8">
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <nav
+      aria-label="Kategorije"
+      className="scrollbar-subtle -mx-6 mb-6 overflow-x-auto px-6 pb-2"
+    >
+      <ul className="flex w-max gap-2">
+        <li>
+          <Link
+            href={buildHref(undefined, selectedRegion)}
+            aria-current={!activeSlug ? "true" : undefined}
+            className={`${PILL_BASE} ${!activeSlug ? PILL_ACTIVE : PILL_INACTIVE}`}
+          >
+            Sve
+          </Link>
+        </li>
         {categories.map((category) => {
           const isActive = category.slug === activeSlug;
-          const label = CARD_LABELS[category.slug] ?? category.name;
 
           return (
             <li key={category.slug}>
               <Link
-                href={`/?kategorija=${category.slug}`}
+                href={buildHref(category.slug, selectedRegion)}
                 aria-current={isActive ? "true" : undefined}
-                className={`bg-oak focus-visible:outline-gold flex h-[68px] flex-col items-start justify-center gap-1 rounded-lg border p-2.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
-                  isActive
-                    ? "border-gold"
-                    : "border-line hover:border-gold/60"
-                }`}
+                className={`${PILL_BASE} ${isActive ? PILL_ACTIVE : PILL_INACTIVE}`}
               >
                 <CategoryIcon slug={category.slug} className="text-gold h-3.5 w-3.5" />
-                <span className="text-parchment truncate text-xs font-medium">
-                  {label}
-                </span>
+                {category.name}
               </Link>
             </li>
           );

@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
-import { DayView } from "@/components/DayView";
-import { todayInZagreb, type EventFilters } from "@/lib/events";
+import { RangeView } from "@/components/RangeView";
+import {
+  weekRangeInZagreb,
+  parseEventFilters,
+  type RawEventSearchParams,
+} from "@/lib/events";
 
 type Props = {
-  searchParams: Promise<{ kategorija?: string; lokacija?: string }>;
+  searchParams: Promise<RawEventSearchParams>;
 };
 
-const title = "Kam denes — događanja danas u Međimurskoj županiji";
-const description = "Događanja danas u Međimurskoj županiji.";
+const title = "Kam denes — događanja sljedećih 10 dana u Međimurskoj županiji";
+const description = "Događanja sljedećih 10 dana u Međimurskoj županiji.";
 
 export const metadata: Metadata = {
   title,
@@ -17,20 +21,17 @@ export const metadata: Metadata = {
 };
 
 export default async function Home({ searchParams }: Props) {
-  const { kategorija, lokacija } = await searchParams;
-  const filters: EventFilters = {
-    categorySlug: kategorija || undefined,
-    locationSlug: lokacija || undefined,
-  };
+  const filters = parseEventFilters(await searchParams);
+  const { start, end } = weekRangeInZagreb();
 
   return (
-    <DayView
-      date={todayInZagreb()}
-      active="danas"
+    <RangeView
+      start={start}
+      end={end}
+      active="tjedan"
       path="/"
       filters={filters}
       showCategoryStrip
-      showFeatured
     />
   );
 }
