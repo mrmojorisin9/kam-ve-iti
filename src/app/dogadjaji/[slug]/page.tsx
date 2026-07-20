@@ -6,6 +6,7 @@ import { formatEventDateTime, formatEventEnd } from "@/lib/format";
 import { buildEventJsonLd, jsonLdToScriptString } from "@/lib/structured-data";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { PinIcon } from "@/components/PinIcon";
+import { ViewTracker } from "@/components/ViewTracker";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -56,6 +57,8 @@ export default async function EventPage({ params }: Props) {
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20">
+      <ViewTracker eventId={event.id} />
+
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdToScriptString(jsonLd) }}

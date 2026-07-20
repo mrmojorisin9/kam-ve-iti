@@ -1,6 +1,7 @@
 import {
   getEventsForDate,
   getCategories,
+  computePopularityBadges,
   type EventFilters,
 } from "@/lib/events";
 import { REGIONS } from "@/lib/regions";
@@ -30,6 +31,7 @@ export async function DayView({
     getEventsForDate(date, filters),
     getCategories(),
   ]);
+  const badges = computePopularityBadges(events);
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20">
@@ -63,7 +65,7 @@ export async function DayView({
           {relaxedFrom && <FallbackNotice relaxedFrom={relaxedFrom} />}
           <ul className="space-y-3">
             {events.map((event) => (
-              <EventRow key={event.id} event={event} />
+              <EventRow key={event.id} event={event} badges={badges.get(event.id)} />
             ))}
           </ul>
         </>

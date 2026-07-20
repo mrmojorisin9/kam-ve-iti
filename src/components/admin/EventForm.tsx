@@ -27,6 +27,7 @@ export type EventFormValues = {
   is_solo_friendly?: boolean;
   is_romantic?: boolean;
   is_hidden_gem?: boolean;
+  is_admin_featured?: boolean;
 };
 
 const SMART_TAG_FIELDS: { name: string; label: string }[] = [
@@ -249,6 +250,27 @@ export function EventForm({
           prostoru (ne glavni trg/dvorana grada), koje organizira mjesni
           odbor/udruga/OPG (ne grad/TZ), s okvirnim kapacitetom do ~150-200
           ljudi. Nikad zajedno s kategorijom &quot;Velike Manifestacije&quot;.
+        </p>
+      </fieldset>
+
+      <fieldset className="border-line rounded-md border p-4">
+        <legend className="text-parchment-muted px-1 text-sm">
+          Panel &quot;U trendu&quot; (naslovna)
+        </legend>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="is_admin_featured"
+            defaultChecked={defaultValues?.is_admin_featured}
+          />
+          <span className="text-parchment">📌 Istakni kao TOP događaj</span>
+        </label>
+        <p className="text-parchment-muted mt-1 text-xs">
+          Ovaj događaj dobiva prvo mjesto u panelu &quot;U trendu&quot; na
+          naslovnoj, neovisno o algoritamskom rezultatu popularnosti. Samo
+          jedan događaj može biti istaknut u isto vrijeme — označavanje
+          ovog automatski uklanja oznaku s prethodno istaknutog događaja.
         </p>
       </fieldset>
 

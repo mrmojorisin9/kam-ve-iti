@@ -32,6 +32,7 @@ export default async function Home({ searchParams }: Props) {
       path="/"
       filters={filters}
       showCategoryStrip
+      showTrending
     />
   );
 }

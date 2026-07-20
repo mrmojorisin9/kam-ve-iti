@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { zagrebLocalToUtcIso } from "@/lib/zagreb-time";
-import { uploadEventImage } from "@/lib/admin-events";
+import { uploadEventImage, clearOtherAdminFeatured } from "@/lib/admin-events";
 
 function readText(formData: FormData, field: string): string | null {
   const value = String(formData.get(field) ?? "").trim();
@@ -60,8 +60,13 @@ export async function updateEvent(formData: FormData) {
   }
 
   const isHiddenGem = readBool(formData, "is_hidden_gem");
+  const isAdminFeatured = readBool(formData, "is_admin_featured");
 
   const supabase = await createClient();
+
+  if (isAdminFeatured) {
+    await clearOtherAdminFeatured(supabase, id);
+  }
 
   if (isHiddenGem) {
     const { data: category } = await supabase
@@ -108,6 +113,7 @@ export async function updateEvent(formData: FormData) {
       is_solo_friendly: readBool(formData, "is_solo_friendly"),
       is_romantic: readBool(formData, "is_romantic"),
       is_hidden_gem: isHiddenGem,
+      is_admin_featured: isAdminFeatured,
     })
     .eq("id", id);
 

@@ -21,6 +21,15 @@ export type EventListItem = {
   is_solo_friendly: boolean;
   is_romantic: boolean;
   is_hidden_gem: boolean;
+  /** Vidi DECISIONS.md ADR-014 — odsutan (undefined) za upite koji ga ne
+   * računaju (npr. getEventBySlug), prisutan za sve RPC liste događaja. */
+  popularity_score?: number;
+  /** Pregledi zadnja 3 dana > prethodna 3 dana (event_is_trending SQL). */
+  is_trending?: boolean;
+  /** Ručni admin odabir za panel "U trendu" — vidi getAdminFeaturedEvent. */
+  is_admin_featured?: boolean;
+  /** Sirovi (ne raspadajući) ukupni broj pregleda — diskretni brojač na kartici. */
+  view_count?: number;
 };
 
 export type EventDetail = EventListItem & {
@@ -325,6 +334,163 @@ export async function getEventsInRange(
   }
 
   return applyFiltersWithFallback(data ?? [], filters);
+}
+
+type AdminFeaturedRow = {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  venue_name: string | null;
+  start_at: string;
+  end_at: string | null;
+  image_url: string | null;
+  category: { name: string; slug: string } | null;
+  location: { name: string; slug: string } | null;
+  is_free: boolean;
+  is_family_friendly: boolean;
+  is_dog_friendly: boolean;
+  is_solo_friendly: boolean;
+  is_romantic: boolean;
+  is_hidden_gem: boolean;
+};
+
+/**
+ * Događaj za panel "U trendu" na naslovnoj (ADR-014/015) — ISKLJUČIVO
+ * administratorov ručni odabir (korisnikova izmjena: algoritamski "top"
+ * događaji se u ovom panelu nikad ne prikazuju). `null` (panel se ne
+ * renderira) ako admin nije ništa istaknuo, ili je istaknuti događaj
+ * prošao/neobjavljen.
+ */
+export async function getAdminFeaturedEvent(): Promise<EventListItem | null> {
+  const supabase = await createClient();
+  const { data: row } = await supabase
+    .from("events")
+    .select(
+      `
+      id, title, slug, description, venue_name, start_at, end_at, image_url,
+      category:categories ( name, slug ),
+      location:locations ( name, slug ),
+      is_free, is_family_friendly, is_dog_friendly, is_solo_friendly,
+      is_romantic, is_hidden_gem
+    `,
+    )
+    .eq("is_admin_featured", true)
+    .eq("status", "published")
+    .gte("start_at", new Date().toISOString())
+    .maybeSingle();
+
+  const featured = row as AdminFeaturedRow | null;
+  if (!featured || !featured.category || !featured.location) {
+    return null;
+  }
+
+  const [{ data: isTrending }, { data: viewCount }] = await Promise.all([
+    supabase.rpc("event_is_trending", { p_event_id: featured.id }),
+    supabase.rpc("event_view_count", { p_event_id: featured.id }),
+  ]);
+
+  return {
+    id: featured.id,
+    title: featured.title,
+    slug: featured.slug,
+    description: featured.description,
+    venue_name: featured.venue_name,
+    start_at: featured.start_at,
+    end_at: featured.end_at,
+    image_url: featured.image_url,
+    category_name: featured.category.name,
+    category_slug: featured.category.slug,
+    location_name: featured.location.name,
+    location_slug: featured.location.slug,
+    is_free: featured.is_free,
+    is_family_friendly: featured.is_family_friendly,
+    is_dog_friendly: featured.is_dog_friendly,
+    is_solo_friendly: featured.is_solo_friendly,
+    is_romantic: featured.is_romantic,
+    is_hidden_gem: featured.is_hidden_gem,
+    is_admin_featured: true,
+    is_trending: isTrending ?? false,
+    view_count: viewCount ?? 0,
+  };
+}
+
+export type PopularityBadge =
+  | "editorial"
+  | "trending-week"
+  | "hot"
+  | "recommended"
+  | "rising";
+
+export const POPULARITY_BADGE_META: Record<
+  PopularityBadge,
+  { emoji: string; label: string }
+> = {
+  editorial: { emoji: "📌", label: "Urednički izbor" },
+  "trending-week": { emoji: "🎉", label: "Najpopularnije ovaj tjedan" },
+  hot: { emoji: "🔥", label: "Popularno" },
+  recommended: { emoji: "⭐", label: "Preporučeno" },
+  rising: { emoji: "📈", label: "U trendu" },
+};
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Računa oznake popularnosti (ADR-014) relativno na TRENUTNO PRIKAZANU
+ * listu događaja (percentil unutar te liste, ne globalno preko cijelog
+ * portala) — vraća mapu event.id -> oznake. Događaji bez ikakvog stvarnog
+ * signala (popularity_score 0, npr. tek pokrenut portal bez pregleda)
+ * nikad ne dobivaju 🎉/🔥/⭐ — samo 📈 ovisi isključivo o vlastitom trendu
+ * pregleda, ne o rangu unutar liste.
+ */
+export function computePopularityBadges(
+  events: EventListItem[],
+): Map<string, PopularityBadge[]> {
+  const badges = new Map<string, PopularityBadge[]>();
+  const scored = events.filter(
+    (event) => typeof event.popularity_score === "number",
+  );
+  if (scored.length === 0) return badges;
+
+  const sorted = [...scored].sort(
+    (a, b) => (b.popularity_score ?? 0) - (a.popularity_score ?? 0),
+  );
+  const top10Count = Math.max(1, Math.ceil(sorted.length * 0.1));
+  const top25Count = Math.max(1, Math.ceil(sorted.length * 0.25));
+
+  const now = Date.now();
+  const topOfWeek = sorted.find(
+    (event) =>
+      (event.popularity_score ?? 0) > 0 &&
+      new Date(event.start_at).getTime() - now <= WEEK_MS,
+  );
+
+  sorted.forEach((event, index) => {
+    const eventBadges: PopularityBadge[] = [];
+    const hasSignal = (event.popularity_score ?? 0) > 0;
+
+    if (topOfWeek && event.id === topOfWeek.id) {
+      eventBadges.push("trending-week");
+    } else if (hasSignal && index < top10Count) {
+      eventBadges.push("hot");
+    } else if (hasSignal && index < top25Count) {
+      eventBadges.push("recommended");
+    }
+
+    if (event.is_trending) {
+      eventBadges.push("rising");
+    }
+
+    if (event.is_admin_featured) {
+      eventBadges.unshift("editorial");
+    }
+
+    if (eventBadges.length > 0) {
+      badges.set(event.id, eventBadges);
+    }
+  });
+
+  return badges;
 }
 
 /** Sve kategorije, za filter UI, poredane po sort_order (ADR-005). */

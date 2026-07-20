@@ -1,6 +1,8 @@
 import {
   getEventsInRange,
   getCategories,
+  getAdminFeaturedEvent,
+  computePopularityBadges,
   type EventListItem,
   type EventFilters,
 } from "@/lib/events";
@@ -14,6 +16,7 @@ import { FilterBar } from "@/components/FilterBar";
 import { CategoryStrip } from "@/components/CategoryStrip";
 import { ActiveFilters } from "@/components/ActiveFilters";
 import { FallbackNotice } from "@/components/FallbackNotice";
+import { TrendingPanel } from "@/components/TrendingPanel";
 
 function groupByDay(events: EventListItem[]): Map<string, EventListItem[]> {
   const groups = new Map<string, EventListItem[]>();
@@ -41,6 +44,7 @@ export async function RangeView({
   path,
   filters,
   showCategoryStrip = false,
+  showTrending = false,
 }: {
   start: string;
   end: string;
@@ -48,16 +52,23 @@ export async function RangeView({
   path: string;
   filters: EventFilters;
   showCategoryStrip?: boolean;
+  showTrending?: boolean;
 }) {
-  const [{ events, relaxedFrom }, categories] = await Promise.all([
-    getEventsInRange(start, end, filters),
-    getCategories(),
-  ]);
+  const [{ events, relaxedFrom }, categories, featuredEvent] =
+    await Promise.all([
+      getEventsInRange(start, end, filters),
+      getCategories(),
+      showTrending ? getAdminFeaturedEvent() : Promise.resolve(null),
+    ]);
   const grouped = groupByDay(events);
+  const badges = computePopularityBadges(events);
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20">
       <PageHeader />
+
+      {showTrending && <TrendingPanel event={featuredEvent} />}
+
       <DateNav active={active} />
 
       {showCategoryStrip && (
@@ -92,7 +103,7 @@ export async function RangeView({
               </h2>
               <ul className="mt-2 space-y-3">
                 {dayEvents.map((event) => (
-                  <EventRow key={event.id} event={event} />
+                  <EventRow key={event.id} event={event} badges={badges.get(event.id)} />
                 ))}
               </ul>
             </section>

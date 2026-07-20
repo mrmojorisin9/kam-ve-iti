@@ -77,6 +77,7 @@ export type AdminEventDetail = {
   is_solo_friendly: boolean;
   is_romantic: boolean;
   is_hidden_gem: boolean;
+  is_admin_featured: boolean;
 };
 
 /** Jedan događaj (bilo kojeg statusa) za admin formu za uređivanje. */
@@ -90,7 +91,7 @@ export async function getEventForEdit(
       `id, slug, title, description, category_id, location_id, venue_name,
        start_at, end_at, organizer_name, organizer_contact, source_url,
        image_url, status, is_free, is_family_friendly, is_dog_friendly,
-       is_solo_friendly, is_romantic, is_hidden_gem`,
+       is_solo_friendly, is_romantic, is_hidden_gem, is_admin_featured`,
     )
     .eq("id", id)
     .maybeSingle();
@@ -101,6 +102,27 @@ export async function getEventForEdit(
   }
 
   return data as AdminEventDetail | null;
+}
+
+/**
+ * Samo jedan događaj smije biti is_admin_featured u isto vrijeme
+ * (ADR-014 dopuna) — provodi se ovdje u aplikacijskom sloju prije
+ * upisa/izmjene novog istaknutog događaja, ne DB constraintom.
+ */
+export async function clearOtherAdminFeatured(
+  supabase: SupabaseClient,
+  exceptEventId?: string,
+): Promise<void> {
+  let query = supabase
+    .from("events")
+    .update({ is_admin_featured: false })
+    .eq("is_admin_featured", true);
+
+  if (exceptEventId) {
+    query = query.neq("id", exceptEventId);
+  }
+
+  await query;
 }
 
 /**

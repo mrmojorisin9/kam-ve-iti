@@ -1,12 +1,22 @@
 import Link from "next/link";
 import { formatEventTime } from "@/lib/format";
-import type { EventListItem } from "@/lib/events";
+import {
+  POPULARITY_BADGE_META,
+  type EventListItem,
+  type PopularityBadge,
+} from "@/lib/events";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { PinIcon } from "@/components/PinIcon";
 
 const STARTS_SOON_WINDOW_MS = 60 * 60 * 1000;
 
-export function EventRow({ event }: { event: EventListItem }) {
+export function EventRow({
+  event,
+  badges,
+}: {
+  event: EventListItem;
+  badges?: PopularityBadge[];
+}) {
   const msUntilStart = new Date(event.start_at).getTime() - Date.now();
   const startsSoon = msUntilStart > 0 && msUntilStart <= STARTS_SOON_WINDOW_MS;
 
@@ -39,6 +49,22 @@ export function EventRow({ event }: { event: EventListItem }) {
         </span>
 
         <span className="min-w-0 flex-1">
+          {badges && badges.length > 0 && (
+            <span className="mb-1 flex flex-wrap gap-1.5">
+              {badges.map((badge) => {
+                const meta = POPULARITY_BADGE_META[badge];
+                return (
+                  <span
+                    key={badge}
+                    className="bg-gold text-night inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
+                  >
+                    <span aria-hidden="true">{meta.emoji}</span>
+                    {meta.label}
+                  </span>
+                );
+              })}
+            </span>
+          )}
           <span className="font-display text-parchment group-hover:text-gold block text-lg font-medium text-balance sm:text-xl">
             {event.title}
           </span>
@@ -55,6 +81,16 @@ export function EventRow({ event }: { event: EventListItem }) {
               <CategoryIcon slug={event.category_slug} className="h-3 w-3" />
               {event.category_name}
             </span>
+
+            {typeof event.view_count === "number" && (
+              <span
+                className="text-parchment-muted/60 inline-flex shrink-0 items-center gap-1 text-xs"
+                title="Broj pregleda"
+              >
+                <span aria-hidden="true">👁</span>
+                {event.view_count}
+              </span>
+            )}
           </span>
         </span>
       </Link>

@@ -259,6 +259,53 @@ Uvodi se napredni trorazinski filter sustav (tematska kategorija + mikro-lokacij
 Broj kategorija (6) ostaje unutar preporučenog raspona iz ADR-005 (5–9) pa se UI logika za prikaz (grid/pill red) ne mijenja zbog broja stavki. `src/components/CategoryIcon.tsx` gubi `IconObitelj` funkciju i `obitelj-i-djeca`/`ostalo` unose u mapi ikona (mrtav kod nakon brisanja kategorija). "Obitelj i djeca" i "Ostalo" kao koncepti ne nestaju iz produkta — prvo postaje pametni filtar (Razina 3, buduća shema), drugo se namjerno gasi bez zamjene (ventil se pokazao nepotrebnim, 0 iskorištenih događaja u praksi).
 
 ---
+
+## ADR-014: Popularity score — anonimno praćenje interakcija i automatske oznake
+**Datum:** 2026-07-20
+**Status:** Prihvaćeno
+
+**Kontekst:**
+Korisnik želi da portal automatski prepoznaje i ističe popularne/aktualne događaje (bez ručne kuracije, bez registracije korisnika) — oznake 🎉/🔥/⭐/📈, sortiranje unutar novog panela na naslovnici, temeljeno na stvarnoj interakciji posjetitelja.
+
+**Odluka:**
+- **Praćenje:** `event_interactions` tablica (append-only, `event_id`, `interaction_type` text s CHECK-om, `created_at`) bez ikakve identifikacije posjetitelja — nema kolačića/sesije/IP-a. RLS dopušta javni INSERT, ne i SELECT (agregacija ide preko `security definer` SQL funkcije, ne izravnim čitanjem). v1 prati samo `'view'` (otvaranje stranice događaja); `interaction_type` kao text (ne enum) čini dodavanje "share"/"calendar_add" jednolinijskom migracijom kasnije.
+- **Formula:** `score = (Σ raspadnutih pregleda, poluživot 7 dana) × faktor_aktualnosti(start_at, poluživot 3 dana za nadolazeće)`. Izračun u SQL-u (ne aplikacijskom sloju) jer je agregacija nad potencijalno velikim brojem redaka prirodno zadatak baze, ne JS-a — iznimka od uobičajenog ADR-008 pristupa (filtriranje u app sloju), ali ADR-008 govori o filtriranju po kategoriji/regiji/tagovima nad već dohvaćenim retcima, ne o agregatnom izračunu preko log tablice.
+- **Oznake (percentil trenutno prikazanih događaja, ne fiksni apsolutni pragovi):** 🎉 najviši rezultat idućih 7 dana, 🔥 top 10%, ⭐ top 25% (ispod 🔥 praga), 📈 stvarni trend (pregledi zadnja 3 dana > prethodna 3 dana), ne samo visok rezultat.
+- **Kronološke liste (danas/sutra/vikend/tjedan) ostaju sortirane po `start_at`** — popularity score se koristi samo za oznake na karticama i za novi zaseban panel na naslovnici, ne mijenja temeljni redoslijed "što je danas na rasporedu".
+- **Zaštita od zloupotrebe:** namjerno izostavljena u v1 (mali lokalni portal, nizak stvarni rizik) — ako se pokaže problem, dodaje se rate-limiting naknadno.
+
+**Razmotrene alternative:**
+- Deduplikacija posjetitelja (kolačić/sesija) — odbačeno, korisnik eksplicitno traži rješenje bez registracije/identifikacije, a session-tracking infrastruktura ne postoji nigdje drugdje u portalu.
+- Fiksni apsolutni pragovi za oznake (npr. "score > 50 = 🔥") — odbačeno, zahtijeva stalno ručno podešavanje kako baza raste; percentilni pristup se sam prilagođava.
+- Popularity score mijenja redoslijed glavnih kronoloških lista — odbačeno, portal je fundamentalno "što je danas na rasporedu" alat (Faza 4, Dan 1), miješanje s popularnošću bi zbunilo osnovnu svrhu.
+
+**Posljedice:**
+Prvi javni (neautenticirani) upisni put u portalu — RLS mora eksplicitno dopustiti anon INSERT na `event_interactions`, po prvi put izvan dosadašnjeg "javnost samo čita" obrasca. Buduće proširenje (share/calendar tracking, drugi kriteriji) zahtijeva samo novi `interaction_type` red u CHECK-u i eventualno novu težinu u formuli, ne novu shemu.
+
+---
+
+## ADR-015: Ručni admin odabir "TOP događaja" u panelu "U trendu"
+**Datum:** 2026-07-20
+**Status:** Prihvaćeno
+
+**Kontekst:**
+Korisnik želi da administrator, uz automatski popularity score (ADR-014), može ručno istaknuti jedan događaj po vlastitom izboru u panelu "U trendu" na naslovnoj — konzistentno s ADR-002 (ljudska provjera prije objave, human-in-the-loop) proširenim i na isticanje, ne samo objavu.
+
+**Odluka:**
+- `events.is_admin_featured` boolean stupac (`0012_admin_featured_event.sql`), zadano `false`.
+- **Samo jedan događaj smije biti istaknut u isto vrijeme** — provodi se u aplikacijskom sloju (`clearOtherAdminFeatured()` u `src/lib/admin-events.ts`, poziva se prije svakog upisa/izmjene koja postavlja `is_admin_featured: true`), ne DB constraintom (partial unique index) — jednostavnije, dovoljno za jednog kuratora bez konkurentnih pisanja u isto vrijeme (isti duh kao ADR-006).
+- Admin-istaknut događaj **uvijek zauzima prvo mjesto** u panelu "U trendu" (`getTrendingPanelEvents()`), bez obzira na vlastiti popularity_score — ostatak popunjava algoritam (`getTopPopularEvents()`), bez dupliciranja.
+- Dobiva zasebnu, transparentnu oznaku **📌 Urednički izbor** (peti `PopularityBadge`), vizualno odvojenu od 4 algoritamske oznake (ADR-014) — korisnici portala trebaju moći razlikovati "ovo je algoritam izračunao" od "ovo je uredništvo odabralo".
+- Istaknuti događaj mora biti nadolazeći (`start_at >= now()`) i objavljen da bi se prikazao — prošao/neobjavljen admin izbor jednostavno nestaje iz panela bez potrebe za pozadinskim zadatkom koji bi to čistio.
+
+**Razmotrene alternative:**
+- DB partial unique index za "samo jedan featured" — odbačeno kao prerana kompleksnost za jednog administratora; app-layer provjera je dovoljna i lakše razumljiva.
+- Admin odabir bez posebne oznake (samo prvo mjesto, bez 📌) — odbačeno, netransparentno bi izgledalo kao da je događaj "najpopularniji" kad je zapravo ručni izbor.
+
+**Posljedice:**
+`src/components/admin/EventForm.tsx` dobiva treće fieldset polje (uz pametne filtre i status) za ovu opciju; `novi/actions.ts` i `uredi/actions.ts` pozivaju `clearOtherAdminFeatured()` prije upisa. Ako se u budućnosti doda drugi kurator (ADR-007 rizik — svaki autenticirani korisnik je admin), "posljednji pobjeđuje" ponašanje ovog jednostavnog pristupa ostaje prihvatljivo dok postoji samo jedan stvarni administrator.
+
+---
 _Format za nove zapise:_
 ```
 ## ADR-00X: [naslov odluke]
