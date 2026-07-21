@@ -137,6 +137,18 @@ export async function clearOtherAdminFeatured(
   await query;
 }
 
+// Sigurnosni audit 2026-07-21, nalaz #5: ekstenzija se prije izvodila iz
+// klijentski poslanog `file.name`, a `contentType` iz klijentski poslanog
+// `file.type` — bez provjere, bucket je javan pa bi npr. `.svg` s ugrađenim
+// <script>om ili proizvoljan contentType (npr. "text/html") bio uploadan i
+// javno dostupan na svom URL-u. Popis dopuštenih tipova ujedno određuje
+// ekstenziju (izvedeno iz provjerenog tipa, ne iz nepouzdanog `file.name`).
+const ALLOWED_IMAGE_TYPES: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+
 /**
  * Uploada fotografiju u `event-images` Supabase Storage bucket (Faza 8,
  * Dan 22, vidi 0004_event_images_bucket.sql) i vraća njen javni URL.
@@ -147,12 +159,15 @@ export async function uploadEventImage(
   supabase: SupabaseClient,
   file: File,
 ): Promise<string> {
-  const ext = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
+  const ext = ALLOWED_IMAGE_TYPES[file.type];
+  if (!ext) {
+    throw new Error("Slika mora biti JPG, PNG ili WebP.");
+  }
   const path = `${crypto.randomUUID()}.${ext}`;
 
   const { error } = await supabase.storage
     .from("event-images")
-    .upload(path, file, { contentType: file.type || undefined });
+    .upload(path, file, { contentType: file.type });
 
   if (error) {
     throw new Error(`Slika: ${error.message}`);
