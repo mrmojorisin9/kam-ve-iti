@@ -9,8 +9,16 @@ import { formatHeaderDate } from "@/lib/format";
  */
 export function PageHeader() {
   return (
-    <header className="border-line mb-10 rounded-xl border bg-[linear-gradient(135deg,var(--color-night)_0%,var(--color-oak)_100%)] p-6 sm:p-10">
-      <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
+    <header className="border-line relative mb-10 overflow-hidden rounded-xl border bg-[linear-gradient(135deg,var(--color-night)_0%,var(--color-oak)_100%)] p-6 sm:p-10">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/medjimurje.png"
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-0 m-auto h-48 w-48 object-contain opacity-15 sm:hidden"
+      />
+
+      <div className="relative z-10 flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
         <div>
           <p className="text-parchment-muted font-mono text-xs tracking-[0.2em] uppercase">
             Međimurska županija
@@ -38,7 +46,7 @@ export function PageHeader() {
         <img
           src="/medjimurje.png"
           alt="Međimurje"
-          className="h-28 w-28 shrink-0 object-contain sm:h-36 sm:w-36"
+          className="hidden shrink-0 object-contain sm:block sm:h-36 sm:w-36"
         />
       </div>
     </header>

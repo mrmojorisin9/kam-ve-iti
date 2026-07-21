@@ -77,9 +77,9 @@ export function EventRow({
               </span>
             </span>
 
-            <span className="border-gold/40 bg-gold/10 text-gold inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs tracking-wide uppercase">
-              <CategoryIcon slug={event.category_slug} className="h-3 w-3" />
-              {event.category_name}
+            <span className="border-gold/40 bg-gold/10 text-gold inline-flex min-w-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs tracking-wide uppercase">
+              <CategoryIcon slug={event.category_slug} className="h-3 w-3 shrink-0" />
+              <span className="truncate">{event.category_name}</span>
             </span>
 
             {typeof event.view_count === "number" && (
