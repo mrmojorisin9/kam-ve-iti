@@ -162,6 +162,41 @@ export async function uploadEventImage(
     .publicUrl;
 }
 
+const EVENT_IMAGES_URL_MARKER = "/storage/v1/object/public/event-images/";
+
+/**
+ * Briše uploadanu fotografiju iz `event-images` bucketa kad više nijedan
+ * događaj ne referencira taj `image_url` — poziva se nakon brisanja
+ * događaja (Faza 8, Dan 51). Bez ovoga uploadane slike ostaju u Storageu
+ * kao osirotjele datoteke zauvijek (otkriveno uživo: 1 od 4 datoteke u
+ * bucketu nije referencirala nijedan postojeći događaj). Vanjski URL-ovi
+ * (nisu u našem bucketu) i `/event-placeholder.svg` (statična datoteka u
+ * `public/`, ne Storage) se ignoriraju. Best-effort — greška u brisanju
+ * ne smije prekinuti tok brisanja događaja koji ju poziva.
+ */
+export async function deleteEventImageIfOrphaned(
+  supabase: SupabaseClient,
+  imageUrl: string | null,
+): Promise<void> {
+  if (!imageUrl || !imageUrl.includes(EVENT_IMAGES_URL_MARKER)) return;
+
+  const path = imageUrl.split(EVENT_IMAGES_URL_MARKER)[1];
+  if (!path) return;
+
+  const { count } = await supabase
+    .from("events")
+    .select("id", { count: "exact", head: true })
+    .eq("image_url", imageUrl);
+
+  if (count && count > 0) return;
+
+  try {
+    await supabase.storage.from("event-images").remove([path]);
+  } catch (err) {
+    console.error("deleteEventImageIfOrphaned:", err);
+  }
+}
+
 /**
  * Nalazi slobodan slug dodavanjem numeriranog sufiksa ("naslov-2", "-3", ...)
  * kad bazni slug već postoji. Dijeli ga ručna forma i CSV uvoz (Faza 5,
