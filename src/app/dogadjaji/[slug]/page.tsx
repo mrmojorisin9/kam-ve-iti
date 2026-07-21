@@ -101,8 +101,8 @@ export default async function EventPage({ params }: Props) {
           <dt className="text-parchment-muted w-24 shrink-0">Gdje</dt>
           <dd className="text-parchment inline-flex items-center gap-1.5">
             <PinIcon className="h-4 w-4 shrink-0" />
-            {event.venue_name ? `${event.venue_name}, ` : ""}
             {event.location_name}
+            {event.venue_name ? `, ${event.venue_name}` : ""}
           </dd>
         </div>
 

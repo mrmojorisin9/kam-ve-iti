@@ -72,8 +72,8 @@ export function EventRow({
             <span className="inline-flex min-w-0 items-center gap-1">
               <PinIcon className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">
-                {event.venue_name ? `${event.venue_name}, ` : ""}
                 {event.location_name}
+                {event.venue_name ? `, ${event.venue_name}` : ""}
               </span>
             </span>
 
