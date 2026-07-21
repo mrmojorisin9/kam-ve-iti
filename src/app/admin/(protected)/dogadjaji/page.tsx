@@ -14,13 +14,25 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: "Odbijeno",
 };
 
+const STATUS_TABS: { value?: string; label: string }[] = [
+  { value: undefined, label: "Svi" },
+  { value: "pending_review", label: "Na čekanju" },
+  { value: "published", label: "Objavljeno" },
+  { value: "draft", label: "Nacrt" },
+  { value: "rejected", label: "Odbijeno" },
+];
+
 export default async function AdminEventsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ updated?: string; deleted?: string }>;
+  searchParams: Promise<{
+    updated?: string;
+    deleted?: string;
+    status?: string;
+  }>;
 }) {
-  const { updated, deleted } = await searchParams;
-  const events = await listEventsForAdmin();
+  const { updated, deleted, status } = await searchParams;
+  const events = await listEventsForAdmin(status);
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-12">
@@ -36,6 +48,29 @@ export default async function AdminEventsPage({
         </Link>
       </div>
 
+      <nav className="mt-6 flex flex-wrap gap-2">
+        {STATUS_TABS.map((tab) => {
+          const isActive = (status ?? undefined) === tab.value;
+          const href = tab.value
+            ? `/admin/dogadjaji?status=${tab.value}`
+            : "/admin/dogadjaji";
+          return (
+            <Link
+              key={tab.label}
+              href={href}
+              aria-current={isActive ? "true" : undefined}
+              className={
+                isActive
+                  ? "bg-gold text-night rounded-full px-3 py-1 text-sm font-medium"
+                  : "border-line text-parchment-muted hover:text-parchment rounded-full border px-3 py-1 text-sm"
+              }
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
+      </nav>
+
       {updated && (
         <p className="border-gold text-gold mt-6 rounded-md border px-4 py-3 text-sm">
           Događaj ažuriran.
@@ -48,7 +83,11 @@ export default async function AdminEventsPage({
       )}
 
       {events.length === 0 ? (
-        <p className="text-parchment-muted mt-8">Još nema unesenih događaja.</p>
+        <p className="text-parchment-muted mt-8">
+          {status
+            ? `Nema događaja sa statusom "${STATUS_LABELS[status] ?? status}".`
+            : "Još nema unesenih događaja."}
+        </p>
       ) : (
         <ul className="border-line divide-line mt-8 divide-y border-t">
           {events.map((event) => (

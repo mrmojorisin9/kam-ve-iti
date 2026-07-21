@@ -22,12 +22,15 @@ type AdminEventListRow = {
 };
 
 /**
- * Svi događaji, svih statusa (admin — RLS "events_admin_full_access"),
- * najnoviji početak prvi.
+ * Svi događaji (admin — RLS "events_admin_full_access"), najnoviji početak
+ * prvi. `status` filtrira na jedan status (npr. "Na čekanju" prečac u
+ * `/admin/dogadjaji`) — bez njega vraća sve statuse.
  */
-export async function listEventsForAdmin(): Promise<AdminEventListItem[]> {
+export async function listEventsForAdmin(
+  status?: string,
+): Promise<AdminEventListItem[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("events")
     .select(
       `
@@ -37,6 +40,12 @@ export async function listEventsForAdmin(): Promise<AdminEventListItem[]> {
     `,
     )
     .order("start_at", { ascending: false });
+
+  if (status) {
+    query = query.eq("status", status);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("listEventsForAdmin:", error.message);
@@ -78,6 +87,8 @@ export type AdminEventDetail = {
   is_romantic: boolean;
   is_hidden_gem: boolean;
   is_admin_featured: boolean;
+  submitter_email: string | null;
+  submitter_phone: string | null;
 };
 
 /** Jedan događaj (bilo kojeg statusa) za admin formu za uređivanje. */
@@ -91,7 +102,8 @@ export async function getEventForEdit(
       `id, slug, title, description, category_id, location_id, venue_name,
        start_at, end_at, organizer_name, organizer_contact, source_url,
        image_url, status, is_free, is_family_friendly, is_dog_friendly,
-       is_solo_friendly, is_romantic, is_hidden_gem, is_admin_featured`,
+       is_solo_friendly, is_romantic, is_hidden_gem, is_admin_featured,
+       submitter_email, submitter_phone`,
     )
     .eq("id", id)
     .maybeSingle();

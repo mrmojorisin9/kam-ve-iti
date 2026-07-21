@@ -72,6 +72,8 @@ export default async function EditEventPage({
           is_romantic: event.is_romantic,
           is_hidden_gem: event.is_hidden_gem,
           is_admin_featured: event.is_admin_featured,
+          submitter_email: event.submitter_email ?? undefined,
+          submitter_phone: event.submitter_phone ?? undefined,
         }}
       />
     </main>

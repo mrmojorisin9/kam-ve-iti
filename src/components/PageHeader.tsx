@@ -26,6 +26,12 @@ export function PageHeader() {
           <p className="text-gold mt-3 font-mono text-sm capitalize">
             {formatHeaderDate(todayInZagreb())}
           </p>
+          <Link
+            href="/prijavi-dogadaj"
+            className="text-parchment-muted hover:text-gold focus-visible:outline-gold mt-3 inline-block text-sm underline decoration-dotted underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4"
+          >
+            + Prijavi događaj
+          </Link>
         </div>
 
         {/* eslint-disable-next-line @next/next/no-img-element */}

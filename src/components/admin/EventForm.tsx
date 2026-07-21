@@ -2,6 +2,7 @@ const STATUS_OPTIONS = [
   { value: "published", label: "Objavljeno" },
   { value: "pending_review", label: "Na čekanju" },
   { value: "draft", label: "Nacrt" },
+  { value: "rejected", label: "Odbijeno" },
 ];
 
 const inputClass =
@@ -28,6 +29,8 @@ export type EventFormValues = {
   is_romantic?: boolean;
   is_hidden_gem?: boolean;
   is_admin_featured?: boolean;
+  submitter_email?: string;
+  submitter_phone?: string;
 };
 
 const SMART_TAG_FIELDS: { name: string; label: string }[] = [
@@ -58,6 +61,18 @@ export function EventForm({
   return (
     <form action={action} className="mt-8 flex flex-col gap-4">
       {eventId && <input type="hidden" name="id" value={eventId} />}
+
+      {defaultValues?.submitter_email && (
+        <div className="border-gold/40 bg-gold/10 rounded-md border p-4 text-sm">
+          <p className="text-gold font-medium">
+            Prijavio posjetitelj putem javnog obrasca
+          </p>
+          <p className="text-parchment mt-1">
+            {defaultValues.submitter_email}
+            {defaultValues.submitter_phone && ` · ${defaultValues.submitter_phone}`}
+          </p>
+        </div>
+      )}
 
       <label className="text-sm">
         <span className={labelClass}>Naziv *</span>

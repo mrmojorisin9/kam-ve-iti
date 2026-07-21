@@ -306,6 +306,35 @@ Korisnik želi da administrator, uz automatski popularity score (ADR-014), može
 `src/components/admin/EventForm.tsx` dobiva treće fieldset polje (uz pametne filtre i status) za ovu opciju; `novi/actions.ts` i `uredi/actions.ts` pozivaju `clearOtherAdminFeatured()` prije upisa. Ako se u budućnosti doda drugi kurator (ADR-007 rizik — svaki autenticirani korisnik je admin), "posljednji pobjeđuje" ponašanje ovog jednostavnog pristupa ostaje prihvatljivo dok postoji samo jedan stvarni administrator.
 
 ---
+
+## ADR-016: Javni obrazac "Prijavi događaj" — anon INSERT s pooštrenim RLS i column-level zaštitom kontakta
+**Datum:** 2026-07-21
+**Status:** Prihvaćeno
+
+**Kontekst:**
+PROJECT_BRIEF §5/§11 i ADR-011 stavljali su javni obrazac "Prijavi događaj" u backlog dok se ne donese novi ADR — sudarao se s ADR-004 (unos isključivo putem admina) i ADR-007 (RLS pretpostavlja "svaki autenticirani korisnik = admin", nema role-provjere). Korisnik sad traži da bilo koji posjetitelj bez registracije može predložiti događaj, uz zadržan human-in-the-loop princip (ADR-002): prijedlog ostaje `pending_review` dok ga admin ručno ne odobri/odbije kroz postojeći edit flow (`/admin/dogadjaji/[id]/uredi`, već ima status dropdown — ne treba nova admin queue stranica, samo lakše filtriranje).
+
+**Odluka:**
+- Prijedlozi idu izravno u `events` s `status='pending_review'` (postojeći `event_status` enum, ADR-007), ne u zasebnu staging tablicu — iskorištava infrastrukturu koja već postoji upravo za ovaj scenarij.
+- Dva nova nullable stupca: `submitter_email` (obavezan na razini forme/Server Actiona, ne DB constrainta — isti obrazac kao `image_url` obaveznost, ADR iz Faze 8 Dan 13), `submitter_phone` (opcionalan). Null za sve postojeće admin-unesene događaje.
+- **RLS `WITH CHECK` je stvarna granica sigurnosti, ne Next.js forma** — Supabase REST API je izravno dostupan bilo kome s anon (publishable) ključem, forma i Server Action se mogu zaobići izravnim POST-om. Nova politika `events_public_submit` (`for insert to anon`) provjerava `status = 'pending_review' and is_admin_featured = false and created_by is null` — bez obzira što klijent pošalje, red koji ne zadovoljava ta tri uvjeta se odbija. Sprječava anonimnog pošiljatelja da izravno objavi (`status='published'`), samoistakne (`is_admin_featured=true`, zaobilazeći ADR-015 "samo jedan admin izbor") ili se lažno predstavi kao admin-unos (`created_by` postavljen).
+- **Column-level `REVOKE SELECT (submitter_email, submitter_phone) FROM anon`** — nezavisno od RLS-a. Postojeća `events_public_read_published` politika je row-level ("javnost vidi objavljene retke"), ne column-level ("javnost vidi ova polja") — bez eksplicitnog REVOKE-a, čim admin odobri prijedlog (status → published), bilo tko bi preko API-ja mogao upitati baš te dvije kolone i dobiti kontakt podatke prijavitelja koji su bili namijenjeni isključivo adminu.
+- Captcha: jednostavno računsko pitanje generirano server-side (dva broja kao skriveni inputi + vidljivo polje za odgovor), obična usporedba na serveru — namjerno bez kriptografskog potpisa/HMAC-a i bez vanjskog servisa (reCAPTCHA i sl.), u duhu ADR-006 ("ne uvoditi tehnologiju/ovisnost bez razloga za problem ove veličine" — mali lokalni portal, cilj je generički bot promet, ne ciljani napad).
+- Fotografija u javnoj formi: samo `image_url` polje, opcionalno (za razliku od admin forme gdje je obavezno, Dan 13/22) — bez uploada datoteke, postojeći `event-images` Storage bucket namjerno se ne dira (zahtijeva `authenticated`, otvaranje anon uploada je zaseban, veći sigurnosni rizik izvan opsega ovog zadatka).
+- Javna forma je uža od admin forme: naslov, kategorija, lokacija, početak, kraj (opcionalno), opis, mjesto održavanja, URL fotografije (opcionalno), e-mail*, telefon (opcionalno). Bez `organizer_contact`/`source_url`/status polja — to admin po potrebi dopunjuje pri odobravanju.
+
+**Razmotrene alternative:**
+- Zasebna staging tablica za prijedloge, kopiranje u `events` tek pri odobrenju — odbačeno; `event_status` enum je od ADR-007 nadalje eksplicitno predviđen za točno ovaj scenarij, staging tablica bi duplicirala shemu i zahtijevala dodatan korak kopiranja bez stvarne koristi za portal ove veličine.
+- Prava role-provjera (posebna `profiles`/`roles` tablica) prije javnog upisa — odbačeno, isto obrazloženje kao ADR-007: prerana kompleksnost dok postoji samo jedan/nekoliko povjerenih admina; anonimni upis se ovdje ionako ne oslanja na role-razlikovanje nego na RLS `WITH CHECK` koji ne ovisi o identitetu pošiljatelja.
+- reCAPTCHA ili slična vanjska captcha usluga — odbačeno, dodaje vanjsku ovisnost i trošak za razinu zaštite koja ovdje nije potrebna (ADR-006 duh); jednostavno računsko pitanje dovoljno je protiv generičkih botova.
+- Oslanjanje isključivo na RLS row-level politiku bez column-level REVOKE-a — odbačeno nakon što je analiza pokazala konkretan scenarij curenja podataka (kontakt prijavitelja čitljiv nakon objave) koji row-level RLS sam po sebi ne pokriva.
+
+**Posljedice:**
+Prvi anonimni upisni put u `events` tablicu (dosad su anon INSERT-i postojali samo na `event_interactions`, ADR-014 — bez osjetljivih podataka). Admin edit forma (`EventForm.tsx`) treba prikazati `submitter_email`/`submitter_phone` (samo autenticirano, Dan 3) i trenutno joj nedostaje "Odbijeno" (`rejected`) opcija u statusnom dropdownu (`STATUS_OPTIONS`) — uočeno pri reviewu postojećeg admin flowa, popravlja se u Danu 3 uz ostatak admin strane. Buduće izmjene RLS politika na `events` moraju uzeti u obzir da sad postoje dvije INSERT politike (`events_admin_full_access` za authenticated, `events_public_submit` za anon) s različitim `WITH CHECK` uvjetima — ne smiju se stopiti bez pažljive provjere da admin i dalje može postavljati `status='published'`/`is_admin_featured=true` slobodno.
+
+**Ispravak (isti dan, otkriven uživo testiranjem):** `revoke select (submitter_email, submitter_phone) on events from anon;` iz `0014` pokazao se **neučinkovitim** — service-role/anon test skripta potvrdila je da je anon i dalje mogao pročitati obje kolone na objavljenom događaju. Uzrok je dokumentirana Postgres zamka: anon je SELECT na `events` imao dodijeljen na razini cijele tablice (Supabase to radi automatski pri kreiranju tablice), a column-level REVOKE ne oduzima pristup koji dolazi kroz taj širi table-level grant — mora se prvo ukloniti table-level SELECT pa eksplicitno dodijeliti SELECT na dopuštene kolone. Ispravljeno u `0015_fix_events_column_privileges.sql` (`revoke select on events from anon` + `grant select (...)` s eksplicitnim popisom svih kolona osim `submitter_email`/`submitter_phone`). Posljedica za buduće migracije: otkad je ovo primijenjeno, **svaki novi stupac na `events` mora biti eksplicitno dodan na `grant select (...)` popis** da bude javno čitljiv — automatsko nasljeđivanje preko table-level granta više ne vrijedi za anon rolu na ovoj tablici.
+
+---
 _Format za nove zapise:_
 ```
 ## ADR-00X: [naslov odluke]
