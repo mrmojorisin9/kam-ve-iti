@@ -335,6 +335,25 @@ Prvi anonimni upisni put u `events` tablicu (dosad su anon INSERT-i postojali sa
 **Ispravak (isti dan, otkriven uživo testiranjem):** `revoke select (submitter_email, submitter_phone) on events from anon;` iz `0014` pokazao se **neučinkovitim** — service-role/anon test skripta potvrdila je da je anon i dalje mogao pročitati obje kolone na objavljenom događaju. Uzrok je dokumentirana Postgres zamka: anon je SELECT na `events` imao dodijeljen na razini cijele tablice (Supabase to radi automatski pri kreiranju tablice), a column-level REVOKE ne oduzima pristup koji dolazi kroz taj širi table-level grant — mora se prvo ukloniti table-level SELECT pa eksplicitno dodijeliti SELECT na dopuštene kolone. Ispravljeno u `0015_fix_events_column_privileges.sql` (`revoke select on events from anon` + `grant select (...)` s eksplicitnim popisom svih kolona osim `submitter_email`/`submitter_phone`). Posljedica za buduće migracije: otkad je ovo primijenjeno, **svaki novi stupac na `events` mora biti eksplicitno dodan na `grant select (...)` popis** da bude javno čitljiv — automatsko nasljeđivanje preko table-level granta više ne vrijedi za anon rolu na ovoj tablici.
 
 ---
+
+## ADR-017: Nova kategorija "Društvo" — 7. kategorija, dopunjuje ADR-013
+**Datum:** 2026-07-21
+**Status:** Prihvaćeno
+
+**Kontekst:**
+Korisnik je uočio da trenutnih 6 kategorija (ADR-013) nema mjesto za politička, vjerska i slična događanja (npr. sjednice, prosvjedi, hodočašća, crkveni blagdani, predstavljanja knjiga s društvenom tematikom) — ne uklapaju se prirodno ni u jednu postojeću kategoriju, a "Ostalo" je namjerno uklonjen kao ventil (ADR-013).
+
+**Odluka:**
+Dodaje se 7. kategorija: `slug='drustvo'`, `name='Društvo'`, `sort_order=7` (na kraju popisa). Provedeno kao čist `INSERT` (`0016_kategorija_drustvo.sql`), ne kao izmjena postojećih redaka — za razliku od ADR-013 gdje su se mijenjali/brisali postojeći redci, ovdje se ništa ne dira, pa nema rizika za postojeće `?kategorija=` linkove ili podatke. Nova ručno pisana SVG linijska ikona (`IconDrustvo` u `CategoryIcon.tsx`, dvije stilizirane osobe) u istom stilu kao ostalih 6 (ADR-006 — bez ikonografske biblioteke). Sva ostala mjesta (`FilterBar`, `CategoryStrip`, admin `EventForm`, javna `/prijavi-dogadaj` forma) dohvaćaju kategorije dinamički iz baze pa ne trebaju izmjenu koda — nova kategorija se pojavljuje automatski svugdje čim je red u bazi.
+
+**Razmotrene alternative:**
+- Uklopiti politička/vjerska događanja u "Velike Manifestacije" ili "Kultura & Kazalište" — odbačeno, korisnik eksplicitno traži zasebnu kategoriju jer se ne uklapaju semantički (velika manifestacija implicira razmjer/poznatost, kultura&kazalište implicira umjetnički sadržaj).
+- Širi naziv poput "Društvo & Politika" — odbačeno, korisnik je izričito zatražio kratki naziv "Društvo" koji već prirodno pokriva i vjerski segment bez potrebe za dužim nazivom.
+
+**Posljedice:**
+Broj kategorija raste s 6 na 7, i dalje unutar preporučenog raspona za filter UI (5-9, ADR-005). `CategoryStrip` pill red (Dan 29) automatski dobiva 8. pilulu (7 kategorija + "Sve") — horizontalni scroll red već je dizajniran za promjenjiv broj stavki, nema potrebe za dodatnom prilagodbom layouta.
+
+---
 _Format za nove zapise:_
 ```
 ## ADR-00X: [naslov odluke]

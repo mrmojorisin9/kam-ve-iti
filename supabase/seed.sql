@@ -2,16 +2,17 @@
 -- Pokreće se automatski kod `supabase db reset` (lokalno), ili ručno
 -- zalijepiti u Supabase Dashboard SQL Editor nakon migracije.
 
--- 6 kategorija (ADR-013, zamjenjuje ADR-005 s 8 kategorija) — slugovi
--- ostaju nepromijenjeni gdje je kategorija konceptualno ista, vidi
--- 0006_kategorije_v2.sql.
+-- 7 kategorija (ADR-013, zamjenjuje ADR-005 s 8 kategorija; ADR-017 dodaje
+-- "Društvo") — slugovi ostaju nepromijenjeni gdje je kategorija konceptualno
+-- ista, vidi 0006_kategorije_v2.sql i 0016_kategorija_drustvo.sql.
 insert into categories (slug, name, sort_order) values
   ('glazba-i-koncerti', 'Glazba & Party', 1),
   ('kultura', 'Kultura & Kazalište', 2),
   ('sport-i-rekreacija', 'Sport & Rekreacija', 3),
   ('gastronomija-i-vino', 'Gastro & Wine', 4),
   ('edukacija-i-radionice', 'Edukacija & Radionice', 5),
-  ('manifestacije-i-feste', 'Velike Manifestacije', 6);
+  ('manifestacije-i-feste', 'Velike Manifestacije', 6),
+  ('drustvo', 'Društvo', 7);
 
 -- 3 grada
 insert into locations (slug, name, type) values
