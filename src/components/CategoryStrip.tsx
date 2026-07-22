@@ -3,7 +3,7 @@ import type { FilterOption } from "@/lib/events";
 import { CategoryIcon } from "@/components/CategoryIcon";
 
 const PILL_BASE =
-  "focus-visible:outline-gold flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2";
+  "focus-visible:outline-gold flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-4 py-2.5 text-sm font-medium shadow-sm shadow-black/10 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2";
 const PILL_ACTIVE = "border-gold bg-gold/10 text-gold";
 const PILL_INACTIVE = "border-line bg-oak text-parchment hover:border-gold/60";
 
@@ -50,7 +50,7 @@ export function CategoryStrip({
                 aria-current={isActive ? "true" : undefined}
                 className={`${PILL_BASE} ${isActive ? PILL_ACTIVE : PILL_INACTIVE}`}
               >
-                <CategoryIcon slug={category.slug} className="text-gold h-3.5 w-3.5" />
+                <CategoryIcon slug={category.slug} className="text-gold h-4 w-4" />
                 {category.name}
               </Link>
             </li>

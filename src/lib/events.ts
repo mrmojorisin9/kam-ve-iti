@@ -77,7 +77,19 @@ export type RawEventSearchParams = {
   solo?: string;
   romanticno?: string;
   dragulj?: string;
+  poredaj?: string;
 };
+
+export type SortOrder = "popularity" | undefined;
+
+/**
+ * Redoslijed prikaza — zadano (undefined) ostaje kronološko (`start_at`,
+ * RPC/aplikacijski sloj), "popularity" je korisnikova eksplicitna,
+ * opcionalna alternativa (nikad zadano stanje) — vidi sortEventsByPopularity.
+ */
+export function parseSortOrder(params: RawEventSearchParams): SortOrder {
+  return params.poredaj === "popularnost" ? "popularity" : undefined;
+}
 
 /**
  * Pretvara query parametre GET forme (FilterBar) u EventFilters. Dijele je
@@ -415,6 +427,101 @@ export async function getAdminFeaturedEvent(): Promise<EventListItem | null> {
   };
 }
 
+type SearchEventRow = {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  venue_name: string | null;
+  organizer_name: string | null;
+  start_at: string;
+  end_at: string | null;
+  image_url: string | null;
+  category: { name: string; slug: string } | null;
+  location: { name: string; slug: string } | null;
+  is_free: boolean;
+  is_family_friendly: boolean;
+  is_dog_friendly: boolean;
+  is_solo_friendly: boolean;
+  is_romantic: boolean;
+  is_hidden_gem: boolean;
+};
+
+/**
+ * Globalna pretraga (ADR-019, zamjenjuje search stavku ADR-011) — traži
+ * podudaranje (case-insensitive substring) u naslovu, opisu, mjestu
+ * održavanja, nazivu organizatora i nazivu lokacije, preko SVIH nadolazećih
+ * objavljenih događaja (ne samo trenutno prikazanog raspona). Podudaranje se
+ * radi u aplikacijskom sloju (isti duh kao ADR-008) umjesto SQL `ilike` preko
+ * spojene `locations` tablice — pouzdanije od oslanjanja na PostgREST
+ * embedded-resource OR-filter sintaksu, prihvatljivo dok je baza ove
+ * veličine (ADR-019 obrazloženje).
+ */
+export async function searchEvents(query: string): Promise<EventListItem[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("events")
+    .select(
+      `
+      id, title, slug, description, venue_name, organizer_name, start_at, end_at, image_url,
+      category:categories ( name, slug ),
+      location:locations ( name, slug ),
+      is_free, is_family_friendly, is_dog_friendly, is_solo_friendly,
+      is_romantic, is_hidden_gem
+    `,
+    )
+    .eq("status", "published")
+    .gte("start_at", new Date().toISOString())
+    .order("start_at", { ascending: true });
+
+  if (error) {
+    console.error("searchEvents:", error.message);
+    return [];
+  }
+
+  const needle = trimmed.toLowerCase();
+  const rows = (data ?? []) as unknown as SearchEventRow[];
+
+  return rows
+    .filter((row) => row.category && row.location)
+    .filter((row) => {
+      const haystack = [
+        row.title,
+        row.description,
+        row.venue_name,
+        row.organizer_name,
+        row.location?.name,
+      ]
+        .filter((value): value is string => Boolean(value))
+        .join(" \n ")
+        .toLowerCase();
+      return haystack.includes(needle);
+    })
+    .map((row) => ({
+      id: row.id,
+      title: row.title,
+      slug: row.slug,
+      description: row.description,
+      venue_name: row.venue_name,
+      start_at: row.start_at,
+      end_at: row.end_at,
+      image_url: row.image_url,
+      category_name: row.category!.name,
+      category_slug: row.category!.slug,
+      location_name: row.location!.name,
+      location_slug: row.location!.slug,
+      is_free: row.is_free,
+      is_family_friendly: row.is_family_friendly,
+      is_dog_friendly: row.is_dog_friendly,
+      is_solo_friendly: row.is_solo_friendly,
+      is_romantic: row.is_romantic,
+      is_hidden_gem: row.is_hidden_gem,
+    }));
+}
+
 export type PopularityBadge =
   | "editorial"
   | "trending-week"
@@ -491,6 +598,22 @@ export function computePopularityBadges(
   });
 
   return badges;
+}
+
+/**
+ * Prikazni redoslijed po popularnosti (silazno), sekundarno po `start_at`
+ * (uzlazno) za događaje s istim rezultatom — čisto prezentacijsko
+ * preslagivanje već dohvaćenog niza, ne mijenja podatke niti upit bazi.
+ * Vidi SortToggle za korisnički prekidač koji ovo poziva.
+ */
+export function sortEventsByPopularity(
+  events: EventListItem[],
+): EventListItem[] {
+  return [...events].sort((a, b) => {
+    const scoreDiff = (b.popularity_score ?? 0) - (a.popularity_score ?? 0);
+    if (scoreDiff !== 0) return scoreDiff;
+    return new Date(a.start_at).getTime() - new Date(b.start_at).getTime();
+  });
 }
 
 /** Sve kategorije, za filter UI, poredane po sort_order (ADR-005). */

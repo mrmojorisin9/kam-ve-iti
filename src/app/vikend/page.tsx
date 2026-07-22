@@ -3,6 +3,7 @@ import { RangeView } from "@/components/RangeView";
 import {
   weekendRangeInZagreb,
   parseEventFilters,
+  parseSortOrder,
   type RawEventSearchParams,
 } from "@/lib/events";
 
@@ -27,7 +28,9 @@ export const metadata: Metadata = {
 
 export default async function WeekendPage({ searchParams }: Props) {
   const { start, end } = weekendRangeInZagreb();
-  const filters = parseEventFilters(await searchParams);
+  const params = await searchParams;
+  const filters = parseEventFilters(params);
+  const sortBy = parseSortOrder(params);
 
   return (
     <RangeView
@@ -36,6 +39,7 @@ export default async function WeekendPage({ searchParams }: Props) {
       active="vikend"
       path="/vikend"
       filters={filters}
+      sortBy={sortBy}
     />
   );
 }

@@ -3,10 +3,15 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getEventBySlug } from "@/lib/events";
 import { formatEventDateTime, formatEventEnd } from "@/lib/format";
-import { buildEventJsonLd, jsonLdToScriptString } from "@/lib/structured-data";
+import {
+  buildEventJsonLd,
+  jsonLdToScriptString,
+  buildLocationQuery,
+} from "@/lib/structured-data";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { PinIcon } from "@/components/PinIcon";
 import { ViewTracker } from "@/components/ViewTracker";
+import { ShareButtons } from "@/components/ShareButtons";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -54,9 +59,10 @@ export default async function EventPage({ params }: Props) {
   }
 
   const jsonLd = buildEventJsonLd(event, SITE_URL);
+  const mapsQuery = encodeURIComponent(buildLocationQuery(event));
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20">
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20 md:max-w-3xl">
       <ViewTracker eventId={event.id} />
 
       <script
@@ -117,6 +123,16 @@ export default async function EventPage({ params }: Props) {
         )}
       </dl>
 
+      <a
+        href={`https://www.google.com/maps/dir/?api=1&destination=${mapsQuery}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="border-line bg-oak text-parchment-muted hover:text-gold focus-visible:outline-gold mt-6 inline-flex w-fit items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm shadow-sm shadow-black/10 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4"
+      >
+        <PinIcon className="h-3.5 w-3.5 shrink-0" />
+        Upute za dolazak ↗
+      </a>
+
       {event.description && (
         <p className="text-parchment-muted mt-8 leading-relaxed whitespace-pre-line">
           {event.description}
@@ -133,6 +149,11 @@ export default async function EventPage({ params }: Props) {
           Izvor / više informacija ↗
         </a>
       )}
+
+      <ShareButtons
+        title={event.title}
+        url={`${SITE_URL}/dogadjaji/${event.slug}`}
+      />
     </main>
   );
 }

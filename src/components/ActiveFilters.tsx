@@ -4,15 +4,26 @@ import {
   filtersToParams,
   type EventFilters,
   type FilterOption,
+  type SortOrder,
 } from "@/lib/events";
 import { REGIONS } from "@/lib/regions";
+
+/** Uklanjanje/brisanje filtera ne dira redoslijed (poredaj) — zasebna os
+ * kontrole, ne "filtar" koji sužava rezultate (vidi SortToggle). */
+function sortParam(sortBy?: SortOrder): Record<string, string> {
+  return sortBy === "popularity" ? { poredaj: "popularnost" } : {};
+}
 
 function hrefWithout(
   basePath: string,
   filters: EventFilters,
   omit: keyof EventFilters,
+  sortBy?: SortOrder,
 ): string {
-  const remaining = filtersToParams({ ...filters, [omit]: undefined });
+  const remaining = {
+    ...filtersToParams({ ...filters, [omit]: undefined }),
+    ...sortParam(sortBy),
+  };
   const query = new URLSearchParams(remaining).toString();
   return query ? `${basePath}?${query}` : basePath;
 }
@@ -21,10 +32,12 @@ export function ActiveFilters({
   basePath,
   filters,
   categories,
+  sortBy,
 }: {
   basePath: string;
   filters: EventFilters;
   categories: FilterOption[];
+  sortBy?: SortOrder;
 }) {
   const chips: { key: keyof EventFilters; label: string }[] = [];
 
@@ -50,7 +63,7 @@ export function ActiveFilters({
       {chips.map((chip) => (
         <Link
           key={chip.key}
-          href={hrefWithout(basePath, filters, chip.key)}
+          href={hrefWithout(basePath, filters, chip.key, sortBy)}
           className="border-line bg-oak text-parchment hover:border-gold/60 focus-visible:outline-gold flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
         >
           {chip.label}
@@ -59,7 +72,10 @@ export function ActiveFilters({
       ))}
 
       <Link
-        href={basePath}
+        href={(() => {
+          const query = new URLSearchParams(sortParam(sortBy)).toString();
+          return query ? `${basePath}?${query}` : basePath;
+        })()}
         className="text-parchment-muted hover:text-gold focus-visible:outline-gold text-sm underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
       >
         Obriši sve

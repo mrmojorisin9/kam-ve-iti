@@ -37,3 +37,21 @@ export function buildEventJsonLd(event: EventDetail, siteUrl: string) {
 export function jsonLdToScriptString(data: unknown): string {
   return JSON.stringify(data).replace(/</g, "\\u003c");
 }
+
+/**
+ * Tekstualna adresa za Google Maps embed/upute za dolazak — isti sastav
+ * podataka kao JSON-LD `address` iznad (mjesto održavanja + lokacija +
+ * regija + država), samo kao ravan string umjesto strukturiranog objekta.
+ * Bez geokodiranja/koordinata (ADR-007) — oslanja se na Googleov vlastiti
+ * search-by-text umjesto na spremljene lat/lng.
+ */
+export function buildLocationQuery(event: EventDetail): string {
+  return [
+    event.venue_name,
+    event.location_name,
+    "Međimurska županija",
+    "Hrvatska",
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join(", ");
+}

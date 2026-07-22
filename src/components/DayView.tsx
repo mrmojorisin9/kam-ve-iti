@@ -2,7 +2,9 @@ import {
   getEventsForDate,
   getCategories,
   computePopularityBadges,
+  sortEventsByPopularity,
   type EventFilters,
+  type SortOrder,
 } from "@/lib/events";
 import { REGIONS } from "@/lib/regions";
 import { EventRow } from "@/components/EventRow";
@@ -13,6 +15,7 @@ import { FilterBar } from "@/components/FilterBar";
 import { CategoryStrip } from "@/components/CategoryStrip";
 import { ActiveFilters } from "@/components/ActiveFilters";
 import { FallbackNotice } from "@/components/FallbackNotice";
+import { SortToggle } from "@/components/SortToggle";
 
 export async function DayView({
   date,
@@ -20,21 +23,27 @@ export async function DayView({
   path,
   filters,
   showCategoryStrip = false,
+  sortBy,
 }: {
   date: string;
   active: DateNavKey;
   path: string;
   filters: EventFilters;
   showCategoryStrip?: boolean;
+  sortBy?: SortOrder;
 }) {
-  const [{ events, relaxedFrom }, categories] = await Promise.all([
+  const [{ events: fetchedEvents, relaxedFrom }, categories] = await Promise.all([
     getEventsForDate(date, filters),
     getCategories(),
   ]);
-  const badges = computePopularityBadges(events);
+  const badges = computePopularityBadges(fetchedEvents);
+  const events =
+    sortBy === "popularity"
+      ? sortEventsByPopularity(fetchedEvents)
+      : fetchedEvents;
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20">
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20 md:max-w-3xl lg:max-w-5xl">
       <PageHeader />
       <DateNav active={active} />
 
@@ -56,14 +65,23 @@ export async function DayView({
         showCategory={!showCategoryStrip}
       />
 
-      <ActiveFilters basePath={path} filters={filters} categories={categories} />
+      <ActiveFilters
+        basePath={path}
+        filters={filters}
+        categories={categories}
+        sortBy={sortBy}
+      />
+
+      {events.length > 1 && (
+        <SortToggle basePath={path} filters={filters} sortBy={sortBy} />
+      )}
 
       {events.length === 0 ? (
         <EmptyState />
       ) : (
         <>
           {relaxedFrom && <FallbackNotice relaxedFrom={relaxedFrom} />}
-          <ul className="space-y-3">
+          <ul className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
             {events.map((event) => (
               <EventRow key={event.id} event={event} badges={badges.get(event.id)} />
             ))}

@@ -37,7 +37,7 @@ export default async function ProposeEventPage({
   const captchaB = randomInt(1, 10);
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12">
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 md:max-w-3xl">
       <p className="text-parchment-muted font-mono text-xs tracking-[0.2em] uppercase">
         <Link href="/" className="hover:text-parchment">
           Kam denes

@@ -3,6 +3,7 @@ import { DayView } from "@/components/DayView";
 import {
   tomorrowInZagreb,
   parseEventFilters,
+  parseSortOrder,
   type RawEventSearchParams,
 } from "@/lib/events";
 
@@ -26,7 +27,9 @@ export const metadata: Metadata = {
 };
 
 export default async function TomorrowPage({ searchParams }: Props) {
-  const filters = parseEventFilters(await searchParams);
+  const params = await searchParams;
+  const filters = parseEventFilters(params);
+  const sortBy = parseSortOrder(params);
 
   return (
     <DayView
@@ -34,6 +37,7 @@ export default async function TomorrowPage({ searchParams }: Props) {
       active="sutra"
       path="/sutra"
       filters={filters}
+      sortBy={sortBy}
     />
   );
 }

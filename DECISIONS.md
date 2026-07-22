@@ -202,7 +202,7 @@ Migracije u repozitoriju sada su potpune i primjenjive na svježu bazu (bitno ak
 
 ## ADR-011: Ažuriranje prema master promptu v2 — naziv, search, javna prijava
 **Datum:** 2026-07-16
-**Status:** Prihvaćeno
+**Status:** Prihvaćeno (stavka #2, search, djelomično zamijenjena ADR-019, 2026-07-22)
 
 **Kontekst:**
 Korisnik je dostavio ažuriranu verziju master prompta (v2, izvorno pod radnim nazivom "KAM DENES"), s razlikama u odnosu na v1 iz kojeg su nastali `PROJECT_BRIEF.md`/`DECISIONS.md`. Tri stavke izravno diraju već donesene odluke ili identitet projekta i traže eksplicitnu potvrdu prije unosa u dokumentaciju.
@@ -384,6 +384,28 @@ Tri migracije u repozitoriju (`0017`, `0018`, `0019`), sve primijenjene ručno u
 **Dopuna (2026-07-22) — globalni rate limit na javne prijave događaja (`/prijavi-dogadaj`):** posljednja preostala stavka iz audit nalaza #2/#3 (captcha na javnoj formi je trivijalno zaobrediva — brojevi u hidden inputima, vidljivi u HTML izvoru — i sam insert nije imao ikakav rate limit). Za razliku od `event_interactions` (0018/0019), svaka javna prijava stvara NOVI red u `events` — nema zajedničkog `event_id` na koji bi se vezao per-row trigger — pa je ovo **globalni** prag preko svih anon prijava zajedno, ne po posjetitelju (nema identifikacije, isti duh kao ADR-014). Korisnikova odluka o pragu: **5 prijava / 10 minuta, globalno**. Trigger (`0020_public_submission_rate_limit.sql`) prepoznaje "javnu prijavu" po istom obrascu koji već zahtijeva RLS `WITH CHECK` politika `events_public_submit` (0014): `status = 'pending_review' AND created_by IS NULL` — admin ručno postavljen "Na čekanju" status uvijek ima `created_by` postavljen, pa se ne računa u prag. Funkcija je postavljena **`SECURITY DEFINER` od početka** (naučeno iz 0018→0019 iste-dan greške): anon nema nikakvu SELECT politiku na `events` za status različit od `published`, pa bi obična (SECURITY INVOKER) trigger funkcija bila RLS-blind na isti način kao prošli put — ovaj put je to ugrađeno u prvu verziju migracije, ne otkriveno naknadno live testom.
 
 Uživo provjereno service-role+anon skriptom: 7 uzastopnih anon prijava — točno 5 uspješnih, 6. odbijena s očekivanom porukom ("public event submission rate limit exceeded"), 7. također odbijena. Nakon service-role čišćenja test-redaka, jedna nova anon prijava opet prolazi bez greške (limit je dinamičan, ne trajno zaključan). Test-skripta prvotno je pogrešno prijavila RLS grešku na SVIH 7 pokušaja zbog vlastite greške (`.select()` nakon anon inserta pokušava pročitati natrag `pending_review` red, što RLS SELECT politika ne pokriva — identična zamka kao ona dokumentirana u CHANGELOG-u za `submitEvent` samu, Dan 45) — ispravljeno uklanjanjem `.select()` iz test-skripte (ne iz aplikacijskog koda, koji to već ispravno izbjegava), nakon čega je test ispravno pokazao 5/6/7 ponašanje. Nema izmjene u `src/app/prijavi-dogadaj/actions.ts` — postojeće rukovanje greškama (generička poruka za bilo koju grešku osim 23505 sudara sluga) već ispravno pokriva i ovaj novi slučaj.
+
+## ADR-019: Globalna pretraga (search) — zamjenjuje search stavku ADR-011
+**Datum:** 2026-07-22
+**Status:** Prihvaćeno
+
+**Kontekst:**
+ADR-011 (2026-07-16) eksplicitno je izbacio search "ne ide čak ni u backlog", uz obrazloženje da ADR-008 filter po kategoriji/lokaciji dovoljno pokriva potrebe pri tadašnjoj veličini baze. U sklopu šire UX nadogradnje portala (2026-07-22) korisnik je izravno zatražio globalnu search traku (po nazivu, lokaciji, ključnim riječima) kao Prioritet 2/10, uz obrazloženje da korisnici žele brzo naći što ih zanima bez scrollanja/klikanja kroz filtere. Upitan izravno je li ovo svjesno preokretanje ADR-011 (a ne tiho zaobilaženje), korisnik je potvrdio: da, uvesti search uz novi ADR.
+
+**Odluka:**
+- Nova globalna search traka pretražuje `title`, `description`, `venue_name`, `location_name` i `organizer_name` — svi tekstualni podaci korisni posjetitelju koji zna dio naziva/mjesta/organizatora, ali ne zna u koju kategoriju/regiju spada.
+- **Implementacija: `ilike` (case-insensitive substring) preko Supabase upita, ne Postgres full-text search (tsvector/GIN indeks).** U duhu ADR-006/ADR-008 ("ne uvoditi kompleksnost bez razloga za problem ove veličine") — baza ima red veličine desetaka događaja, `ilike` je dovoljan i lako se kasnije zamijeni bez promjene UI-a ako korpus naraste.
+- **Search obuhvaća SVE nadolazeće objavljene događaje, ne samo trenutni 10-dnevni prozor** (Faza 8 Dan 35) — korisnik koji traži poznati naziv očekuje da ga nađe bez obzira pada li unutar trenutno prikazanog raspona. Prošli događaji ostaju isključeni (dosljedno ostatku portala, koji je unaprijed usmjeren).
+- Nova ruta `/pretraga` (SSR, GET query parametar `q`), obična `<form method="get">` bez JS-a (dosljedno ADR-008 no-JS filtrima), rezultati grupirani/sortirani po `start_at` (bliži događaj prvi), reciklira `EventRow` za prikaz.
+- `/pretraga` se **ne dodaje u `sitemap.ts`** — isti obrazac kao filtrirani prikazi (Faza 8 Dan 1): dinamični/upitno-ovisni sadržaj namjerno ne dobiva zaseban kanonski URL, izbjegava tanko/duplicirano indeksiranje.
+
+**Razmotrene alternative:**
+- Postgres full-text search (`tsvector` + GIN indeks) — odbačeno za sada, prerana kompleksnost za trenutnu veličinu baze; `ilike` dovoljan, nadogradnja ostaje moguća bez promjene UI-a.
+- Client-side instant search (dohvat svih događaja u JS, filtriranje u pregledniku) — odbačeno, gubi SSR/SEO prednosti (ADR-001/ADR-009 duh) i loše skalira kad baza naraste.
+- Ograničiti search na trenutno prikazani raspon (10 dana) — odbačeno, protivno samoj svrsi search-a (korisnik ne bi trebao unaprijed znati je li događaj "u prozoru").
+
+**Posljedice:**
+`src/lib/events.ts` dobiva `searchEvents(query)`. Ovaj ADR formalno preokreće search-related zaključak ADR-011 (stavka #2) — ostatak ADR-011 (naziv projekta, javni obrazac ide u backlog) ostaje na snazi bez izmjena.
 
 ---
 _Format za nove zapise:_

@@ -3,8 +3,10 @@ import {
   getCategories,
   getAdminFeaturedEvent,
   computePopularityBadges,
+  sortEventsByPopularity,
   type EventListItem,
   type EventFilters,
+  type SortOrder,
 } from "@/lib/events";
 import { REGIONS } from "@/lib/regions";
 import { formatHeaderDate } from "@/lib/format";
@@ -17,6 +19,7 @@ import { CategoryStrip } from "@/components/CategoryStrip";
 import { ActiveFilters } from "@/components/ActiveFilters";
 import { FallbackNotice } from "@/components/FallbackNotice";
 import { TrendingPanel } from "@/components/TrendingPanel";
+import { SortToggle } from "@/components/SortToggle";
 
 function groupByDay(events: EventListItem[]): Map<string, EventListItem[]> {
   const groups = new Map<string, EventListItem[]>();
@@ -45,6 +48,7 @@ export async function RangeView({
   filters,
   showCategoryStrip = false,
   showTrending = false,
+  sortBy,
 }: {
   start: string;
   end: string;
@@ -53,6 +57,7 @@ export async function RangeView({
   filters: EventFilters;
   showCategoryStrip?: boolean;
   showTrending?: boolean;
+  sortBy?: SortOrder;
 }) {
   const [{ events, relaxedFrom }, categories, featuredEvent] =
     await Promise.all([
@@ -60,11 +65,16 @@ export async function RangeView({
       getCategories(),
       showTrending ? getAdminFeaturedEvent() : Promise.resolve(null),
     ]);
-  const grouped = groupByDay(events);
   const badges = computePopularityBadges(events);
+  // Sort po popularnosti namjerno prikazuje RAVNU listu (bez grupiranja po
+  // danu) — pravo rangiranje preko cijelog raspona, ne samo unutar svakog
+  // dana zasebno (dan-grupe bi razbile smisao "najpopularnije prvo").
+  const popularityRanked =
+    sortBy === "popularity" ? sortEventsByPopularity(events) : null;
+  const grouped = groupByDay(events);
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20">
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20 md:max-w-3xl lg:max-w-5xl">
       <PageHeader />
 
       {showTrending && <TrendingPanel event={featuredEvent} />}
@@ -89,10 +99,28 @@ export async function RangeView({
         showCategory={!showCategoryStrip}
       />
 
-      <ActiveFilters basePath={path} filters={filters} categories={categories} />
+      <ActiveFilters
+        basePath={path}
+        filters={filters}
+        categories={categories}
+        sortBy={sortBy}
+      />
 
-      {grouped.size === 0 ? (
+      {events.length > 1 && (
+        <SortToggle basePath={path} filters={filters} sortBy={sortBy} />
+      )}
+
+      {events.length === 0 ? (
         <EmptyState />
+      ) : popularityRanked ? (
+        <div className="space-y-8">
+          {relaxedFrom && <FallbackNotice relaxedFrom={relaxedFrom} />}
+          <ul className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
+            {popularityRanked.map((event) => (
+              <EventRow key={event.id} event={event} badges={badges.get(event.id)} />
+            ))}
+          </ul>
+        </div>
       ) : (
         <div className="space-y-8">
           {relaxedFrom && <FallbackNotice relaxedFrom={relaxedFrom} />}
@@ -101,7 +129,7 @@ export async function RangeView({
               <h2 className="text-parchment-muted font-mono text-xs tracking-[0.15em] uppercase">
                 {formatHeaderDate(day)}
               </h2>
-              <ul className="mt-2 space-y-3">
+              <ul className="mt-2 space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
                 {dayEvents.map((event) => (
                   <EventRow key={event.id} event={event} badges={badges.get(event.id)} />
                 ))}

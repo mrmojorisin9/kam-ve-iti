@@ -9,7 +9,7 @@ import { formatHeaderDate } from "@/lib/format";
  */
 export function PageHeader() {
   return (
-    <header className="border-line relative mb-10 overflow-hidden rounded-xl border bg-[linear-gradient(135deg,var(--color-night)_0%,var(--color-oak)_100%)] p-6 sm:p-10">
+    <header className="border-line relative mb-10 overflow-hidden rounded-xl border bg-[linear-gradient(135deg,var(--color-night)_0%,var(--color-oak)_100%)] p-6 shadow-lg shadow-black/20 sm:p-10 lg:p-12">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/medjimurje.png"
@@ -18,7 +18,7 @@ export function PageHeader() {
         className="pointer-events-none absolute inset-0 z-0 m-auto h-48 w-48 object-contain opacity-15 sm:hidden"
       />
 
-      <div className="relative z-10 flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
+      <div className="relative z-10 flex flex-col items-center gap-6 sm:flex-row sm:justify-between sm:gap-8">
         <div>
           <p className="text-parchment-muted font-mono text-xs tracking-[0.2em] uppercase">
             Međimurska županija
@@ -36,18 +36,48 @@ export function PageHeader() {
           </p>
           <Link
             href="/prijavi-dogadaj"
-            className="text-parchment-muted hover:text-gold focus-visible:outline-gold mt-3 inline-block text-sm underline decoration-dotted underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4"
+            className="border-line bg-oak text-parchment-muted hover:border-gold/60 hover:text-gold focus-visible:outline-gold mt-4 inline-flex w-fit items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium shadow-sm shadow-black/10 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4"
           >
             + Prijavi događaj
           </Link>
+
+          {/* Na mobitelu se pretraga seli pokraj "Još filtara" gumba u
+              FilterBar-u (korisnikov zahtjev) — ovdje ostaje samo za sm+. */}
+          <form
+            method="get"
+            action="/pretraga"
+            role="search"
+            className="border-line bg-oak focus-within:border-gold/60 mt-4 hidden w-full max-w-xs items-center gap-1 rounded-full border py-1.5 pr-1.5 pl-4 shadow-sm shadow-black/10 transition-colors sm:flex"
+          >
+            <input
+              type="search"
+              name="q"
+              placeholder="Pretraži događaje…"
+              aria-label="Pretraži događaje"
+              className="text-parchment placeholder:text-parchment-muted min-w-0 flex-1 bg-transparent py-1 text-sm focus:outline-none"
+            />
+            <button
+              type="submit"
+              aria-label="Pretraži"
+              className="bg-gold text-night hover:bg-gold/90 focus-visible:outline-gold flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+            >
+              <span aria-hidden="true">🔍</span>
+            </button>
+          </form>
         </div>
 
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/medjimurje.png"
-          alt="Međimurje"
-          className="hidden shrink-0 object-contain sm:block sm:h-36 sm:w-36"
-        />
+        <div className="relative hidden shrink-0 sm:block">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 -z-10 scale-125 rounded-full bg-[radial-gradient(circle,var(--color-gold)_0%,transparent_70%)] opacity-20 blur-xl"
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/medjimurje.png"
+            alt="Međimurje"
+            className="object-contain sm:h-36 sm:w-36"
+          />
+        </div>
       </div>
     </header>
   );
