@@ -43,51 +43,53 @@ export async function DayView({
       : fetchedEvents;
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20 md:max-w-3xl lg:max-w-5xl">
+    <>
       <PageHeader />
-      <DateNav active={active} />
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20 md:max-w-3xl lg:max-w-5xl">
+        <DateNav active={active} />
 
-      {showCategoryStrip && (
-        <CategoryStrip
+        {showCategoryStrip && (
+          <CategoryStrip
+            categories={categories}
+            activeSlug={filters.categorySlug}
+            selectedRegion={filters.regionSlug}
+          />
+        )}
+
+        <FilterBar
           categories={categories}
-          activeSlug={filters.categorySlug}
+          regions={REGIONS}
+          action={path}
+          selectedCategory={filters.categorySlug}
           selectedRegion={filters.regionSlug}
+          smartFilters={filters}
+          showCategory={!showCategoryStrip}
         />
-      )}
 
-      <FilterBar
-        categories={categories}
-        regions={REGIONS}
-        action={path}
-        selectedCategory={filters.categorySlug}
-        selectedRegion={filters.regionSlug}
-        smartFilters={filters}
-        showCategory={!showCategoryStrip}
-      />
+        <ActiveFilters
+          basePath={path}
+          filters={filters}
+          categories={categories}
+          sortBy={sortBy}
+        />
 
-      <ActiveFilters
-        basePath={path}
-        filters={filters}
-        categories={categories}
-        sortBy={sortBy}
-      />
+        {events.length > 1 && (
+          <SortToggle basePath={path} filters={filters} sortBy={sortBy} />
+        )}
 
-      {events.length > 1 && (
-        <SortToggle basePath={path} filters={filters} sortBy={sortBy} />
-      )}
-
-      {events.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <>
-          {relaxedFrom && <FallbackNotice relaxedFrom={relaxedFrom} />}
-          <ul className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
-            {events.map((event) => (
-              <EventRow key={event.id} event={event} badges={badges.get(event.id)} />
-            ))}
-          </ul>
-        </>
-      )}
-    </main>
+        {events.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <>
+            {relaxedFrom && <FallbackNotice relaxedFrom={relaxedFrom} />}
+            <ul className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
+              {events.map((event) => (
+                <EventRow key={event.id} event={event} badges={badges.get(event.id)} />
+              ))}
+            </ul>
+          </>
+        )}
+      </main>
+    </>
   );
 }

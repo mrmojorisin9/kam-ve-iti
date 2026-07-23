@@ -74,70 +74,71 @@ export async function RangeView({
   const grouped = groupByDay(events);
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20 md:max-w-3xl lg:max-w-5xl">
+    <>
       <PageHeader />
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20 md:max-w-3xl lg:max-w-5xl">
+        {showTrending && <TrendingPanel event={featuredEvent} />}
 
-      {showTrending && <TrendingPanel event={featuredEvent} />}
+        <DateNav active={active} />
 
-      <DateNav active={active} />
+        {showCategoryStrip && (
+          <CategoryStrip
+            categories={categories}
+            activeSlug={filters.categorySlug}
+            selectedRegion={filters.regionSlug}
+          />
+        )}
 
-      {showCategoryStrip && (
-        <CategoryStrip
+        <FilterBar
           categories={categories}
-          activeSlug={filters.categorySlug}
+          regions={REGIONS}
+          action={path}
+          selectedCategory={filters.categorySlug}
           selectedRegion={filters.regionSlug}
+          smartFilters={filters}
+          showCategory={!showCategoryStrip}
         />
-      )}
 
-      <FilterBar
-        categories={categories}
-        regions={REGIONS}
-        action={path}
-        selectedCategory={filters.categorySlug}
-        selectedRegion={filters.regionSlug}
-        smartFilters={filters}
-        showCategory={!showCategoryStrip}
-      />
+        <ActiveFilters
+          basePath={path}
+          filters={filters}
+          categories={categories}
+          sortBy={sortBy}
+        />
 
-      <ActiveFilters
-        basePath={path}
-        filters={filters}
-        categories={categories}
-        sortBy={sortBy}
-      />
+        {events.length > 1 && (
+          <SortToggle basePath={path} filters={filters} sortBy={sortBy} />
+        )}
 
-      {events.length > 1 && (
-        <SortToggle basePath={path} filters={filters} sortBy={sortBy} />
-      )}
-
-      {events.length === 0 ? (
-        <EmptyState />
-      ) : popularityRanked ? (
-        <div className="space-y-8">
-          {relaxedFrom && <FallbackNotice relaxedFrom={relaxedFrom} />}
-          <ul className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
-            {popularityRanked.map((event) => (
-              <EventRow key={event.id} event={event} badges={badges.get(event.id)} />
+        {events.length === 0 ? (
+          <EmptyState />
+        ) : popularityRanked ? (
+          <div className="space-y-8">
+            {relaxedFrom && <FallbackNotice relaxedFrom={relaxedFrom} />}
+            <ul className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
+              {popularityRanked.map((event) => (
+                <EventRow key={event.id} event={event} badges={badges.get(event.id)} />
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {relaxedFrom && <FallbackNotice relaxedFrom={relaxedFrom} />}
+            {[...grouped.entries()].map(([day, dayEvents]) => (
+              <section key={day}>
+                <h2 className="text-parchment-muted font-mono text-xs tracking-[0.15em] uppercase">
+                  {formatHeaderDate(day)}
+                </h2>
+                <ul className="mt-2 space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
+                  {dayEvents.map((event) => (
+                    <EventRow key={event.id} event={event} badges={badges.get(event.id)} />
+                  ))}
+                </ul>
+              </section>
             ))}
-          </ul>
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {relaxedFrom && <FallbackNotice relaxedFrom={relaxedFrom} />}
-          {[...grouped.entries()].map(([day, dayEvents]) => (
-            <section key={day}>
-              <h2 className="text-parchment-muted font-mono text-xs tracking-[0.15em] uppercase">
-                {formatHeaderDate(day)}
-              </h2>
-              <ul className="mt-2 space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
-                {dayEvents.map((event) => (
-                  <EventRow key={event.id} event={event} badges={badges.get(event.id)} />
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
-      )}
-    </main>
+          </div>
+        )}
+      </main>
+    </>
   );
 }
