@@ -40,7 +40,7 @@ import { formatHeaderDate } from "@/lib/format";
 export function PageHeader() {
   return (
     <header className="relative w-full sm:mx-auto sm:max-w-2xl sm:px-6 sm:py-6 md:max-w-3xl lg:max-w-5xl">
-      <div className="border-line relative h-[42vh] max-h-[480px] min-h-[320px] w-full overflow-hidden sm:h-[380px] sm:max-h-none sm:min-h-0 sm:rounded-xl sm:border sm:shadow-lg sm:shadow-black/20">
+      <div className="border-line relative h-[42vh] max-h-[480px] min-h-[320px] w-full overflow-hidden sm:h-[439px] sm:max-h-none sm:min-h-0 sm:rounded-xl sm:border sm:shadow-lg sm:shadow-black/20">
         {/* Omot koji stvarno pomiče sadržaj fotografije na mobitelu (Dan
             70) — `object-position` (Dan 68/69) je bio no-op: mobilni okvir
             (~1.10 omjer) je "uži" od fotografije (4640×3472, ~1.34 omjer),
@@ -54,8 +54,13 @@ export function PageHeader() {
             preostalih 85% sadržaja vizualno "pomiče gore" u kutiji —
             motocikl (bio na ~47-68% od vrha) sad sjedi iznad dijagonalne
             ploče umjesto da je ona presijeca. Desktop (`sm:inset-0
-            sm:h-full`) vraća se na obično 1:1 popunjavanje kutije,
-            nepromijenjeno. */}
+            sm:h-full`) je 1:1 popunjavanje kutije — ovdje već postoji
+            prirodan vertikalni prostor za rezanje (kutija je puno šira nego
+            visoka, ~2.7:1 naspram fotografije ~1.34:1), pa `object-position`
+            stvarno ima učinak. Zum (`sm:scale-105`, Dan 71) isproban i
+            uklonjen (Dan 72, nepotreban); `object-position` isproban na
+            `55%` (Dan 71), vraćen na `center` (Dan 72), pa ponovno na `55%`
+            (Dan 73, korisnikov zahtjev — "digni fotografiju 5%"). */}
         <div className="absolute inset-x-0 bottom-0 h-[117.65%] sm:inset-0 sm:h-full">
           <Image
             src="/hero.jpg"
@@ -63,16 +68,23 @@ export function PageHeader() {
             fill
             preload
             sizes="(min-width: 640px) 1024px, 100vw"
-            className="object-cover"
+            className="object-cover sm:object-[50%_55%]"
           />
         </div>
 
         {/* Dijagonalna tamna ploča — tekst uvijek sjedi na punom kontrastu.
             Namjerno BEZ gradient zatamnjenja i BEZ blur omekšavanja
-            (korisnikov zahtjev, oboje prije loše izgledalo) — čist rez. */}
+            (korisnikov zahtjev, oboje prije loše izgledalo) — čist rez.
+            Postotak visine (`h-[X%]`), ne apsolutna vrijednost — Dan 71
+            (povećanje same kutije, `sm:h-[439px]`) nije stvarno pomaknulo
+            dijagonalu naniže PROPORCIONALNO jer je ploča postotak kutije;
+            rastom kutije narasla je i ploča u istom omjeru, vizualni odnos
+            fotografija/ploča ostao identičan. Pravi lijev je ovaj postotak
+            — desktop Dan 72 smanjen s `58%` na `45%`, pa Dan 73 fino
+            podešen na `50%` (korisnikov zahtjev). */}
         <div
           aria-hidden="true"
-          className="bg-night absolute inset-x-0 bottom-0 h-[55%] [clip-path:polygon(0_30%,100%_10%,100%_100%,0_100%)] sm:h-[58%]"
+          className="bg-night absolute inset-x-0 bottom-0 h-[55%] [clip-path:polygon(0_30%,100%_10%,100%_100%,0_100%)] sm:h-[50%]"
         />
 
         {/* CTA "pluta" izravno na fotografiji — staklen efekt. Prva verzija
