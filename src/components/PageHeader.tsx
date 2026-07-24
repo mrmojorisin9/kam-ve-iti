@@ -41,14 +41,31 @@ export function PageHeader() {
   return (
     <header className="relative w-full sm:mx-auto sm:max-w-2xl sm:px-6 sm:py-6 md:max-w-3xl lg:max-w-5xl">
       <div className="border-line relative h-[42vh] max-h-[480px] min-h-[320px] w-full overflow-hidden sm:h-[380px] sm:max-h-none sm:min-h-0 sm:rounded-xl sm:border sm:shadow-lg sm:shadow-black/20">
-        <Image
-          src="/hero.jpg"
-          alt=""
-          fill
-          preload
-          sizes="(min-width: 640px) 1024px, 100vw"
-          className="object-cover object-[50%_30%] sm:object-center"
-        />
+        {/* Omot koji stvarno pomiče sadržaj fotografije na mobitelu (Dan
+            70) — `object-position` (Dan 68/69) je bio no-op: mobilni okvir
+            (~1.10 omjer) je "uži" od fotografije (4640×3472, ~1.34 omjer),
+            pa `object-fit: cover` uvijek prikazuje CIJELU visinu bez ikakvog
+            vertikalnog prostora za pomicanje (sav višak se reže isključivo
+            lijevo/desno). Ovaj omot je namjerno viši od kutije (`117.65%`,
+            usidren na dnu) — fotografija unutra opet radi cover-fit, ali
+            sad prema OVOM VIŠEM omotu, ne prema kutiji; kutija (roditelj,
+            `overflow-hidden`) prikazuje samo donjih 85% omota. Time se
+            gornjih 15% izvorne fotografije (nebo/krošnje) žrtvuje, a
+            preostalih 85% sadržaja vizualno "pomiče gore" u kutiji —
+            motocikl (bio na ~47-68% od vrha) sad sjedi iznad dijagonalne
+            ploče umjesto da je ona presijeca. Desktop (`sm:inset-0
+            sm:h-full`) vraća se na obično 1:1 popunjavanje kutije,
+            nepromijenjeno. */}
+        <div className="absolute inset-x-0 bottom-0 h-[117.65%] sm:inset-0 sm:h-full">
+          <Image
+            src="/hero.jpg"
+            alt=""
+            fill
+            preload
+            sizes="(min-width: 640px) 1024px, 100vw"
+            className="object-cover"
+          />
+        </div>
 
         {/* Dijagonalna tamna ploča — tekst uvijek sjedi na punom kontrastu.
             Namjerno BEZ gradient zatamnjenja i BEZ blur omekšavanja
