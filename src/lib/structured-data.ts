@@ -6,6 +6,11 @@ import type { EventDetail } from "@/lib/events";
  * razini grada/općine, bez ulice/koordinata.
  */
 export function buildEventJsonLd(event: EventDetail, siteUrl: string) {
+  const images = [
+    ...(event.image_url ? [event.image_url] : []),
+    ...event.gallery.map((img) => img.url),
+  ];
+
   return {
     "@context": "https://schema.org",
     "@type": "Event",
@@ -25,7 +30,7 @@ export function buildEventJsonLd(event: EventDetail, siteUrl: string) {
       },
     },
     ...(event.description ? { description: event.description } : {}),
-    ...(event.image_url ? { image: [event.image_url] } : {}),
+    ...(images.length > 0 ? { image: images } : {}),
     ...(event.organizer_name
       ? { organizer: { "@type": "Organization", name: event.organizer_name } }
       : {}),

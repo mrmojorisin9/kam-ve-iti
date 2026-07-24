@@ -50,6 +50,7 @@ export default async function EditEventPage({
         error={error}
         submitLabel="Spremi izmjene"
         eventId={event.id}
+        galleryImages={event.gallery}
         defaultValues={{
           title: event.title,
           description: event.description ?? undefined,

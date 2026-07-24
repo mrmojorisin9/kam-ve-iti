@@ -89,6 +89,11 @@ export type AdminEventDetail = {
   is_admin_featured: boolean;
   submitter_email: string | null;
   submitter_phone: string | null;
+  gallery: { id: string; url: string }[];
+};
+
+type AdminEventDetailRow = Omit<AdminEventDetail, "gallery"> & {
+  event_images: { id: string; url: string; sort_order: number }[] | null;
 };
 
 /** Jedan događaj (bilo kojeg statusa) za admin formu za uređivanje. */
@@ -103,7 +108,8 @@ export async function getEventForEdit(
        start_at, end_at, organizer_name, organizer_contact, source_url,
        image_url, status, is_free, is_family_friendly, is_dog_friendly,
        is_solo_friendly, is_romantic, is_hidden_gem, is_admin_featured,
-       submitter_email, submitter_phone`,
+       submitter_email, submitter_phone,
+       event_images ( id, url, sort_order )`,
     )
     .eq("id", id)
     .maybeSingle();
@@ -113,7 +119,16 @@ export async function getEventForEdit(
     return null;
   }
 
-  return data as AdminEventDetail | null;
+  const row = data as AdminEventDetailRow | null;
+  if (!row) return null;
+
+  const { event_images, ...rest } = row;
+  return {
+    ...rest,
+    gallery: (event_images ?? [])
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((img) => ({ id: img.id, url: img.url })),
+  };
 }
 
 /**
@@ -149,13 +164,16 @@ const ALLOWED_IMAGE_TYPES: Record<string, string> = {
   "image/webp": "webp",
 };
 
+const EVENT_IMAGES_URL_MARKER = "/storage/v1/object/public/event-images/";
+
 /**
- * Uploada fotografiju u `event-images` Supabase Storage bucket (Faza 8,
- * Dan 22, vidi 0004_event_images_bucket.sql) i vraća njen javni URL.
- * Naziv datoteke je nasumičan (ne slug) jer slug pri kreiranju događaja
- * u tom trenutku možda još nije poznat.
+ * Uploada jednu datoteku u `event-images` Supabase Storage bucket (Faza 8,
+ * Dan 22, vidi 0004_event_images_bucket.sql) i vraća njen javni URL. Naziv
+ * datoteke je nasumičan (ne slug) jer slug pri kreiranju događaja u tom
+ * trenutku možda još nije poznat. Dijele je glavna fotografija
+ * (`uploadEventImage`) i galerija (`addEventGalleryImages`).
  */
-export async function uploadEventImage(
+async function uploadImageFile(
   supabase: SupabaseClient,
   file: File,
 ): Promise<string> {
@@ -177,7 +195,90 @@ export async function uploadEventImage(
     .publicUrl;
 }
 
-const EVENT_IMAGES_URL_MARKER = "/storage/v1/object/public/event-images/";
+/** Uploada glavnu fotografiju događaja — vidi `uploadImageFile`. */
+export async function uploadEventImage(
+  supabase: SupabaseClient,
+  file: File,
+): Promise<string> {
+  return uploadImageFile(supabase, file);
+}
+
+const MAX_GALLERY_IMAGES = 6;
+
+/**
+ * Uploada nove galerija-slike i upisuje retke u `event_images` (Faza 8,
+ * Dan 74, C4). Baca grešku prije ikakvog uploada ako bi ukupan broj
+ * (postojeće + nove) prešao `MAX_GALLERY_IMAGES` — izbjegava djelomično
+ * uploadane slike koje bi ionako trebalo ručno počistiti.
+ */
+export async function addEventGalleryImages(
+  supabase: SupabaseClient,
+  eventId: string,
+  files: File[],
+  currentCount: number,
+): Promise<void> {
+  if (files.length === 0) return;
+
+  if (currentCount + files.length > MAX_GALLERY_IMAGES) {
+    throw new Error(
+      `Galerija smije imati najviše ${MAX_GALLERY_IMAGES} slika (trenutno ${currentCount}, pokušaj dodati ${files.length}).`,
+    );
+  }
+
+  const urls: string[] = [];
+  for (const file of files) {
+    urls.push(await uploadImageFile(supabase, file));
+  }
+
+  const rows = urls.map((url, index) => ({
+    event_id: eventId,
+    url,
+    sort_order: currentCount + index,
+  }));
+
+  const { error } = await supabase.from("event_images").insert(rows);
+  if (error) {
+    throw new Error(`Galerija: ${error.message}`);
+  }
+}
+
+/**
+ * Briše galerija-slike (Storage objekt + redak). Bez orphan-provjere kao
+ * `deleteEventImageIfOrphaned` jer svaki galerija-redak posjeduje vlastitu
+ * datoteku 1:1 (nasumični UUID naziv, nikad dijeljen/ručno unesen URL).
+ * Best-effort na Storage brisanju — greška ne smije spriječiti brisanje retka.
+ */
+export async function deleteEventGalleryImages(
+  supabase: SupabaseClient,
+  images: { id: string; url: string }[],
+): Promise<void> {
+  if (images.length === 0) return;
+
+  const paths = images
+    .filter((img) => img.url.includes(EVENT_IMAGES_URL_MARKER))
+    .map((img) => img.url.split(EVENT_IMAGES_URL_MARKER)[1])
+    .filter((path): path is string => Boolean(path));
+
+  if (paths.length > 0) {
+    try {
+      await supabase.storage.from("event-images").remove(paths);
+    } catch (err) {
+      console.error("deleteEventGalleryImages storage:", err);
+    }
+  }
+
+  const { error } = await supabase
+    .from("event_images")
+    .delete()
+    .in(
+      "id",
+      images.map((img) => img.id),
+    );
+
+  if (error) {
+    console.error("deleteEventGalleryImages:", error.message);
+  }
+}
 
 /**
  * Briše uploadanu fotografiju iz `event-images` bucketa kad više nijedan

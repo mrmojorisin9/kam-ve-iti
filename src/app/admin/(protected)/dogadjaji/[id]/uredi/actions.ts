@@ -3,7 +3,12 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { zagrebLocalToUtcIso } from "@/lib/zagreb-time";
-import { uploadEventImage, clearOtherAdminFeatured } from "@/lib/admin-events";
+import {
+  uploadEventImage,
+  clearOtherAdminFeatured,
+  addEventGalleryImages,
+  deleteEventGalleryImages,
+} from "@/lib/admin-events";
 
 function readText(formData: FormData, field: string): string | null {
   const value = String(formData.get(field) ?? "").trim();
@@ -92,6 +97,32 @@ export async function updateEvent(formData: FormData) {
     }
   }
 
+  // Galerija (C4): checkboxovi "Ukloni" + nove datoteke iz iste forme.
+  const galleryFiles = formData
+    .getAll("gallery_files")
+    .filter((f): f is File => f instanceof File && f.size > 0);
+  const deleteGalleryIds = new Set<string>();
+  for (const key of formData.keys()) {
+    if (key.startsWith("delete_gallery_") && formData.get(key) === "on") {
+      deleteGalleryIds.add(key.slice("delete_gallery_".length));
+    }
+  }
+
+  const { data: existingGallery } = await supabase
+    .from("event_images")
+    .select("id, url")
+    .eq("event_id", id);
+  const gallery = (existingGallery ?? []) as { id: string; url: string }[];
+  const imagesToDelete = gallery.filter((img) => deleteGalleryIds.has(img.id));
+  const remainingCount = gallery.length - imagesToDelete.length;
+
+  if (remainingCount + galleryFiles.length > 6) {
+    fail(
+      id,
+      `Galerija smije imati najviše 6 slika (ostalo bi ${remainingCount}, pokušaj dodati ${galleryFiles.length}).`,
+    );
+  }
+
   const { error } = await supabase
     .from("events")
     .update({
@@ -119,6 +150,13 @@ export async function updateEvent(formData: FormData) {
 
   if (error) {
     fail(id, error.message);
+  }
+
+  await deleteEventGalleryImages(supabase, imagesToDelete);
+  try {
+    await addEventGalleryImages(supabase, id, galleryFiles, remainingCount);
+  } catch (err) {
+    fail(id, (err as Error).message);
   }
 
   redirect("/admin/dogadjaji?updated=1");

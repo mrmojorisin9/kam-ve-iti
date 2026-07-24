@@ -49,6 +49,7 @@ export function EventForm({
   submitLabel,
   defaultValues,
   eventId,
+  galleryImages,
 }: {
   categories: { id: string; name: string }[];
   locations: { id: string; name: string }[];
@@ -57,6 +58,7 @@ export function EventForm({
   submitLabel: string;
   defaultValues?: EventFormValues;
   eventId?: string;
+  galleryImages?: { id: string; url: string }[];
 }) {
   return (
     <form action={action} className="mt-8 flex flex-col gap-4">
@@ -226,6 +228,48 @@ export function EventForm({
           Ako priložiš datoteku, ona ima prednost pred URL poljem.
         </span>
       </div>
+
+      {eventId && (
+        <fieldset className="border-line rounded-md border p-4">
+          <legend className="text-parchment-muted px-1 text-sm">
+            Galerija slika (do 6)
+          </legend>
+
+          {galleryImages && galleryImages.length > 0 && (
+            <div className="mb-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
+              {galleryImages.map((image) => (
+                <label
+                  key={image.id}
+                  className="flex flex-col items-center gap-1 text-xs"
+                >
+                  <img
+                    src={image.url}
+                    alt=""
+                    className="border-line h-20 w-full rounded-md border object-cover"
+                  />
+                  <span className="text-parchment flex items-center gap-1.5">
+                    <input type="checkbox" name={`delete_gallery_${image.id}`} />
+                    Ukloni
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+
+          <input
+            type="file"
+            name="gallery_files"
+            accept="image/*"
+            multiple
+            className={inputClass}
+          />
+
+          <span className="text-parchment-muted mt-1 block text-xs">
+            {galleryImages?.length ?? 0}/6 slika. Nove datoteke se dodaju uz
+            postojeće; premašiš li 6, spremanje javlja grešku.
+          </span>
+        </fieldset>
+      )}
 
       <fieldset className="border-line rounded-md border p-4">
         <legend className="text-parchment-muted px-1 text-sm">

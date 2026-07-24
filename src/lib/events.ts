@@ -36,6 +36,8 @@ export type EventDetail = EventListItem & {
   organizer_name: string | null;
   organizer_contact: string | null;
   source_url: string | null;
+  /** Dodatne fotografije (do 6), odvojeno od naslovne image_url — vidi C4/ADR napomenu u CHANGELOG.md. */
+  gallery: { id: string; url: string }[];
 };
 
 export type EventFilters = {
@@ -152,6 +154,7 @@ type EventBySlugRow = {
   is_solo_friendly: boolean;
   is_romantic: boolean;
   is_hidden_gem: boolean;
+  event_images: { id: string; url: string; sort_order: number }[] | null;
 };
 
 function zagrebDateFromInstant(instant: Date): string {
@@ -698,7 +701,8 @@ export const getEventBySlug = cache(
         is_dog_friendly,
         is_solo_friendly,
         is_romantic,
-        is_hidden_gem
+        is_hidden_gem,
+        event_images ( id, url, sort_order )
       `,
       )
       .eq("slug", slug)
@@ -737,6 +741,9 @@ export const getEventBySlug = cache(
       is_solo_friendly: row.is_solo_friendly,
       is_romantic: row.is_romantic,
       is_hidden_gem: row.is_hidden_gem,
+      gallery: (row.event_images ?? [])
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((img) => ({ id: img.id, url: img.url })),
     };
   },
 );
