@@ -47,7 +47,7 @@ export function PageHeader() {
           fill
           preload
           sizes="(min-width: 640px) 1024px, 100vw"
-          className="object-cover"
+          className="object-cover object-[50%_30%] sm:object-center"
         />
 
         {/* Dijagonalna tamna ploča — tekst uvijek sjedi na punom kontrastu.
