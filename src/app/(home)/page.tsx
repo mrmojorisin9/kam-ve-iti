@@ -37,6 +37,7 @@ export default async function Home({ searchParams }: Props) {
       sortBy={sortBy}
       showCategoryStrip
       showTrending
+      showSponsored
     />
   );
 }

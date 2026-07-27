@@ -2,6 +2,7 @@ import {
   getEventsInRange,
   getCategories,
   getAdminFeaturedEvent,
+  getSponsoredEvents,
   computePopularityBadges,
   sortEventsByPopularity,
   type EventListItem,
@@ -19,6 +20,7 @@ import { CategoryStrip } from "@/components/CategoryStrip";
 import { ActiveFilters } from "@/components/ActiveFilters";
 import { FallbackNotice } from "@/components/FallbackNotice";
 import { TrendingPanel } from "@/components/TrendingPanel";
+import { SponsoredPanel } from "@/components/SponsoredPanel";
 import { SortToggle } from "@/components/SortToggle";
 
 function groupByDay(events: EventListItem[]): Map<string, EventListItem[]> {
@@ -48,6 +50,7 @@ export async function RangeView({
   filters,
   showCategoryStrip = false,
   showTrending = false,
+  showSponsored = false,
   sortBy,
 }: {
   start: string;
@@ -57,13 +60,15 @@ export async function RangeView({
   filters: EventFilters;
   showCategoryStrip?: boolean;
   showTrending?: boolean;
+  showSponsored?: boolean;
   sortBy?: SortOrder;
 }) {
-  const [{ events, relaxedFrom }, categories, featuredEvent] =
+  const [{ events, relaxedFrom }, categories, featuredEvent, sponsoredEvents] =
     await Promise.all([
       getEventsInRange(start, end, filters),
       getCategories(),
       showTrending ? getAdminFeaturedEvent() : Promise.resolve(null),
+      showSponsored ? getSponsoredEvents() : Promise.resolve([]),
     ]);
   const badges = computePopularityBadges(events);
   // Sort po popularnosti namjerno prikazuje RAVNU listu (bez grupiranja po
@@ -78,6 +83,7 @@ export async function RangeView({
       <PageHeader />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20 md:max-w-3xl lg:max-w-5xl">
         {showTrending && <TrendingPanel event={featuredEvent} />}
+        {showSponsored && <SponsoredPanel events={sponsoredEvents} />}
 
         <DateNav active={active} />
 

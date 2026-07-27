@@ -53,6 +53,11 @@ export async function createEvent(formData: FormData) {
     fail("Kraj događaja ne može biti prije početka.");
   }
 
+  const sponsoredUntilLocal = readText(formData, "sponsored_until");
+  const sponsoredUntil = sponsoredUntilLocal
+    ? zagrebLocalToUtcIso(sponsoredUntilLocal)
+    : null;
+
   const isHiddenGem = readBool(formData, "is_hidden_gem");
   const isAdminFeatured = readBool(formData, "is_admin_featured");
 
@@ -116,6 +121,7 @@ export async function createEvent(formData: FormData) {
     is_romantic: readBool(formData, "is_romantic"),
     is_hidden_gem: isHiddenGem,
     is_admin_featured: isAdminFeatured,
+    sponsored_until: sponsoredUntil,
   });
 
   if (error) {

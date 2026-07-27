@@ -1,15 +1,21 @@
 import type { EventDetail } from "@/lib/events";
 
+const URL_PATTERN = /^https?:\/\//i;
+
 /**
  * Schema.org Event JSON-LD za stranicu pojedinog događaja (Google rich
  * results). Bez geokodiranja (ADR-007) pa `location.address` ostaje na
  * razini grada/općine, bez ulice/koordinata.
  */
 export function buildEventJsonLd(event: EventDetail, siteUrl: string) {
+  // Google zahtijeva apsolutne URL-ove za `image` — filtrira relativne
+  // putanje (npr. stariji `/event-placeholder.svg` upisan izravno kao
+  // image_url) koje ovdje ne bi bile razrješive.
   const images = [
     ...(event.image_url ? [event.image_url] : []),
     ...event.gallery.map((img) => img.url),
-  ];
+  ].filter((url) => URL_PATTERN.test(url));
+  const eventUrl = `${siteUrl}/dogadjaji/${event.slug}`;
 
   return {
     "@context": "https://schema.org",
@@ -31,10 +37,33 @@ export function buildEventJsonLd(event: EventDetail, siteUrl: string) {
     },
     ...(event.description ? { description: event.description } : {}),
     ...(images.length > 0 ? { image: images } : {}),
-    ...(event.organizer_name
-      ? { organizer: { "@type": "Organization", name: event.organizer_name } }
+    // Cijena ulaznica se još ne prikuplja (Prioritet 3, C3, nije rađeno) —
+    // "offers" bez cijene bi bio nevažeći Schema.org zapis, pa se dodaje
+    // samo za besplatne događaje gdje je cijena poznata i uvijek 0.
+    ...(event.is_free
+      ? {
+          offers: {
+            "@type": "Offer",
+            price: "0",
+            priceCurrency: "EUR",
+            availability: "https://schema.org/InStock",
+            url: eventUrl,
+          },
+        }
       : {}),
-    url: `${siteUrl}/dogadjaji/${event.slug}`,
+    ...(event.organizer_name
+      ? {
+          organizer: {
+            "@type": "Organization",
+            name: event.organizer_name,
+            ...(event.organizer_contact &&
+            URL_PATTERN.test(event.organizer_contact)
+              ? { url: event.organizer_contact }
+              : {}),
+          },
+        }
+      : {}),
+    url: eventUrl,
   };
 }
 

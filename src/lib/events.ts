@@ -430,6 +430,84 @@ export async function getAdminFeaturedEvent(): Promise<EventListItem | null> {
   };
 }
 
+type SponsoredEventRow = {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  venue_name: string | null;
+  start_at: string;
+  end_at: string | null;
+  image_url: string | null;
+  category: { name: string; slug: string } | null;
+  location: { name: string; slug: string } | null;
+  is_free: boolean;
+  is_family_friendly: boolean;
+  is_dog_friendly: boolean;
+  is_solo_friendly: boolean;
+  is_romantic: boolean;
+  is_hidden_gem: boolean;
+};
+
+/**
+ * Sponzorirani događaji za naslovni panel (Faza 8, Dan 76, Monetizacija
+ * dio 1) — `sponsored_until` je self-expiring (budući datum = aktivno, bez
+ * potrebe da admin ručno isključi po isteku). Do 4 rezultata da panel ne
+ * naraste neograničeno ako više događaja bude sponzorirano istovremeno.
+ * Zaseban izravan upit (isti obrazac kao `getAdminFeaturedEvent`), NE dira
+ * `events_on_date`/`events_in_range` RPC — sponzorstvo se namjerno prikazuje
+ * samo ovdje, ne posvuda gdje se događaj inače pojavljuje.
+ */
+export async function getSponsoredEvents(): Promise<EventListItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("events")
+    .select(
+      `
+      id, title, slug, description, venue_name, start_at, end_at, image_url,
+      category:categories ( name, slug ),
+      location:locations ( name, slug ),
+      is_free, is_family_friendly, is_dog_friendly, is_solo_friendly,
+      is_romantic, is_hidden_gem
+    `,
+    )
+    .eq("status", "published")
+    .not("sponsored_until", "is", null)
+    .gt("sponsored_until", new Date().toISOString())
+    .order("start_at", { ascending: true })
+    .limit(4);
+
+  if (error) {
+    console.error("getSponsoredEvents:", error.message);
+    return [];
+  }
+
+  const rows = (data ?? []) as unknown as SponsoredEventRow[];
+
+  return rows
+    .filter((row) => row.category && row.location)
+    .map((row) => ({
+      id: row.id,
+      title: row.title,
+      slug: row.slug,
+      description: row.description,
+      venue_name: row.venue_name,
+      start_at: row.start_at,
+      end_at: row.end_at,
+      image_url: row.image_url,
+      category_name: row.category!.name,
+      category_slug: row.category!.slug,
+      location_name: row.location!.name,
+      location_slug: row.location!.slug,
+      is_free: row.is_free,
+      is_family_friendly: row.is_family_friendly,
+      is_dog_friendly: row.is_dog_friendly,
+      is_solo_friendly: row.is_solo_friendly,
+      is_romantic: row.is_romantic,
+      is_hidden_gem: row.is_hidden_gem,
+    }));
+}
+
 type SearchEventRow = {
   id: string;
   title: string;
@@ -530,7 +608,8 @@ export type PopularityBadge =
   | "trending-week"
   | "hot"
   | "recommended"
-  | "rising";
+  | "rising"
+  | "sponsored";
 
 export const POPULARITY_BADGE_META: Record<
   PopularityBadge,
@@ -541,6 +620,9 @@ export const POPULARITY_BADGE_META: Record<
   hot: { emoji: "🔥", label: "Popularno" },
   recommended: { emoji: "⭐", label: "Preporučeno" },
   rising: { emoji: "📈", label: "U trendu" },
+  // Namjerno drugačiji emoji od "editorial" (📌) — jasna razlika urednički
+  // izbor naspram plaćenog oglasa (poštena oznaka, Monetizacija dio 1).
+  sponsored: { emoji: "📢", label: "Sponzorirano" },
 };
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;

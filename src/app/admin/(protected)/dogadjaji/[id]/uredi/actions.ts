@@ -66,6 +66,10 @@ export async function updateEvent(formData: FormData) {
 
   const isHiddenGem = readBool(formData, "is_hidden_gem");
   const isAdminFeatured = readBool(formData, "is_admin_featured");
+  const sponsoredUntilLocal = readText(formData, "sponsored_until");
+  const sponsoredUntil = sponsoredUntilLocal
+    ? zagrebLocalToUtcIso(sponsoredUntilLocal)
+    : null;
 
   const supabase = await createClient();
 
@@ -145,6 +149,7 @@ export async function updateEvent(formData: FormData) {
       is_romantic: readBool(formData, "is_romantic"),
       is_hidden_gem: isHiddenGem,
       is_admin_featured: isAdminFeatured,
+      sponsored_until: sponsoredUntil,
     })
     .eq("id", id);
 

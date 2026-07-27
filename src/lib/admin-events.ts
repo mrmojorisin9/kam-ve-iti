@@ -87,6 +87,7 @@ export type AdminEventDetail = {
   is_romantic: boolean;
   is_hidden_gem: boolean;
   is_admin_featured: boolean;
+  sponsored_until: string | null;
   submitter_email: string | null;
   submitter_phone: string | null;
   gallery: { id: string; url: string }[];
@@ -108,7 +109,7 @@ export async function getEventForEdit(
        start_at, end_at, organizer_name, organizer_contact, source_url,
        image_url, status, is_free, is_family_friendly, is_dog_friendly,
        is_solo_friendly, is_romantic, is_hidden_gem, is_admin_featured,
-       submitter_email, submitter_phone,
+       sponsored_until, submitter_email, submitter_phone,
        event_images ( id, url, sort_order )`,
     )
     .eq("id", id)

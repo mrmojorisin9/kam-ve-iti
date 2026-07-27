@@ -29,6 +29,7 @@ export type EventFormValues = {
   is_romantic?: boolean;
   is_hidden_gem?: boolean;
   is_admin_featured?: boolean;
+  sponsored_until?: string;
   submitter_email?: string;
   submitter_phone?: string;
 };
@@ -330,6 +331,29 @@ export function EventForm({
           naslovnoj, neovisno o algoritamskom rezultatu popularnosti. Samo
           jedan događaj može biti istaknut u isto vrijeme — označavanje
           ovog automatski uklanja oznaku s prethodno istaknutog događaja.
+        </p>
+      </fieldset>
+
+      <fieldset className="border-line rounded-md border p-4">
+        <legend className="text-parchment-muted px-1 text-sm">
+          Sponzorstvo
+        </legend>
+
+        <label className="text-sm">
+          <span className={labelClass}>Sponzorirano do</span>
+          <input
+            type="datetime-local"
+            name="sponsored_until"
+            defaultValue={defaultValues?.sponsored_until}
+            className={inputClass}
+          />
+        </label>
+        <p className="text-parchment-muted mt-1 text-xs">
+          Prazno = nije sponzorirano. Postavi budući datum/vrijeme da događaj
+          dobije oznaku &quot;📢 Sponzorirano&quot; i mjesto u zasebnom panelu
+          na naslovnoj — automatski prestaje po isteku, bez potrebe da ga
+          ručno isključiš. Više događaja može biti sponzorirano istovremeno
+          (za razliku od panela &quot;U trendu&quot; iznad).
         </p>
       </fieldset>
 
