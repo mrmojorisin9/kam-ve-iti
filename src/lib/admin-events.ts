@@ -1,6 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 
+/**
+ * Dopušta samo apsolutne http(s) URL-ove za `image_url` (glavna fotografija
+ * unesena kao vanjski link, ne upload). Bez ovoga bi relativna putanja
+ * (otkriven pred-postojeći podatkovni rub-slučaj — vidi CHANGELOG.md Faza 8,
+ * Dan 75/76) tiho prošla server-side validaciju, pa bi je HTML5 `type="url"`
+ * polje na admin formi kasnije tiho odbilo pri sljedećem uređivanju (bez
+ * ikakve poruke greške) — bolje odbiti odmah, uz jasnu poruku.
+ */
+export function isAbsoluteUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value);
+}
+
 export type AdminEventListItem = {
   id: string;
   title: string;

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import Link from "next/link";
 import { formatEventTime } from "@/lib/format";
 import {
@@ -10,6 +11,14 @@ import { PinIcon } from "@/components/PinIcon";
 
 const STARTS_SOON_WINDOW_MS = 60 * 60 * 1000;
 
+/**
+ * Date.now() je pozvano izravno u tijelu Server Componente niže — impure
+ * poziv tijekom rendera (React purity pravilo). `cache()` ga memoizira PO
+ * ZAHTJEVU (isti obrazac kao `getEventBySlug` u events.ts), pa svi pozivi
+ * unutar istog rendera vrate identičnu vrijednost umjesto stvarnog "sad".
+ */
+const getNow = cache(() => Date.now());
+
 export function EventRow({
   event,
   badges,
@@ -17,7 +26,7 @@ export function EventRow({
   event: EventListItem;
   badges?: PopularityBadge[];
 }) {
-  const msUntilStart = new Date(event.start_at).getTime() - Date.now();
+  const msUntilStart = new Date(event.start_at).getTime() - getNow();
   const startsSoon = msUntilStart > 0 && msUntilStart <= STARTS_SOON_WINDOW_MS;
 
   return (

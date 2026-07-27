@@ -8,6 +8,7 @@ import {
   clearOtherAdminFeatured,
   addEventGalleryImages,
   deleteEventGalleryImages,
+  isAbsoluteUrl,
 } from "@/lib/admin-events";
 
 function readText(formData: FormData, field: string): string | null {
@@ -62,6 +63,15 @@ export async function updateEvent(formData: FormData) {
 
   if (endAt && endAt < startAt) {
     fail(id, "Kraj događaja ne može biti prije početka.");
+  }
+
+  // Datoteka ima prednost pa se URL polje tada zanemaruje (vidi niže) —
+  // validacija ima smisla samo kad URL stvarno postaje spremljena vrijednost.
+  if (imageUrlText && !hasImageFile && !isAbsoluteUrl(imageUrlText)) {
+    fail(
+      id,
+      "Fotografija (URL) mora biti puna adresa koja počinje s http:// ili https://.",
+    );
   }
 
   const isHiddenGem = readBool(formData, "is_hidden_gem");

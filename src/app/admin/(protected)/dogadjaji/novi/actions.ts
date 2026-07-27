@@ -8,6 +8,7 @@ import {
   uniqueSlug,
   uploadEventImage,
   clearOtherAdminFeatured,
+  isAbsoluteUrl,
 } from "@/lib/admin-events";
 
 function readText(formData: FormData, field: string): string | null {
@@ -51,6 +52,12 @@ export async function createEvent(formData: FormData) {
 
   if (endAt && endAt < startAt) {
     fail("Kraj događaja ne može biti prije početka.");
+  }
+
+  // Datoteka ima prednost pa se URL polje tada zanemaruje (vidi niže) —
+  // validacija ima smisla samo kad URL stvarno postaje spremljena vrijednost.
+  if (imageUrlText && !hasImageFile && !isAbsoluteUrl(imageUrlText)) {
+    fail("Fotografija (URL) mora biti puna adresa koja počinje s http:// ili https://.");
   }
 
   const sponsoredUntilLocal = readText(formData, "sponsored_until");
