@@ -1,0 +1,6 @@
+requests>=2.31
+beautifulsoup4>=4.12
+supabase>=2.4
+anthropic>=0.34
+python-dotenv>=1.0
+rapidfuzz>=3.9

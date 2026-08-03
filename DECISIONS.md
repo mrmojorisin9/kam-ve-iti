@@ -407,6 +407,101 @@ ADR-011 (2026-07-16) eksplicitno je izbacio search "ne ide čak ni u backlog", u
 **Posljedice:**
 `src/lib/events.ts` dobiva `searchEvents(query)`. Ovaj ADR formalno preokreće search-related zaključak ADR-011 (stavka #2) — ostatak ADR-011 (naziv projekta, javni obrazac ide u backlog) ostaje na snazi bez izmjena.
 
+## ADR-020: Automatizacija prikupljanja događaja — arhitektura pilota (emedjimurje.net.hr)
+
+**Datum:** 2026-08-03
+**Status:** Prihvaćeno
+
+**Kontekst:**
+PROJECT_BRIEF §8 planira Fazu 6 (AI moduli) i Fazu 7 (automatizacija
+prikupljanja) kao svjesno izvan opsega v1 (§5). ADR-001 je već odabrao
+stack (n8n orkestracija, Python skripte, Claude API), ali nijedna
+konkretna arhitektonska odluka (hosting, repo lokacija, dedup strategija,
+opseg admin queuea) nije donesena prije ove sesije. Cilj: prvi radni krak
+— scraping pilot izvora (emedjimurje.net.hr/dogadjaji/lista/), AI
+ekstrakcija/kategorizacija/dedup, upis u `events` na `pending_review`, uz
+admin queue dovoljno dorađen da review bude praktičan (PROJECT_BRIEF §5
+eksplicitan preduvjet).
+
+**Odluka:**
+- **n8n hosting:** self-hosted (besplatna opcija), Docker Compose na VM po
+  korisnikovom izboru — postavljeno da bude održivo samostalno uz Claude
+  Code asistenciju (dokumentirano korak-po-korak u `automation/README.md`,
+  Korak 5, odgođeno na sljedeću sesiju jer zahtijeva stvarnu VM odluku).
+- **Repo lokacija:** isti git repo, novi folder `automation/` — jedan
+  izvor istine, ista git povijest/dokumentacija kao ostatak projekta.
+  Adapter sučelje (`adapters/base.py`) namjerno minimalno (jedna metoda,
+  `RawEvent` dataclass) da svaki budući izvor (RSS, JSON export, drugi
+  HTML layout) implementira isti protokol bez diranja `pipeline.py`.
+- **Ekstrakcija/kategorizacija:** Claude API (tool-use s prisilnom
+  `extract_event` shemom) prima STVARAN popis kategorija/lokacija iz baze
+  u promptu (ne smije halucinirati nepostojeće slugove) i eksplicitno
+  vraća `confident: false` kad datum/kategorija/lokacija nisu jasni iz
+  izvornog teksta — takav zapis se preskače, ne upisuje se nagađanje.
+- **Deduplikacija — dva sloja:** (1) `source_url` unique constraint na
+  razini baze (`events_source_url_unique` partial index,
+  `supabase/migrations/0024`) — re-scrape iste stranice postaje update
+  postojećeg retka, ne novi insert; (2) fuzzy match naslova (rapidfuzz,
+  prag 85%) među kandidatima iste lokacije unutar ±1 dan — hvata isti
+  događaj unesen ručno ili s drugog izvora, što `source_url` sam po sebi
+  ne može pokriti.
+- **Kritično rješenje — kolizija s rate-limit trigerom (ADR-016):**
+  `enforce_public_submission_rate_limit` triger (`0020`) je `BEFORE
+  INSERT ON events` (ne ograničen na `anon` rolu) i broji SVAKI insert
+  gdje je `status='pending_review' AND created_by IS NULL`, prag 5/10min
+  globalno, namijenjen javnoj prijavi. Scraper insert preko
+  `service_role` bi upao u ISTI limit da `created_by` ostane `NULL`.
+  Rješenje: dedicated "scraper" Supabase Auth service-account, čiji se
+  UUID postavlja kao `created_by` za svaki automatizirani insert — uvjet
+  trigera (`created_by IS NULL`) više ne vrijedi, bez ikakve izmjene
+  postojeće migracije/trigera. Isti UUID ujedno omogućuje razlikovanje
+  "scraped" od "ručno/CSV/javno unesenih" događaja neovisno o
+  `source_name` polju.
+- **Admin queue dorada (odmah, ne odgođeno):** `/admin/dogadjaji` dobiva
+  🔗 source badge (naziv izvora, link na `source_url`) po retku i bulk
+  odobri/odbaci akciju (checkbox po retku, vidljivo samo kad je
+  `status=pending_review` filter aktivan) — bez toga bi review desetaka
+  scraped događaja odjednom bio nepraktičan kroz postojeći pojedinačni
+  uredi/obriši flow (ADR-016 presedan).
+- **Novi `source_name` stupac** (uz postojeći `source_url` iz
+  `0001_init_schema.sql`) — eksplicitno dodan u anon column grant popis
+  (`0024`, prati ADR-016 "Ispravak" zamku: table-level SELECT je uklonjen
+  otkad je `0015` primijenjen, svaki novi stupac mora biti eksplicitno
+  dodan da bude javno čitljiv).
+
+**Razmotrene alternative:**
+- n8n Cloud (managed) — odbačeno za sada, korisnik eksplicitno traži
+  besplatnu opciju; self-hosted Docker ostaje dovoljno jednostavan uz
+  dokumentaciju + Claude Code asistenciju za buduće održavanje.
+- Presko čiti n8n i koristiti samo Vercel Cron + skriptu — odbačeno,
+  ADR-001 već odlučio n8n za orkestraciju, a `pipeline.py` je svejedno
+  napisan kao samostalan CLI neovisan o n8n-u pa se ta opcija ne gubi ako
+  se ikad pokaže boljom.
+- Zasebna staging tablica za scraped prijedloge — odbačeno, isti razlog
+  kao ADR-016: `event_status` enum je od ADR-007 nadalje predviđen točno
+  za ovaj scenarij, staging tablica bi duplicirala shemu.
+- Samo `source_url` unique bez fuzzy sloja — odbačeno, ne hvata isti
+  događaj unesen ručno ili s drugog izvora pod drugim URL-om, čest slučaj
+  za regionalne portale koji prenose iste vijesti.
+- DB-level (SQL trigger) rate limit specifično za scraper insertove —
+  odbačeno, `pipeline.py` je jedini pouzdani klijent (service_role, ne
+  adversarial anon promet), app-layer safety cap (max broj insertova po
+  pokretanju) dovoljan je ako ikad zatreba, u duhu ADR-006.
+
+**Posljedice:**
+Migracija `0024` dodaje `source_name`, unique index na `source_url`, i
+ažurira anon grant popis. `src/lib/admin-events.ts` i `/admin/dogadjaji`
+dobivaju bulk akcije. Novi `automation/` folder (Python, izvan Next.js
+build-a) sadrži pilot adapter (`adapters/emedjimurje.py`, uživo testiran
+protiv stvarnog izvora — 24 zapisa, ispravna paginacija) + ekstrakcija/
+dedup/db moduli, samostalno izvršiv (`python -m automation.pipeline
+--source emedjimurje --dry-run`) bez n8n ovisnosti. n8n self-hosting i
+prvi live run protiv produkcijske baze ostaju sljedeći korak
+(`automation/README.md`, "TODO sljedeća sesija") — zahtijeva korisnikovu
+VM odluku i unos pravih API ključeva. Svaki budući novi izvor implementira
+`SourceAdapter` sučelje i registrira se u `adapters/__init__.py`, bez
+izmjene ostatka pipelinea.
+
 ---
 _Format za nove zapise:_
 ```

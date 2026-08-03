@@ -1,0 +1,33 @@
+{
+  "name": "Kam denes — scraper (emedjimurje)",
+  "meta": {
+    "note": "Placeholder — TODO sljedeca sesija (ADR-020, Korak 5). Uvesti u n8n instancu tek nakon sto je Docker self-hosted setup gotov (automation/README.md). Cvor 'Cron' okida dnevno, 'Execute Command' poziva `python3 -m automation.pipeline --source emedjimurje` na istom hostu (dijeljeni volume s ovim repom)."
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "days", "daysInterval": 1 }]
+        }
+      },
+      "name": "Cron (dnevno)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd /repo && python3 -m automation.pipeline --source emedjimurje"
+      },
+      "name": "Pokreni scraper (emedjimurje)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [520, 300]
+    }
+  ],
+  "connections": {
+    "Cron (dnevno)": {
+      "main": [[{ "node": "Pokreni scraper (emedjimurje)", "type": "main", "index": 0 }]]
+    }
+  }
+}

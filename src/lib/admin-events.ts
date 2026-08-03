@@ -21,6 +21,8 @@ export type AdminEventListItem = {
   status: string;
   category_name: string;
   location_name: string;
+  source_name: string | null;
+  source_url: string | null;
 };
 
 type AdminEventListRow = {
@@ -29,6 +31,8 @@ type AdminEventListRow = {
   slug: string;
   start_at: string;
   status: string;
+  source_name: string | null;
+  source_url: string | null;
   category: { name: string } | null;
   location: { name: string } | null;
 };
@@ -46,7 +50,7 @@ export async function listEventsForAdmin(
     .from("events")
     .select(
       `
-      id, title, slug, start_at, status,
+      id, title, slug, start_at, status, source_name, source_url,
       category:categories ( name ),
       location:locations ( name )
     `,
@@ -72,9 +76,37 @@ export async function listEventsForAdmin(
     slug: row.slug,
     start_at: row.start_at,
     status: row.status,
+    source_name: row.source_name,
+    source_url: row.source_url,
     category_name: row.category?.name ?? "—",
     location_name: row.location?.name ?? "—",
   }));
+}
+
+/**
+ * Bulk odobri/odbaci više događaja odjednom (Faza 6-7, ADR-020) — čini
+ * review scraped događaja praktičnim kad ih dolazi desetci odjednom, umjesto
+ * pojedinačnog otvaranja svakog kroz /uredi. Isti "jedan update poziv"
+ * obrazac kao `clearOtherAdminFeatured`.
+ */
+export async function bulkUpdateEventStatus(
+  supabase: SupabaseClient,
+  ids: string[],
+  status: "published" | "rejected",
+): Promise<{ error: string | null }> {
+  if (ids.length === 0) return { error: null };
+
+  const { error } = await supabase
+    .from("events")
+    .update({ status })
+    .in("id", ids);
+
+  if (error) {
+    console.error("bulkUpdateEventStatus:", error.message);
+    return { error: error.message };
+  }
+
+  return { error: null };
 }
 
 export type AdminEventDetail = {

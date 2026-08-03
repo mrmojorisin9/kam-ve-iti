@@ -49,7 +49,7 @@ Next.js + TypeScript, Supabase/PostgreSQL, Vercel, n8n, Python, Claude API — d
 4. Javni portal
 5. Administratorski sustav
 6. AI moduli
-7. Automatizacija prikupljanja
+7. Automatizacija prikupljanja *(započeto 2026-08-03 — temelj + pilot adapter za emedjimurje.net.hr, vidi `CHANGELOG.md` Faza 6-7 Dan 1 i `DECISIONS.md` ADR-020)*
 8. Testiranje, optimizacija, SEO, lansiranje
 
 ## 9. Riješene odluke (bivša otvorena pitanja)
