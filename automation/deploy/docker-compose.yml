@@ -1,0 +1,32 @@
+services:
+  n8n:
+    build:
+      context: ../..
+      dockerfile: automation/deploy/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      # Bez javne domene/HTTPS (odgodeno, vidi PROJECT_BRIEF) — n8n je
+      # dostupan SAMO preko SSH tunela (README, "Pristup n8n sucelju"),
+      # nikad izravno na javnom IP-u VM-a. N8N_HOST=localhost odgovara
+      # tome kako ce editor stvarno biti otvoren u pregledniku.
+      - N8N_HOST=localhost
+      - N8N_PROTOCOL=http
+      - GENERIC_TIMEZONE=Europe/Zagreb
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
+      # automation/pipeline.py cita ove izravno iz env-a (docker-compose ih
+      # postavlja u kontejneru — load_dotenv() u pipeline.py je no-op ako
+      # nema .env datoteke, sto je namjerno: NE kopiramo automation/.env u
+      # image, kredencijali dolaze samo kroz docker-compose .env).
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SCRAPER_USER_ID=${SCRAPER_USER_ID}
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:

@@ -488,6 +488,34 @@ eksplicitan preduvjet).
   adversarial anon promet), app-layer safety cap (max broj insertova po
   pokretanju) dovoljan je ako ikad zatreba, u duhu ADR-006.
 
+**Dopuna (2026-08-03, isti dan) — Korak 5 proveden, konkretan hosting:**
+Migracija 0024 primijenjena uživo (korisnik, Supabase SQL Editor), dedicated
+scraper Auth korisnik kreiran, `automation/.env` popunjen — potvrđeno
+service-role skriptom (unique constraint odbija duplikat, `created_by`
+scraper insert zaobilazi rate-limit trigger, anon vidi `source_name` ali ne
+`submitter_*`, sve test-retke obrisane nakon provjere). Nakon toga proveden
+**pun end-to-end dry-run** protiv stvarnog izvora (24 dohvaćena, 23 uspješno
+ekstrahirana, 1 ispravno preskočen kao "nesiguran" — Claude nije nagađao) i
+potom **stvaran upis** (23 nova reda, `status='pending_review'`, provjereno
+upitom: 0 duplikata slugova, svi `created_by` = scraper UUID).
+
+Hosting izbor za n8n (Korak 5): **Oracle Cloud Free Tier** (Always Free ARM
+VM, `VM.Standard.A1.Flex`) — trajno besplatno unutar limita, always-on
+(za razliku od lokalnog računala koje se gasi). `automation/deploy/`
+(`Dockerfile`, `docker-compose.yml`, README) — n8n i `automation/` u
+**istom** Docker kontejneru (n8n-ova službena slika je Node/alpine bez
+Pythona; dodavanje `python3`/`pip` u isti image jednostavnije je od
+zasebnog servisa + HTTP mosta među njima za jedan cron-pokrenut CLI,
+ADR-006 duh). **Pristup n8n sučelju isključivo preko SSH tunela**
+(`ssh -L 5678:localhost:5678 ...`), VM nema ništa javno izloženo osim
+SSH-a — izbjegava potrebu za domenom/HTTPS certifikatom za jedan admin
+alat kojem pristupa samo jedan korisnik povremeno (domena `kamdenes.hr`
+ostaje zasebna, odgođena tema, PROJECT_BRIEF). Razmotrena alternativa:
+Caddy reverse proxy s automatskim Let's Encrypt certifikatom — odbačeno,
+zahtijeva javnu domenu koja eksplicitno nije u opsegu ove sesije; SSH
+tunel je funkcionalno dovoljan i sigurniji default (ništa dodatno na
+javnom internetu) za ovaj slučaj korištenja.
+
 **Posljedice:**
 Migracija `0024` dodaje `source_name`, unique index na `source_url`, i
 ažurira anon grant popis. `src/lib/admin-events.ts` i `/admin/dogadjaji`

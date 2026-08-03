@@ -62,19 +62,12 @@ python -m automation.pipeline --source emedjimurje
 
 Stvarni upis. Provjeriti rezultat u `/admin/dogadjaji?status=pending_review`.
 
-## TODO sljedeća sesija (ADR-020, Korak 5) — n8n hosting
+## n8n hosting (ADR-020, Korak 5)
 
-Nije dio ovog prolaska (zahtijeva korisnikovu VM/hosting odluku i unos
-pravih ključeva):
-
-- Docker Compose za n8n (self-hosted, besplatna opcija) na VM po izboru.
-- Uvoz `n8n/scraper-workflow.json` (trenutno placeholder) — Cron Trigger
-  (dnevno) → Execute Command node poziva `python3 -m automation.pipeline
-  --source emedjimurje` na istom hostu (dijeljeni volume s ovim repom).
-- Secreti u n8n credential store / `.env` na VM-u — **nikad u gitu**
-  (`.env*` je već u `.gitignore`, samo `.env.example` je commitan).
-- Prvi live test: ručno pokretanje workflow-a jednom, provjera reda u
-  admin queueu, ručno odobravanje/odbacivanje.
+Docker Compose setup (n8n self-hosted na Oracle Cloud Free Tier, pristup
+preko SSH tunela) — vidi **`automation/deploy/README.md`** za kompletne
+korake (VM provisioning, Docker instalacija, `docker compose up`, uvoz
+`n8n/scraper-workflow.json`, prvi live test).
 
 ## Dodavanje novog izvora
 

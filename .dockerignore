@@ -1,0 +1,11 @@
+# Kam denes — koristi ga automation/deploy/Dockerfile (build context je
+# korijen repoa, vidi docker-compose.yml). Drzi image malim i brzim za
+# build; ne utjece na Next.js (Vercel ne koristi Docker).
+.git
+.next
+node_modules
+automation/.venv
+automation/__pycache__
+**/__pycache__
+.env*
+!.env.example

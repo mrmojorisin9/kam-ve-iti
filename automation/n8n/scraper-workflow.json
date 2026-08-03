@@ -1,7 +1,7 @@
 {
   "name": "Kam denes — scraper (emedjimurje)",
   "meta": {
-    "note": "Placeholder — TODO sljedeca sesija (ADR-020, Korak 5). Uvesti u n8n instancu tek nakon sto je Docker self-hosted setup gotov (automation/README.md). Cvor 'Cron' okida dnevno, 'Execute Command' poziva `python3 -m automation.pipeline --source emedjimurje` na istom hostu (dijeljeni volume s ovim repom)."
+    "note": "Faza 6-7, ADR-020, Korak 5. Uvesti u n8n instancu (Import from File) nakon docker compose up — vidi automation/deploy/README.md. 'Cron' cvor okida dnevno, 'Execute Command' poziva venv python izravno u istom kontejneru (Dockerfile instalira automation/ + ovisnosti u /repo)."
   },
   "nodes": [
     {
@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "command": "cd /repo && python3 -m automation.pipeline --source emedjimurje"
+        "command": "/repo/automation/.venv/bin/python -m automation.pipeline --source emedjimurje"
       },
       "name": "Pokreni scraper (emedjimurje)",
       "type": "n8n-nodes-base.executeCommand",
