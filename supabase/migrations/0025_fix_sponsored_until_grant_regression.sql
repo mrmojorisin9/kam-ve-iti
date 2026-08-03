@@ -1,0 +1,14 @@
+-- Kam denes — ispravak regresije uvedene u 0024 (Faza 6-7, Dan 4).
+--
+-- 0024 je napravio `revoke select on events from anon` pa `grant select
+-- (...)` s popisom stupaca kopiranim iz 0015 + source_name — ali taj popis
+-- nije ukljucivao `sponsored_until`, koji je bio dodan ZASEBNIM `grant
+-- select (sponsored_until) on events to anon;` u 0022 (event_sponsorship).
+-- REVOKE u 0024 je obrisao SVE postojece column-level SELECT dozvole prije
+-- ponovnog grant-a, ukljucujuci i tu — otkriveno uzivo (getSponsoredEvents:
+-- "permission denied for table events" na dev serveru nakon 0024).
+--
+-- GRANT SELECT (kolona) je aditivan kad tablica vec ima table-level ili
+-- druge column-level dozvole za tu rolu — nema potrebe za REVOKE prije
+-- ovoga, samo dodati natrag ono sto je 0024 slucajno uklonio.
+grant select (sponsored_until) on events to anon;
