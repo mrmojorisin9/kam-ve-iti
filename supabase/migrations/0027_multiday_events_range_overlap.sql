@@ -9,6 +9,13 @@
 -- LI dogadaj s [dan/raspon]: start_at <= kraj prozora I
 -- coalesce(end_at, start_at) >= pocetak prozora. coalesce fallback jer
 -- end_at nije obavezno polje (jednodnevni dogadaj bez eksplicitnog kraja).
+--
+-- DROP prije CREATE OR REPLACE: Postgres odbija "cannot change return type
+-- of existing function" cim OUT parametar row-type odstupa od postojece
+-- definicije u bazi (i kad izgleda identicno u repou — stvarna baza je
+-- mjerodavna, ADR-010 pouka). DROP+CREATE unutar iste migracije je
+-- sigurno — isto ime/potpis, RPC pozivatelji (Next.js) ne vide razliku.
+drop function if exists events_on_date(date);
 
 create or replace function events_on_date(target_date date)
 returns table (
@@ -49,6 +56,8 @@ as $$
     and coalesce(e.end_at, e.start_at) >= (target_date::timestamp at time zone 'Europe/Zagreb')
   order by e.start_at asc;
 $$;
+
+drop function if exists events_in_range(date, date);
 
 create or replace function events_in_range(range_start date, range_end date)
 returns table (
