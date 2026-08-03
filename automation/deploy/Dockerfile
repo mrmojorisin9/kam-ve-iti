@@ -1,23 +1,20 @@
-# Kam denes — n8n + automation/ u istom kontejneru (Faza 6-7, ADR-020, Korak 5).
+# Kam denes — automation/ kao zaseban HTTP servis (Faza 6-7, ADR-020, Korak 5).
 #
-# Zasto isti kontejner umjesto odvojenog Python servisa: n8n sluzbena slika
-# je Node/alpine bez Pythona. Umjesto drugog servisa + HTTP mosta izmedu
-# njih (dodatna kompleksnost bez stvarnog razloga za jedan cron-pokrenut
-# CLI, ADR-006 duh), n8n-ov "Execute Command" cvor jednostavno pokrece
-# python izravno u ISTOM kontejneru gdje je i repo kopiran.
+# n8n-ov sluzbeni Docker image je "Docker Hardened Image" — apk/apt je
+# namjerno uklonjen iz sigurnosnih razloga, potvrdeno na SVIM tagovima
+# (:latest, :1) probom uzivo prije ovog Dockerfilea. Python se zato NE
+# moze instalirati u isti kontejner kao n8n (prvotni plan) — automation/
+# radi kao zaseban, standardni python:3.12-slim servis; n8n ga poziva
+# HTTP Request cvorom (ne Execute Command) preko interne Docker mreze
+# (vidi docker-compose.yml, `automation/server.py`).
 #
-# Build context MORA biti korijen repoa (ne automation/deploy/), zbog
-# `COPY . /repo` niže — vidi docker-compose.yml (`context: ../..`,
-# `dockerfile: automation/deploy/Dockerfile`).
-FROM docker.n8n.io/n8nio/n8n:latest
+# Build context MORA biti korijen repoa (docker-compose.yml, `context: ../..`).
+FROM python:3.12-slim
 
-USER root
-RUN apk add --no-cache python3 py3-pip
-
-COPY --chown=node:node . /repo
 WORKDIR /repo
+COPY automation/requirements.txt automation/requirements.txt
+RUN pip install --no-cache-dir -r automation/requirements.txt
+COPY automation/ automation/
 
-RUN python3 -m venv /repo/automation/.venv \
-    && /repo/automation/.venv/bin/pip install --no-cache-dir -r automation/requirements.txt
-
-USER node
+EXPOSE 8000
+CMD ["python", "-m", "flask", "--app", "automation.server", "run", "--host=0.0.0.0", "--port=8000"]

@@ -4,8 +4,11 @@ Usage:
     python -m automation.pipeline --source emedjimurje
     python -m automation.pipeline --source emedjimurje --dry-run
 
-n8n (Korak 5, sljedeca sesija) samo dodaje scheduling oko ovog vec
-samostalno izvrsivog CLI-ja (Execute Command node).
+n8n (Korak 5) poziva `run()` preko `server.py` HTTP wrappera (HTTP Request
+node), ne izravno ovaj CLI — n8n sluzbeni Docker image je "Docker Hardened
+Image" bez package managera, pa Python ne moze ziti u ISTOM kontejneru
+(vidi automation/deploy/Dockerfile). CLI ostaje za lokalno pokretanje/
+debug (`python -m automation.pipeline --source emedjimurje --dry-run`).
 """
 
 import argparse
@@ -48,7 +51,7 @@ def unique_slug(client, base_slug: str) -> str:
     return f"{base_slug}-{suffix}"
 
 
-def run(source: str, dry_run: bool) -> None:
+def run(source: str, dry_run: bool) -> dict:
     if source not in ADAPTERS:
         raise SystemExit(
             f"Nepoznat izvor '{source}'. Dostupno: {', '.join(ADAPTERS)}"
@@ -124,6 +127,7 @@ def run(source: str, dry_run: bool) -> None:
             db.insert_event(client, event)
 
     print(f"[{source}] gotovo: {stats}")
+    return stats
 
 
 def main() -> None:

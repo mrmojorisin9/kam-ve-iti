@@ -1,7 +1,7 @@
 {
   "name": "Kam denes — scraper (emedjimurje)",
   "meta": {
-    "note": "Faza 6-7, ADR-020, Korak 5. Uvesti u n8n instancu (Import from File) nakon docker compose up — vidi automation/deploy/README.md. 'Cron' cvor okida dnevno, 'Execute Command' poziva venv python izravno u istom kontejneru (Dockerfile instalira automation/ + ovisnosti u /repo)."
+    "note": "Faza 6-7, ADR-020, Korak 5. Uvesti u n8n instancu (Import from File) nakon docker compose up — vidi automation/deploy/README.md. 'Cron' cvor okida dnevno, 'HTTP Request' cvor poziva automation servis (zaseban kontejner, http://automation:8000/run) — ne Execute Command, jer n8n-ov sluzbeni image nema package manager za Python (Docker Hardened Image)."
   },
   "nodes": [
     {
@@ -17,11 +17,17 @@
     },
     {
       "parameters": {
-        "command": "/repo/automation/.venv/bin/python -m automation.pipeline --source emedjimurje"
+        "method": "POST",
+        "url": "http://automation:8000/run",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [{ "name": "source", "value": "emedjimurje" }]
+        },
+        "options": {}
       },
       "name": "Pokreni scraper (emedjimurje)",
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [520, 300]
     }
   ],

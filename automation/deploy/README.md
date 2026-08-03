@@ -12,8 +12,17 @@ računalo upaljeno i Docker Desktop pokrenut (ne mora biti aktivno
 korišteno, ali ne smije biti ugašeno/u dubokom mirovanju). Ako se to
 pokaže nepraktičnim (npr. računalo redovito gasiš navečer, a scraping je
 zakazan za to vrijeme), premještanje na pravi VM ostaje moguće bez
-promjene ijedne linije koda — isti `Dockerfile`/`docker-compose.yml`,
-samo drugi host.
+promjene ijedne linije koda — isti `docker-compose.yml`, samo drugi host.
+
+**Druga promjena, otkrivena tek pri prvom pokušaju builda:** n8n-ov
+službeni Docker image je "Docker Hardened Image" — Alpine bez package
+managera (`apk`), namjerno uklonjenog iz sigurnosnih razloga, potvrđeno
+na svim tagovima koje smo probali. Zato Python **ne može** živjeti u
+istom kontejneru kao n8n (izvorni jednokontejnerski plan). Umjesto toga:
+**dva kontejnera** — `n8n` (nepromijenjen službeni image) i `automation`
+(standardni `python:3.12-slim`, mali Flask HTTP servis oko
+`pipeline.py`). n8n poziva `automation` preko HTTP Request čvora unutar
+iste Docker mreže, ne preko Execute Command čvora.
 
 ## 1. Instaliraj Docker Desktop
 
@@ -34,11 +43,9 @@ cp .env.example .env
 ```
 
 Otvori novonastali `.env` u bilo kojem editoru i popuni (iste vrijednosti
-kao lokalni `automation/.env`, plus login za n8n sučelje):
+kao lokalni `automation/.env`):
 
 ```
-N8N_BASIC_AUTH_USER=admin
-N8N_BASIC_AUTH_PASSWORD=<smisli jaku lozinku>
 SUPABASE_URL=<isto kao automation/.env>
 SUPABASE_SERVICE_ROLE_KEY=<isto kao automation/.env>
 ANTHROPIC_API_KEY=<isto kao automation/.env>
@@ -53,31 +60,50 @@ I dalje u `automation/deploy/`:
 docker compose up -d --build
 ```
 
-Prvi put traje par minuta (build image-a — instalira Python i ovisnosti
-unutar kontejnera). Prati napredak s:
+Prvi put traje par minuta (`n8n` image se preuzima nepromijenjen,
+`automation` image se gradi — instalira Python ovisnosti). Prati napredak
+s:
 
 ```bash
-docker compose logs -f n8n
+docker compose logs -f
 ```
 
-(Ctrl+C za izlaz iz praćenja loga — kontejner nastavlja raditi u
+(Ctrl+C za izlaz iz praćenja loga — kontejneri nastavljaju raditi u
 pozadini.)
 
-## 4. Pristup n8n sučelju
+## 4. Provjeri da automation servis radi
 
-Otvori **`http://localhost:5678`** u pregledniku. Prijava s
-`N8N_BASIC_AUTH_USER`/`PASSWORD` iz `.env` iznad.
+```bash
+curl http://localhost:8000/health
+```
 
-## 5. Uvoz workflowa i podešavanje
+Očekivano: `{"status":"ok"}`. Ako želiš, možeš i ručno okinuti scraper
+bez n8n-a (isti kod, samo preko HTTP-a umjesto CLI-ja):
+
+```bash
+curl -X POST "http://localhost:8000/run?source=emedjimurje&dry_run=true"
+```
+
+## 5. Pristup n8n sučelju — kreiranje owner računa
+
+Otvori **`http://localhost:5678`** u pregledniku. Kod prvog otvaranja n8n
+prikazuje **svoj vlastiti ekran za postavljanje** (ne login formu) — traži
+da kreiraš "owner" račun: email (može biti bilo koji, samo za tebe, ne
+mora biti dohvatljiv) + ime + lozinka. To postaje tvoj stalni login za
+ovu instancu ubuduće (zapiši lozinku).
+
+## 6. Uvoz workflowa i podešavanje
 
 1. n8n sučelje → **Workflows → Import from File** → odaberi
    `automation/n8n/scraper-workflow.json` sa svog računala.
 2. Otvori uvezeni workflow, provjeri "Cron (dnevno)" čvor (vrijeme po
-   želji) i "Execute Command" čvor (naredba je već točna).
+   želji) i "HTTP Request" čvor (URL/parametri su već točni — poziva
+   `automation` servis preko interne Docker mreže).
 3. **Aktiviraj workflow** (toggle gore desno).
-4. Test: klikni "Execute Workflow" ručno jednom, provjeri output
-   "Execute Command" čvora — treba izgledati kao ispis iz `pipeline.py`
-   koji si već vidio kod ručnog pokretanja.
+4. Test: klikni "Execute Workflow" ručno jednom, provjeri output "HTTP
+   Request" čvora — treba vratiti JSON sa statistikom (`inserted`,
+   `updated`, `skipped_duplicate`, `skipped_extraction`), isto kao ono
+   što si već vidio u terminalu kod ručnog pokretanja.
 5. Provjeri `/admin/dogadjaji?status=pending_review` na portalu — novi/
    ažurirani redovi trebaju se pojaviti nakon uspješnog pokretanja.
 

@@ -1,31 +1,37 @@
 services:
   n8n:
+    image: docker.io/n8nio/n8n:latest
+    restart: unless-stopped
+    ports:
+      # Lokalno pokretanje (Docker Desktop) — n8n dostupan samo na
+      # 127.0.0.1, nikad izvan tvog racunala.
+      - "127.0.0.1:5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PROTOCOL=http
+      - GENERIC_TIMEZONE=Europe/Zagreb
+      # Napomena: stare N8N_BASIC_AUTH_* varijable su no-op u modernom
+      # n8n-u (v2.x) — ugrađeni sustav prijave (owner racun) preuzima tu
+      # ulogu, kreira se izravno u sucelju kod prvog otvaranja localhost:5678.
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - automation
+
+  automation:
     build:
       context: ../..
       dockerfile: automation/deploy/Dockerfile
     restart: unless-stopped
     ports:
-      - "127.0.0.1:5678:5678"
+      # Samo radi lokalnog testiranja (curl/Postman) bez n8n-a — n8n
+      # sam interno koristi http://automation:8000, ne ovaj host port.
+      - "127.0.0.1:8000:8000"
     environment:
-      # Lokalno pokretanje (Docker Desktop na tvom racunalu, ADR-020
-      # dopuna 2026-08-03 — Oracle Cloud registracija blokirana) — n8n
-      # dostupan samo na 127.0.0.1, nikad izvan tvog racunala.
-      - N8N_HOST=localhost
-      - N8N_PROTOCOL=http
-      - GENERIC_TIMEZONE=Europe/Zagreb
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
-      # automation/pipeline.py cita ove izravno iz env-a (docker-compose ih
-      # postavlja u kontejneru — load_dotenv() u pipeline.py je no-op ako
-      # nema .env datoteke, sto je namjerno: NE kopiramo automation/.env u
-      # image, kredencijali dolaze samo kroz docker-compose .env).
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - SCRAPER_USER_ID=${SCRAPER_USER_ID}
-    volumes:
-      - n8n_data:/home/node/.n8n
 
 volumes:
   n8n_data:

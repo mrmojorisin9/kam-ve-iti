@@ -533,6 +533,37 @@ stranu; prelazak na VM (Oracle ili drugi provider) ostaje moguć bez
 izmjene koda, samo promjena hosta (`automation/deploy/README.md`
 dokumentira oba puta).
 
+**Dopuna (2026-08-03, isti dan) — WSL2 + Docker Desktop instaliran, arhitektura Koraka 5 promijenjena zbog n8n "Docker Hardened Image":**
+Docker Desktop je zahtijevao WSL2 (nije bio uključen) — korisnik pokrenuo
+`wsl --install` u administratorskoj PowerShell sesiji, uz poznati
+"Catastrophic failure" na prvom pokušaju (rijesen restartom prije drugog
+pokušaja) i restart Docker Desktopa da prihvati novi WSL2 backend.
+
+**Otkriven pravi arhitekturni problem tek pri prvom pokušaju builda:**
+prvotni plan (n8n + `automation/` u ISTOM kontejneru, `apk add python3`
+preko Alpine package managera) nije proveden — n8n-ov službeni Docker
+image je **"Docker Hardened Image"**, sigurnosna varijanta kojoj je
+`apk` namjerno uklonjen iz finalne slike. Provjereno uživo na DVA taga
+(`:latest` i `:1`) — oba potvrđeno hardened, nema poznatog "običnog" taga
+za zaobilazak. Rješenje: **arhitektura promijenjena na dva kontejnera** —
+`n8n` (nepromijenjen službeni image) i novi `automation` servis
+(standardni `python:3.12-slim`, mali Flask HTTP wrapper `automation/
+server.py` s `/health` i `POST /run?source=...` endpointima oko
+postojećeg `pipeline.py`). n8n workflow (`n8n/scraper-workflow.json`)
+promijenjen s "Execute Command" čvora na "HTTP Request" čvor koji poziva
+`http://automation:8000/run` unutar iste Docker Compose mreže — standardan
+n8n integracijski obrazac, ne manje robustan od izvornog plana. `pipeline.
+run()` promijenjen da vraća `dict` sa statistikom (ranije samo printao)
+da HTTP endpoint ima što vratiti kao JSON.
+
+**Drugo otkriće (isti build ciklus):** stare `N8N_BASIC_AUTH_*` varijable
+su no-op u modernoj n8n verziji (2.32.7) — potvrđeno uživo (`curl` bez
+ikakvih credentiala vraća 200 na `/`, env varijable su ispravno postavljene
+u kontejneru ali n8n ih ignorira). Moderni n8n ima vlastiti ugrađeni
+sustav prijave (owner račun kreiran u sučelju kod prvog otvaranja) koji je
+potpuno zamijenio stari Basic Auth mehanizam. Mrtve varijable uklonjene iz
+`docker-compose.yml`/`.env.example` da ne zavaravaju buduće čitatelje.
+
 **Posljedice:**
 Migracija `0024` dodaje `source_name`, unique index na `source_url`, i
 ažurira anon grant popis. `src/lib/admin-events.ts` i `/admin/dogadjaji`
