@@ -1,7 +1,7 @@
 {
-  "name": "Kam denes — scraper (emedjimurje)",
+  "name": "Kam denes — scraper (svi izvori)",
   "meta": {
-    "note": "Faza 6-7, ADR-020, Korak 5. Uvesti u n8n instancu (Import from File) nakon docker compose up — vidi automation/deploy/README.md. 'Cron' cvor okida dnevno, 'HTTP Request' cvor poziva automation servis (zaseban kontejner, http://automation:8000/run) — ne Execute Command, jer n8n-ov sluzbeni image nema package manager za Python (Docker Hardened Image)."
+    "note": "Faza 6-7, ADR-020, Korak 5. Uvesti u n8n instancu (Import from File) nakon docker compose up — vidi automation/deploy/README.md. Jedan 'Cron' cvor okida dnevno, granja se na po jedan 'HTTP Request' cvor po izvoru (http://automation:8000/run?source=...) — ne Execute Command, jer n8n-ov sluzbeni image nema package manager za Python (Docker Hardened Image). Dodavanje buduceg izvora: kopirati jedan HTTP Request cvor, promijeniti 'source' query parametar i naziv, spojiti na isti Cron izlaz."
   },
   "nodes": [
     {
@@ -28,12 +28,32 @@
       "name": "Pokreni scraper (emedjimurje)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [520, 300]
+      "position": [520, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://automation:8000/run",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [{ "name": "source", "value": "mnovine" }]
+        },
+        "options": {}
+      },
+      "name": "Pokreni scraper (mnovine)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 380]
     }
   ],
   "connections": {
     "Cron (dnevno)": {
-      "main": [[{ "node": "Pokreni scraper (emedjimurje)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          { "node": "Pokreni scraper (emedjimurje)", "type": "main", "index": 0 },
+          { "node": "Pokreni scraper (mnovine)", "type": "main", "index": 0 }
+        ]
+      ]
     }
   }
 }
