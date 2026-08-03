@@ -71,6 +71,20 @@ korake (Docker Desktop instalacija, `docker compose up`, uvoz
 `n8n/scraper-workflow.json`, prvi live test). Prihvaćen kompromis: cron
 okida samo dok je računalo upaljeno i Docker Desktop pokrenut.
 
+## Razmotreni i odbačeni izvori
+
+- **visitmedimurje.com/en/events/** (2026-08-03) — nije kalendar. Cijela
+  stranica je jedan marketinški odlomak teksta koji nabraja poznate
+  godišnje festivale, bez pojedinačnih datuma/kartica/linkova. Nema
+  navigacije prema strukturiranijoj kalendar-stranici na tom domenu.
+  Ponovno razmotriti ako se stranica promijeni ili se pronađe druga URL.
+- **msm.hr** (2026-08-03) — sportski news portal (transferi, izvještaji s
+  odigranih utakmica), ne kalendar. Uzorak od 55 najnovijih naslova dao
+  je samo 1 naslov nalik najavi događaja, i taj je vjerojatno već u bazi
+  s drugog izvora. Korisnikova odluka: preskočiti, nizak prinos ne
+  opravdava održavanje adaptera. Ponovno razmotriti ako se pronađe
+  konkretnija stranica (npr. službeni raspored lige/saveza).
+
 ## Dodavanje novog izvora
 
 Implementirati `SourceAdapter` (vidi `adapters/emedjimurje.py` kao
