@@ -700,6 +700,58 @@ gomilanje neiskorištenog prostora, ne funkcionalni bug. Prihvaćeno za
 sada (ADR-006 duh — čekati stvaran problem prije rješavanja), moguće
 buduće proširenje ako se pokaže potrebnim.
 
+**Dopuna (2026-08-03, isti dan) — jednokratno čišćenje + otkriven dublji bug (višednevni događaji):**
+Nakon primjene migracije korisnik je uočio da admin queue i dalje prikazuje
+"starije" događaje. Uzivo dijagnosticirano: 6 događaja (svi iz pilot
+emedjimurje scrapea, PRIJE 30-dnevnog filtera dodanog kasnije u sesiji)
+imalo je `start_at` u prošlosti ali `end_at` daleko u budućnosti (npr.
+izložba start 12. lipnja, end 30. kolovoza) — dugotrajni "stalni" unosi,
+NE zadovoljavaju kriterij `coalesce(end_at, start_at) < now() - 3 dana` (i
+ne bi trebali, `end_at` im je i dalje budući). Korisnikova odluka: pravilo
+za automatski cron ostaje nepromijenjeno (temeljeno na `end_at`), tih 6
+redaka jednokratno ručno obrisano (service-role skripta, `start_at < now()`
+kao kriterij za ONAJ specifičan cleanup — svi imali vanjski `image_url`,
+bez Storage orphan rizika).
+
+Pritom je korisnik identificirao **stvaran, dublji propust** koji je i
+UZROKOVAO da su ti događaji uopće djelovali "zaglavljeno": `events_on_date`
+(0002) i `events_in_range` (0003) su OD POČETKA (Faza 4) filtrirali
+isključivo po `start_at` unutar dana/raspona, potpuno ignorirajući `end_at`
+— višednevni događaj bi se prikazao SAMO na dan početka, potom "nestao" iz
+`/`, `/danas`, `/sutra`, `/vikend` iako je i dalje trajao. Ovo nije bio
+scraper-specifičan bug (ručno uneseni višednevni događaj imao bi isti
+problem) — samo je scraping (koji redovito unosi festivale/izložbe s
+tjednima trajanja) prvi put učinio problem vidljivim u praksi.
+
+**Popravak:** `supabase/migrations/0027_multiday_events_range_overlap.sql`
+— obje funkcije promijenjene s "start_at pada u prozor" na "događaj se
+PREKLAPA s prozorom" (`start_at <= kraj_prozora AND coalesce(end_at,
+start_at) >= početak_prozora`). `src/components/RangeView.tsx` —
+`groupByDay()` sad prima `rangeStart`/`rangeEnd` i za višednevni događaj
+generira ulaz pod SVAKIM danom unutar [max(start_dan, rangeStart),
+min(end_dan, rangeEnd)], ne samo pod danom početka — isti event ID se
+ponavlja u više dnevnih sekcija (React key unique po sekciji/`<ul>`, ne
+globalno, nema collision). `DayView.tsx` (`/danas`, `/sutra`) ne treba
+izmjenu koda — samo flat lista za jedan dan, popravak `events_on_date`
+funkcije je dovoljan. Dokazano ispravno matematički (ne samo testirano):
+budući da SQL uvijek vraća samo događaje koji se STVARNO preklapaju s
+prozorom, `firstDay <= lastDay` je zajamčeno u app-layer petlji (nema
+praznog raspona), a Map insertion order ostaje kronološki jer je
+`clamp(start_dan, rangeStart)` monotona funkcija sortiranog `start_at`
+niza iz SQL-a.
+
+**Posljedice:**
+`tsc --noEmit`/`eslint` prolaze čisto. Migracija `0027` čeka ručno
+lijepljenje u Supabase SQL Editoru prije nego se popravak stvarno vidi na
+javnim stranicama — `events_on_date`/`events_in_range` definicije se
+mijenjaju za sve buduće pozive čim se primijeni, bez potrebe za dodatnim
+app deployom. Manja poznata UX nijansa (namjerno nezatvorena): `EventRow`
+prikazuje ORIGINALNI `start_at` (vrijeme početka) na kartici bez obzira
+pod kojim danom je grupirana — višednevni događaj prikazan npr. pod "8.
+kolovoza" i dalje ispisuje "26. srpnja, 10:00" kao vrijeme, bez "još
+traje"/"nastavlja se" oznake. Prihvatljivo za sada (ADR-006 duh), moguće
+buduće poboljšanje ako se pokaže zbunjujućim u praksi.
+
 ---
 _Format za nove zapise:_
 ```

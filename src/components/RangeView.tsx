@@ -23,19 +23,48 @@ import { TrendingPanel } from "@/components/TrendingPanel";
 import { SponsoredPanel } from "@/components/SponsoredPanel";
 import { SortToggle } from "@/components/SortToggle";
 
-function groupByDay(events: EventListItem[]): Map<string, EventListItem[]> {
+function toZagrebDay(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zagreb" }).format(
+    new Date(iso),
+  );
+}
+
+/** Dodaje 1 kalendarski dan na "YYYY-MM-DD" (čisto label-aritmetika na
+ * datumskim stringovima, ne na timezone-osjetljivim instantima — UTC
+ * podloga ovdje je samo računski trik, ne stvarna vremenska zona). */
+function nextDay(day: string): string {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+}
+
+/**
+ * Grupira događaje po danu unutar prikazanog raspona [rangeStart, rangeEnd].
+ * Višednevni događaj (end_at nakon start_at dana) se ponavlja pod SVAKIM
+ * danom dok traje (klampano na prikazani raspon), ne samo pod danom
+ * početka — vidi DECISIONS.md, korisnikova odluka Faza 6-7: dugotrajni
+ * scraped događaji (npr. izložba tjedan-mjesec dana) inače bi "nestali" iz
+ * prikaza dan nakon početka iako još traju.
+ */
+function groupByDay(
+  events: EventListItem[],
+  rangeStart: string,
+  rangeEnd: string,
+): Map<string, EventListItem[]> {
   const groups = new Map<string, EventListItem[]>();
 
   for (const event of events) {
-    const day = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Europe/Zagreb",
-    }).format(new Date(event.start_at));
+    const startDay = toZagrebDay(event.start_at);
+    const endDay = event.end_at ? toZagrebDay(event.end_at) : startDay;
+    const firstDay = startDay < rangeStart ? rangeStart : startDay;
+    const lastDay = endDay > rangeEnd ? rangeEnd : endDay;
 
-    const existing = groups.get(day);
-    if (existing) {
-      existing.push(event);
-    } else {
-      groups.set(day, [event]);
+    for (let day = firstDay; day <= lastDay; day = nextDay(day)) {
+      const existing = groups.get(day);
+      if (existing) {
+        existing.push(event);
+      } else {
+        groups.set(day, [event]);
+      }
     }
   }
 
@@ -76,7 +105,7 @@ export async function RangeView({
   // dana zasebno (dan-grupe bi razbile smisao "najpopularnije prvo").
   const popularityRanked =
     sortBy === "popularity" ? sortEventsByPopularity(events) : null;
-  const grouped = groupByDay(events);
+  const grouped = groupByDay(events, start, end);
 
   return (
     <>
