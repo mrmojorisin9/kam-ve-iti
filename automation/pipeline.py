@@ -109,7 +109,9 @@ def run(source: str, dry_run: bool) -> dict:
         fuzzy_candidates = db.find_fuzzy_candidates(
             client, location_id, normalized["start_at"]
         )
-        duplicate = find_fuzzy_duplicate(event["title"], fuzzy_candidates)
+        duplicate = find_fuzzy_duplicate(
+            event["title"], normalized["start_at"], fuzzy_candidates
+        )
         if duplicate:
             stats["skipped_duplicate"] += 1
             print(

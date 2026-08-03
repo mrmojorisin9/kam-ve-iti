@@ -564,6 +564,63 @@ sustav prijave (owner račun kreiran u sučelju kod prvog otvaranja) koji je
 potpuno zamijenio stari Basic Auth mehanizam. Mrtve varijable uklonjene iz
 `docker-compose.yml`/`.env.example` da ne zavaravaju buduće čitatelje.
 
+**Dopuna (2026-08-03, isti dan) — drugi izvor (mnovine.hr), zajednicka adapter klasa, poboljsan dedup:**
+Korisnik predlozio dva nova izvora (`visitmedimurje.com/en/events/`,
+`msm.hr`) — oba istrazena uzivo i **odbacena** prije pisanja koda: prvi
+nije kalendar (marketinski tekst bez strukture), drugi je sportski news
+portal (transferi/izvjestaji, ne najave dogadaja; uzorak od 55 naslova dao
+samo 1 nalik najavi, vjerojatno vec dupliciran). Dokumentirano u
+`automation/README.md`, "Razmotreni i odbaceni izvori", da buduce sesije
+ne ponavljaju isto istrazivanje.
+
+Treci predlozeni izvor, `mnovine.hr/dogadjanja/`, prihvacen — potvrdeno
+uzivo da koristi **identican WordPress "The Events Calendar" plugin** kao
+pilot (emedjimurje.net.hr), cak i djelomicno isti sadrzaj (dijele
+regionalnu bazu dogadaja). Parsing logika izdvojena u zajednicku
+`adapters/tribe_events.py` (`TribeEventsListAdapter`) — `emedjimurje.py`/
+`mnovine.py` sad su tanki subclassevi (`source_name`/`start_url`), buduci
+izvori s istim pluginom (cesto kod HR lokalnih portala) rade isto bez
+duplikacije koda.
+
+Dva nalaza otkrivena uzivim testiranjem, oba popravljena prije stvarnog
+upisa:
+- **Bot-zastita na mnovine.hr** — brze uzastopne paginacijske zahtjeve
+  (5 u <1s) vraca 403; isti zahtjev nakon par sekundi pauze radi.
+  `PAGE_FETCH_DELAY_SECONDS = 2` dodano izmedu stranica u
+  `TribeEventsListAdapter.fetch_raw_events()`.
+- **Neograničen vremenski opseg** — mnovine.hr lista moze sadrzavati
+  dogadaje/ponude s rasponom od godina (npr. start 2026-07-26, end
+  2028-07-26), nekorisno za portal fokusiran na "sto se danas/ovaj tjedan
+  dogadja" i skupo (Claude API po dogadaju, dulje paginacija). Korisnikova
+  odluka: `max_days_ahead = 30` na `TribeEventsListAdapter` — samo
+  dogadaji ciji pocetak pada unutar sljedecih 30 dana, s ranim prekidom
+  paginacije cim se prijede granica (lista je sortirana po datumu pocetka
+  rastuce).
+
+**Poboljsan dedup (dedup.py):** uzivi test (emedjimurje + mnovine
+zajedno) otkrio je pravi propusteni duplikat — "Notorious Festival 2026."
+(mnovine) vs. "NOTORIOUS FESTIVAL - Dvodnevni spektakl elektronicke
+glazbe" (emedjimurje), identican `start_at`/`location_id`, ali fuzzy
+title score (`token_sort_ratio` ~22%, provjereno i `token_set_ratio`/
+`partial_ratio`/`WRatio` — svi ispod 35%) daleko ispod
+`FUZZY_TITLE_THRESHOLD` (85%) zbog vrlo razlicite duljine/formulacije
+naslova. Dodan treci, neovisan sloj: **exact match na `start_at`**
+(timezone-aware `datetime` usporedba, ne string jednakost — baza vraca
+UTC, Claude Europe/Zagreb offset, ista instanca vremena drugaciji zapis)
+medu kandidatima iste lokacije — dva razlicita stvarna dogadaja na ISTOJ
+lokaciji u ISTOJ minuti je prakticki nemoguce, siguran signal neovisno o
+naslovu. `db.find_fuzzy_candidates` sad vraca i `start_at` po kandidatu.
+
+**Poznato preostalo ogranicenje (namjerno nezatvoreno ovom izmjenom):**
+isti "Notorious Festival" par i dalje NIJE uhvacen kad se datumi
+razlikuju za tocno 1 dan (dvodnevni festival, izvori razlicito biljeze
+koji je "pocetak") ZAJEDNO s vrlo razlicitim naslovima — ni exact-start_at
+(razlicit dan) ni fuzzy title (script ~22-33%) ne pogadaju taj specificni
+spoj uvjeta. Rjesavanje bi zahtijevalo semanticku (LLM) usporedbu naslova
+umjesto string-sličnosti, sto je veci zahvat izvan opsega ove sesije —
+ADR-002 human-in-the-loop (admin queue review) ostaje sigurnosna mreza za
+ovaj rijedak rubni slucaj, isti duh kao ostatak dedup dizajna.
+
 **Posljedice:**
 Migracija `0024` dodaje `source_name`, unique index na `source_url`, i
 ažurira anon grant popis. `src/lib/admin-events.ts` i `/admin/dogadjaji`
