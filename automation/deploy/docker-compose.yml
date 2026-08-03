@@ -7,10 +7,9 @@ services:
     ports:
       - "127.0.0.1:5678:5678"
     environment:
-      # Bez javne domene/HTTPS (odgodeno, vidi PROJECT_BRIEF) — n8n je
-      # dostupan SAMO preko SSH tunela (README, "Pristup n8n sucelju"),
-      # nikad izravno na javnom IP-u VM-a. N8N_HOST=localhost odgovara
-      # tome kako ce editor stvarno biti otvoren u pregledniku.
+      # Lokalno pokretanje (Docker Desktop na tvom racunalu, ADR-020
+      # dopuna 2026-08-03 — Oracle Cloud registracija blokirana) — n8n
+      # dostupan samo na 127.0.0.1, nikad izvan tvog racunala.
       - N8N_HOST=localhost
       - N8N_PROTOCOL=http
       - GENERIC_TIMEZONE=Europe/Zagreb

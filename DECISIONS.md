@@ -516,6 +516,23 @@ zahtijeva javnu domenu koja eksplicitno nije u opsegu ove sesije; SSH
 tunel je funkcionalno dovoljan i sigurniji default (ništa dodatno na
 javnom internetu) za ovaj slučaj korištenja.
 
+**Dopuna (2026-08-03, isti dan) — Oracle Cloud registracija blokirana, prelazak na lokalni Docker Desktop:**
+Oracle Cloud Free Tier registracija (Dopuna iznad) odbijena je njihovim
+sustavom za sprječavanje prijevara ("Ne možemo dovršiti vašu prijavu"),
+bez konkretnog razloga i bez jasnog puta do brzog rješenja (support je
+spor, ponovni pokušaj nema garanciju uspjeha). Umjesto čekanja,
+korisnikova odluka: n8n se pokreće **lokalno preko Docker Desktopa** na
+vlastitom Windows računalu — identičan `Dockerfile`/`docker-compose.yml`
+iz prve verzije ovog Koraka, bez VM-a i bez SSH tunela (n8n dostupan
+izravno na `localhost:5678`, već po defaultu bind-an samo na `127.0.0.1`).
+Prihvaćen svjestan kompromis: cron unutar n8n-a okida samo dok je
+računalo upaljeno i Docker Desktop aktivan — nema always-on garancije
+kakvu bi dao cloud VM. Ne smatra se trajnim rješenjem nego pragmatičnim
+korakom da automatizacija stvarno proradi umjesto da čeka na treću
+stranu; prelazak na VM (Oracle ili drugi provider) ostaje moguć bez
+izmjene koda, samo promjena hosta (`automation/deploy/README.md`
+dokumentira oba puta).
+
 **Posljedice:**
 Migracija `0024` dodaje `source_name`, unique index na `source_url`, i
 ažurira anon grant popis. `src/lib/admin-events.ts` i `/admin/dogadjaji`

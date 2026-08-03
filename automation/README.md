@@ -64,10 +64,12 @@ Stvarni upis. Provjeriti rezultat u `/admin/dogadjaji?status=pending_review`.
 
 ## n8n hosting (ADR-020, Korak 5)
 
-Docker Compose setup (n8n self-hosted na Oracle Cloud Free Tier, pristup
-preko SSH tunela) — vidi **`automation/deploy/README.md`** za kompletne
-korake (VM provisioning, Docker instalacija, `docker compose up`, uvoz
-`n8n/scraper-workflow.json`, prvi live test).
+Docker Compose setup — n8n self-hosted **lokalno preko Docker Desktopa**
+(Oracle Cloud VM plan napušten zbog blokirane registracije, vidi ADR-020
+dopunu 2026-08-03) — vidi **`automation/deploy/README.md`** za kompletne
+korake (Docker Desktop instalacija, `docker compose up`, uvoz
+`n8n/scraper-workflow.json`, prvi live test). Prihvaćen kompromis: cron
+okida samo dok je računalo upaljeno i Docker Desktop pokrenut.
 
 ## Dodavanje novog izvora
 
