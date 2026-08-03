@@ -11,8 +11,8 @@ type Props = {
   searchParams: Promise<RawEventSearchParams>;
 };
 
-const title = "Kam denes — događanja sljedećih 10 dana u Međimurskoj županiji";
-const description = "Događanja sljedećih 10 dana u Međimurskoj županiji.";
+const title = "Kam denes — događanja sljedećih 20 dana u Međimurskoj županiji";
+const description = "Događanja sljedećih 20 dana u Međimurskoj županiji.";
 
 export const metadata: Metadata = {
   title,

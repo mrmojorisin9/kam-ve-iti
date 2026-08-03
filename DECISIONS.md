@@ -635,6 +635,71 @@ VM odluku i unos pravih API ključeva. Svaki budući novi izvor implementira
 `SourceAdapter` sučelje i registrira se u `adapters/__init__.py`, bez
 izmjene ostatka pipelinea.
 
+## ADR-021: Automatsko brisanje isteklih događaja — pg_cron u Supabaseu
+
+**Datum:** 2026-08-03
+**Status:** Prihvaćeno
+
+**Kontekst:**
+S automatiziranim prikupljanjem (Faza 6-7, ADR-020) baza događaja raste
+brže nego dosad — istekli/prošli događaji se dosad nisu čistili, ostajali
+bi trajno. Korisnik traži automatsko brisanje događaja 3 dana nakon
+efektivnog završetka, uz proširenje naslovnice s 10 na 20 dana unaprijed
+(potonje samostalna, nearhitekturna izmjena — `weekRangeInZagreb()` u
+`src/lib/events.ts`, ne treba zaseban ADR).
+
+**Odluka:**
+- **pg_cron u Supabaseu**, ne n8n. Dnevno brisanje treba raditi pouzdano
+  bez obzira je li korisnikovo računalo/Docker Desktop upaljeno — n8n
+  self-hosted setup (ADR-020 Korak 5) izričito NEMA always-on garanciju
+  (dokumentiran kompromis), dok Postgres/Supabase rade 24/7 neovisno.
+  Korisnikov izravan izbor kad su mu ponuđene obje opcije.
+- `supabase/migrations/0026_delete_expired_events_cron.sql` — `pg_cron`
+  extension (`create extension if not exists pg_cron`), SQL funkcija
+  `delete_expired_events()` (`delete from events where coalesce(end_at,
+  start_at) < now() - interval '3 days'`), zakazana preko
+  `cron.schedule('delete-expired-events', '0 3 * * *', ...)` (03:00 UTC
+  dnevno, izvan prometnih sati).
+- **`coalesce(end_at, start_at)`** kao "efektivni završetak" — `end_at` je
+  nullable (nije obavezno polje ni u admin formi ni u CSV uvozu), pa
+  jednodnevni događaj bez eksplicitnog kraja mora imati fallback, inače bi
+  se nikad ne brisao.
+- **Primjenjuje se na SVE statuse** (published/pending_review/draft/
+  rejected), ne samo objavljene — korisnikova izričita formulacija ("svi
+  događaji koji su istekli, prošli i završili"), čisti i staro
+  pending_review/rejected smeće koje bi inače trajno ostajalo u admin
+  queueu.
+- **Bez SECURITY DEFINER** na `delete_expired_events()` — za razliku od
+  triggera koji moraju bypass-ati RLS za manje-privilegiranog pozivatelja
+  (anon/authenticated, vidi ADR-018), pg_cron job izvršava se s
+  privilegijama role koja ga je zakazala (postgres/service, SQL Editor) —
+  već ima pun pristup, nema potrebe za eskalacijom.
+
+**Razmotrene alternative:**
+- n8n workflow (isti sustav kao scraper, novi Cron čvor koji poziva
+  `automation` servis) — odbačeno, korisnik upravo isključio automatski
+  dnevni scraper trigger jer želi manje ovisnosti o računalu biti upaljeno
+  za taj zadatak; brisanje isteklih događaja nema tu istu potrebu za
+  ručnom kontrolom pa nema razloga vezati ga uz isti manje-pouzdan sustav.
+- Next.js API route + Vercel Cron — odbačeno, uvodi treći mehanizam
+  zakazivanja (uz pg_cron i n8n) bez konkretne prednosti za ovaj slučaj;
+  portal je već hostan na Vercelu ali logika brisanja ne treba
+  aplikacijski sloj, čisti SQL je dovoljan i jednostavniji (ADR-006 duh).
+
+**Posljedice:**
+Migracija čeka ručno lijepljenje u Supabase Dashboard SQL Editoru (isti
+obrazac kao sve dosadašnje DDL migracije, ADR-010 pouka) — ako
+`create extension pg_cron` ondje ne uspije, korisnik prvo ručno uključuje
+extension (Database → Extensions → pg_cron) pa ponovno pokreće migraciju.
+**Poznato ograničenje:** brisanje događaja preko `event_images`
+`on delete cascade` (0021) uklanja retke iz baze, ali NE briše pripadajuće
+datoteke iz `event-images` Storage bucketa (to radi samo TypeScript
+`deleteEventImageIfOrphaned`/`deleteEventGalleryImages`, ne poziva se iz
+SQL-a) — Storage datoteke isteklih događaja postaju osirotjele, sporo
+gomilanje neiskorištenog prostora, ne funkcionalni bug. Prihvaćeno za
+sada (ADR-006 duh — čekati stvaran problem prije rješavanja), moguće
+buduće proširenje ako se pokaže potrebnim.
+
 ---
 _Format za nove zapise:_
 ```

@@ -292,14 +292,15 @@ export function weekendRangeInZagreb(): { start: string; end: string } {
 }
 
 /**
- * Raspon (YYYY-MM-DD) za naslovnu (/, "Tjedan" tab): rolling 11-dnevni
- * prozor od danas do danas+10 (uključivo), ne kalendarski tjedan (izmjena,
+ * Raspon (YYYY-MM-DD) za naslovnu (/, "Tjedan" tab): rolling 21-dnevni
+ * prozor od danas do danas+20 (uključivo), ne kalendarski tjedan (izmjena,
  * ranije je bio ponedjeljak-nedjelja istog tjedna, potom zaseban /tjedan
- * prije nego je naslovna preuzela isti raspon — vidi CHANGELOG).
+ * prije nego je naslovna preuzela isti raspon — vidi CHANGELOG). Prošireno
+ * s 10 na 20 dana (Faza 6-7, korisnikova odluka).
  */
 export function weekRangeInZagreb(): { start: string; end: string } {
   const today = todayInZagreb();
-  return { start: today, end: addDaysToZagrebDate(today, 10) };
+  return { start: today, end: addDaysToZagrebDate(today, 20) };
 }
 
 /**
