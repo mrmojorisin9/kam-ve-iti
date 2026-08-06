@@ -5,8 +5,10 @@
 **Status:** v1 u produkciji (Faza 1–5 i Faza 8 dovršene, vidi `CHANGELOG.md`)
 
 _Radni naziv projekta promijenjen iz "Kam ve iti" u "Kam denes" 2026-07-16,
-prema ažuriranom master promptu (v2) — vidi `CHANGELOG.md`. Infrastruktura
-(GitHub repo, Vercel projekt, domena `kamdenes.hr`) još nije preimenovana._
+prema ažuriranom master promptu (v2) — vidi `CHANGELOG.md`. Domena
+`kamdenes.hr` aktivirana 2026-08-06 (vidi `CHANGELOG.md`, Faza 8 Dan 76).
+GitHub repo i Vercel projekt i dalje nose stari naziv ("kam-ve-iti") —
+nisu preimenovani._
 
 ## 1. Problem
 Informacije o javnim događanjima u Međimurskoj županiji raspršene su po desetcima izvora (gradovi, općine, turističke zajednice, muzeji, knjižnice, sportski klubovi, lokalni portali, društvene mreže). Korisnik mora ručno pregledavati sve te izvore da bi pronašao događanja koja ga zanimaju.

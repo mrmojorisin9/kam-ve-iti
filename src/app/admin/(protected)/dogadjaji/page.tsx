@@ -47,12 +47,20 @@ export default async function AdminEventsPage({
         <h1 className="font-display text-parchment text-3xl font-semibold tracking-tight">
           Događaji
         </h1>
-        <Link
-          href="/admin/dogadjaji/novi"
-          className="border-gold text-gold hover:bg-gold hover:text-night shrink-0 rounded-md border px-4 py-2 text-sm font-medium"
-        >
-          Novi događaj
-        </Link>
+        <div className="flex shrink-0 gap-3">
+          <Link
+            href="/admin/dogadjaji/duplikati"
+            className="border-line text-parchment-muted hover:text-parchment rounded-md border px-4 py-2 text-sm font-medium"
+          >
+            Mogući duplikati
+          </Link>
+          <Link
+            href="/admin/dogadjaji/novi"
+            className="border-gold text-gold hover:bg-gold hover:text-night rounded-md border px-4 py-2 text-sm font-medium"
+          >
+            Novi događaj
+          </Link>
+        </div>
       </div>
 
       <nav className="mt-6 flex flex-wrap gap-2">

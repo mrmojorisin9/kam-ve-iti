@@ -21,12 +21,20 @@ export default async function AdminLayout({
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <header className="border-line flex items-center justify-between border-b px-6 py-4">
-        <Link
-          href="/"
-          className="text-parchment-muted hover:text-parchment focus-visible:outline-gold font-mono text-xs tracking-[0.2em] uppercase focus-visible:outline-2 focus-visible:outline-offset-2"
-        >
-          Kam denes — admin
-        </Link>
+        <nav className="flex items-center gap-4">
+          <Link
+            href="/"
+            className="text-parchment-muted hover:text-parchment focus-visible:outline-gold font-mono text-xs tracking-[0.2em] uppercase focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            Naslovnica
+          </Link>
+          <Link
+            href="/admin"
+            className="text-parchment-muted hover:text-parchment focus-visible:outline-gold font-mono text-xs tracking-[0.2em] uppercase focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            Nadzorna ploča
+          </Link>
+        </nav>
         <form action={logout} className="flex items-center gap-3">
           <span className="text-parchment-muted text-sm">{user.email}</span>
           <button

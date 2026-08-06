@@ -38,8 +38,9 @@ type AdminEventListRow = {
 };
 
 /**
- * Svi događaji (admin — RLS "events_admin_full_access"), najnoviji početak
- * prvi. `status` filtrira na jedan status (npr. "Na čekanju" prečac u
+ * Svi događaji (admin — RLS "events_admin_full_access"), najbliži početak
+ * prvi (korisnikov zahtjev — današnji/skorašnji događaji na vrhu liste).
+ * `status` filtrira na jedan status (npr. "Na čekanju" prečac u
  * `/admin/dogadjaji`) — bez njega vraća sve statuse.
  */
 export async function listEventsForAdmin(
@@ -55,7 +56,7 @@ export async function listEventsForAdmin(
       location:locations ( name )
     `,
     )
-    .order("start_at", { ascending: false });
+    .order("start_at", { ascending: true });
 
   if (status) {
     query = query.eq("status", status);
@@ -107,6 +108,66 @@ export async function bulkUpdateEventStatus(
   }
 
   return { error: null };
+}
+
+export type DuplicateCandidateEvent = {
+  id: string;
+  title: string;
+  slug: string;
+  start_at: string;
+  status: string;
+  location_id: string;
+  location_name: string;
+  source_name: string | null;
+};
+
+type DuplicateCandidateRow = {
+  id: string;
+  title: string;
+  slug: string;
+  start_at: string;
+  status: string;
+  location_id: string;
+  source_name: string | null;
+  location: { name: string } | null;
+};
+
+/**
+ * Svi neodbijeni događaji, za alat za otkrivanje duplikata
+ * (`/admin/dogadjaji/duplikati`) — vidi `@/lib/duplicates`. Odbijeni
+ * događaji su već riješeni (ne prikazuju se nigdje), pa nema smisla
+ * ponovno ih predlagati za brisanje.
+ */
+export async function listEventsForDuplicateScan(): Promise<
+  DuplicateCandidateEvent[]
+> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("events")
+    .select(
+      `
+      id, title, slug, start_at, status, location_id, source_name,
+      location:locations ( name )
+    `,
+    )
+    .neq("status", "rejected")
+    .order("start_at", { ascending: true });
+
+  if (error) {
+    console.error("listEventsForDuplicateScan:", error.message);
+    return [];
+  }
+
+  return ((data ?? []) as unknown as DuplicateCandidateRow[]).map((row) => ({
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    start_at: row.start_at,
+    status: row.status,
+    location_id: row.location_id,
+    location_name: row.location?.name ?? "—",
+    source_name: row.source_name,
+  }));
 }
 
 export type AdminEventDetail = {
