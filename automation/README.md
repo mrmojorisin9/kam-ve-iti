@@ -87,7 +87,40 @@ okida samo dok je računalo upaljeno i Docker Desktop pokrenut.
 
 ## Dodavanje novog izvora
 
-Implementirati `SourceAdapter` (vidi `adapters/emedjimurje.py` kao
-primjer), registrirati u `adapters/__init__.py` (`ADAPTERS` mapa).
-`pipeline.py`, `extract.py`, `dedup.py` ne trebaju izmjenu — rade nad
-`RawEvent` sučeljem bez obzira na izvor.
+**Prije pisanja ijednog retka adaptera — analiza izvora (besplatno, bez
+Claude poziva).** Formalizacija postupka koji je već ručno proveden za
+`visitmedimurje.com`/`msm.hr` (odbačeni) i `mnovine.hr` (prihvaćen), vidi
+"Razmotreni i odbačeni izvori" gore. Cilj: ne pisati/održavati adapter za
+izvor koji će ionako imati nizak prinos ili se pokazati skupim/dupliciranim
+prije nego se to ustanovi bez trošenja kredita.
+
+1. **Je li ovo uopće kalendar?** Ručni pregled stranice (`curl` ili
+   preglednik) — traži se strukturirana lista zapisa s pojedinačnim
+   datumima/karticama/linkovima, ne slobodni marketinški tekst ili news
+   feed. Provjeriti i eventualne AJAX/REST pozive (network inspekcija) prije
+   zaključka "nema strukture" — `visitmedimurje.com` je odbačen tek nakon te
+   provjere, ne samo pregledom vidljivog HTML-a.
+2. **Isti WordPress "The Events Calendar" plugin kao postojeći izvori?**
+   Prepoznatljivi `tribe-events` CSS razredi (vidi `adapters/tribe_events.py`
+   komentar). Ako da, novi adapter je gotovo besplatan — tanki subclass
+   `TribeEventsListAdapter` (`source_name`/`start_url`), isti obrazac kao
+   `emedjimurje.py`/`mnovine.py`. Čest slučaj kod HR lokalnih portala.
+3. **Uzorak ~20 naslova ručno** — koliki postotak stvarno izgleda kao
+   najava budućeg događaja (ne transfer/news vijest, ne trajna ponuda s
+   nerealnim rasponom godina)? `msm.hr` odbačen jer je od 55 naslova samo 1
+   nalikovao najavi — nizak prinos ne opravdava održavanje adaptera.
+4. **Regionalno preklapanje s postojećim izvorima?** `emedjimurje.net.hr` i
+   `mnovine.hr` dijele dio regionalne baze događaja (dokazano "Notorious
+   Festival" slučajem, ADR-020 dopuna) — provjeriti ručno je li nekoliko
+   naslova iz uzorka (korak 3) već prisutno na postojećem izvoru prije
+   pisanja adaptera. Dedup sloj (`dedup.py`) i dalje hvata preklapanje na
+   razini baze, ali svaki preklapajući zapis je Claude poziv koji dedup
+   naknadno odbaci — jeftinije je unaprijed znati razmjer preklapanja.
+5. Tek nakon 1-4 → pisanje adaptera (korak ispod) i **jedan** dry-run test
+   protiv stvarnog izvora, ne ponovljeni pokušaji uživo.
+
+**Implementacija:** implementirati `SourceAdapter` (vidi
+`adapters/emedjimurje.py` kao primjer, ili naslijediti
+`TribeEventsListAdapter` iz koraka 2), registrirati u `adapters/__init__.py`
+(`ADAPTERS` mapa). `pipeline.py`, `extract.py`, `dedup.py` ne trebaju
+izmjenu — rade nad `RawEvent` sučeljem bez obzira na izvor.
