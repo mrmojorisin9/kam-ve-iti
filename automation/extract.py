@@ -19,7 +19,13 @@ import anthropic
 
 from .adapters.base import RawEvent
 
-MODEL = "claude-sonnet-5"
+# Haiku 4.5, ne Sonnet — usporedni test (2026-08-07, 10 stvarnih zapisa,
+# DECISIONS.md ADR-020 dopuna) pokazao 9/10 identicnih rezultata; jedina
+# razlika bio je granican slucaj kategorizacije (oba sluga valjana, ne
+# halucinacija/nevaljan format), datum/lokacija/pouzdanost identicni na
+# svih 10. Za strukturiranu ekstrakciju s fiksnom shemom/ponudenim
+# slugovima Haiku daje isporucivu kvalitetu uz bitno nizu cijenu po pozivu.
+MODEL = "claude-haiku-4-5-20251001"
 
 EXTRACT_TOOL = {
     "name": "extract_event",

@@ -684,10 +684,29 @@ Supabase SQL Editoru, isti obrazac kao dosad). `automation/db.py` —
 `find_by_source_url()` sad vraća i `source_content_hash`. Već postojeći
 `try/except` oko Claude poziva (`extract.py`, isti dan, manji zahvat bez
 vlastite ADR dopune) osigurava da pojedinačna API greška ne ruši cijeli
-run — komplementarno ovoj izmjeni, ne preklapa se s njom. Ostatak plana iz
-korisnikova zahtjeva (analiza izvora prije dodavanja, prompt caching/model
-izbor za dodatnu uštedu po pozivu, dodavanje novih izvora) ostaje otvoren
-za sljedeće sesije.
+run — komplementarno ovoj izmjeni, ne preklapa se s njom.
+
+**Dopuna (2026-08-07, isti dan) — sigurnosni strop na pozive + model
+prebačen na Haiku 4.5:** `MAX_EXTRACTIONS_PER_RUN=100` u `pipeline.py` —
+ako broj STVARNIH Claude poziva u jednom pokretanju dosegne strop, `run()`
+prekida daljnju obradu umjesto da nastavi trošiti (zaštita od tihog
+scraping buga, ne strog dnevni budžet — prag namjerno iznad legalnog
+slučaja prvog runa posve novog izvora). Razmotren i **odbačen** prompt
+caching za popis kategorija/lokacija u promptu — procijenjen na ~350-450
+tokena, ispod Anthropicovog minimuma od 1024 tokena za cache breakpoint,
+marker bi bio tiho ignoriran bez uštede pri trenutnoj veličini popisa
+(ponovno razmotriti ako popis znatno naraste). Umjesto toga, live
+usporedni test (10 stvarnih zapisa, `emedjimurje`, identičan prompt/shema
+na oba modela) pokazao je Haiku 4.5 kao isplativiju zamjenu za Sonnet:
+9/10 identičnih rezultata (datum/lokacija/pouzdanost), jedina razlika
+granični slučaj kategorizacije ("Proslava Velike Gospe" — Sonnet
+`manifestacije-i-feste`, Haiku `drustvo`, oba valjana sluga, ne
+halucinacija), uz ~15% manje input i ~25% manje output tokena po pozivu i
+bitno nižu cijenu po tokenu. `automation/extract.py` — `MODEL =
+"claude-haiku-4-5-20251001"`. Korisnikova odluka nakon uvida u test.
+
+Ostatak plana iz korisnikova zahtjeva (formalan checklist za analizu
+novih izvora, dodavanje novih izvora) ostaje otvoren za sljedeće sesije.
 
 ## ADR-021: Automatsko brisanje isteklih događaja — pg_cron u Supabaseu
 

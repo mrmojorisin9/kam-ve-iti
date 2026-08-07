@@ -29,6 +29,15 @@ from .extract import normalize
 # jednom zapisu ne poveca sanse za isto na sljedecem odmah zatim.
 EXTRACT_DELAY_SECONDS = 1
 
+# Sigurnosni strop na broj STVARNIH Claude poziva po pokretanju — sprjecava
+# tih runaway trosak ako scraping bug (npr. selektor koji odjednom pogodi
+# preveliki dio stranice, ili paginacija koja ne prestaje) odjednom vrati
+# puno vise zapisa nego ocekivano. Normalan dnevni run (nakon
+# content_hash filtera, 0028) trazi ekstrakciju samo za par novih zapisa;
+# prvi run posve novog izvora moze legalno trebati nekoliko desetaka —
+# 100 je namjerno iznad tog legalnog slucaja, ne strogi dnevni budzet.
+MAX_EXTRACTIONS_PER_RUN = 100
+
 
 def content_hash(raw: RawEvent) -> str:
     """Fingerprint sirovih polja s izvora, prije Claude ekstrakcije (0028).
@@ -95,10 +104,11 @@ def run(source: str, dry_run: bool) -> dict:
         "skipped_duplicate": 0,
         "skipped_extraction": 0,
         "skipped_unchanged": 0,
+        "stopped_at_cap": False,
     }
 
     api_calls_made = 0
-    for raw in raw_events:
+    for i, raw in enumerate(raw_events):
         existing = db.find_by_source_url(client, raw.source_url)
         raw_hash = content_hash(raw)
 
@@ -106,6 +116,15 @@ def run(source: str, dry_run: bool) -> dict:
             stats["skipped_unchanged"] += 1
             print(f"  [preskoceno: nepromijenjeno od proslog pokretanja, bez Claude poziva] {raw.title}")
             continue
+
+        if api_calls_made >= MAX_EXTRACTIONS_PER_RUN:
+            stats["stopped_at_cap"] = True
+            print(
+                f"  [STOP: dosegnut sigurnosni strop od {MAX_EXTRACTIONS_PER_RUN} "
+                f"Claude poziva u ovom pokretanju — preskacem preostalih "
+                f"{len(raw_events) - i} zapisa, provjeri izvor prije sljedeceg runa]"
+            )
+            break
 
         if api_calls_made > 0:
             time.sleep(EXTRACT_DELAY_SECONDS)
