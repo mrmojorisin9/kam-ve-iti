@@ -91,15 +91,23 @@ def normalize(
 ) -> dict | None:
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=1024,
-        tools=[EXTRACT_TOOL],
-        tool_choice={"type": "tool", "name": "extract_event"},
-        messages=[
-            {"role": "user", "content": _build_prompt(raw, categories, locations)}
-        ],
-    )
+    try:
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=1024,
+            tools=[EXTRACT_TOOL],
+            tool_choice={"type": "tool", "name": "extract_event"},
+            messages=[
+                {"role": "user", "content": _build_prompt(raw, categories, locations)}
+            ],
+        )
+    except anthropic.APIError as exc:
+        # Jedna neuspjela ekstrakcija ne smije srusiti cijeli pipeline run
+        # (uoceno tijekom testiranja: rate limit/timeout na jednom zapisu
+        # prekidao je obradu svih preostalih). Pipeline.py ovakav zapis
+        # tretira kao "skipped_extraction", isto kao i confident=false.
+        print(f"  [greska: Claude API] {raw.title} -- {exc}")
+        return None
 
     tool_use = next(
         (block for block in response.content if block.type == "tool_use"), None

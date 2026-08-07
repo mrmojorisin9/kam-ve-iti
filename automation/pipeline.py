@@ -13,6 +13,7 @@ debug (`python -m automation.pipeline --source emedjimurje --dry-run`).
 
 import argparse
 import re
+import time
 import unicodedata
 
 from dotenv import load_dotenv
@@ -22,6 +23,10 @@ from .adapters import ADAPTERS
 from .adapters.base import RawEvent
 from .dedup import find_fuzzy_duplicate
 from .extract import normalize
+
+# Razmak izmedu uzastopnih Claude API poziva, da eventualni rate limit na
+# jednom zapisu ne poveca sanse za isto na sljedecem odmah zatim.
+EXTRACT_DELAY_SECONDS = 1
 
 
 def slugify(text: str) -> str:
@@ -70,9 +75,11 @@ def run(source: str, dry_run: bool) -> dict:
 
     stats = {"inserted": 0, "updated": 0, "skipped_duplicate": 0, "skipped_extraction": 0}
 
-    for raw in raw_events:
+    for i, raw in enumerate(raw_events):
         existing = db.find_by_source_url(client, raw.source_url)
 
+        if i > 0:
+            time.sleep(EXTRACT_DELAY_SECONDS)
         normalized = normalize(raw, categories, locations)
         if not normalized:
             stats["skipped_extraction"] += 1
