@@ -12,6 +12,7 @@ debug (`python -m automation.pipeline --source emedjimurje --dry-run`).
 """
 
 import argparse
+import hashlib
 import re
 import time
 import unicodedata
@@ -27,6 +28,21 @@ from .extract import normalize
 # Razmak izmedu uzastopnih Claude API poziva, da eventualni rate limit na
 # jednom zapisu ne poveca sanse za isto na sljedecem odmah zatim.
 EXTRACT_DELAY_SECONDS = 1
+
+
+def content_hash(raw: RawEvent) -> str:
+    """Fingerprint sirovih polja s izvora, prije Claude ekstrakcije (0028).
+
+    Adapter dohvaca CIJELI vremenski prozor na svakom pokretanju (dnevni
+    cron), pa bi isti nepromijenjeni zapis inace dobio Claude ekstrakciju
+    iznova svaki dan do vlastitog datuma pocetka. Usporedbom ovog hasha s
+    `source_content_hash` vec pohranjenim u bazi, `run()` preskace Claude
+    poziv u potpunosti kad se sadrzaj s izvora nije promijenio.
+    """
+    fields = "\x1e".join(
+        [raw.title, raw.date_text, raw.location_text, raw.excerpt or "", raw.image_url or ""]
+    )
+    return hashlib.sha256(fields.encode("utf-8")).hexdigest()
 
 
 def slugify(text: str) -> str:
@@ -73,14 +89,28 @@ def run(source: str, dry_run: bool) -> dict:
     raw_events: list[RawEvent] = adapter.fetch_raw_events()
     print(f"[{source}] dohvaceno {len(raw_events)} sirovih zapisa")
 
-    stats = {"inserted": 0, "updated": 0, "skipped_duplicate": 0, "skipped_extraction": 0}
+    stats = {
+        "inserted": 0,
+        "updated": 0,
+        "skipped_duplicate": 0,
+        "skipped_extraction": 0,
+        "skipped_unchanged": 0,
+    }
 
-    for i, raw in enumerate(raw_events):
+    api_calls_made = 0
+    for raw in raw_events:
         existing = db.find_by_source_url(client, raw.source_url)
+        raw_hash = content_hash(raw)
 
-        if i > 0:
+        if existing and existing.get("source_content_hash") == raw_hash:
+            stats["skipped_unchanged"] += 1
+            print(f"  [preskoceno: nepromijenjeno od proslog pokretanja, bez Claude poziva] {raw.title}")
+            continue
+
+        if api_calls_made > 0:
             time.sleep(EXTRACT_DELAY_SECONDS)
         normalized = normalize(raw, categories, locations)
+        api_calls_made += 1
         if not normalized:
             stats["skipped_extraction"] += 1
             print(f"  [preskoceno: ekstrakcija neizvjesna] {raw.title}")
@@ -104,6 +134,7 @@ def run(source: str, dry_run: bool) -> dict:
             "source_url": raw.source_url,
             "source_name": raw.source_name,
             "image_url": raw.image_url,
+            "source_content_hash": raw_hash,
         }
 
         if existing:

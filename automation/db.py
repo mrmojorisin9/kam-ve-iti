@@ -41,10 +41,12 @@ def get_locations(client: Client) -> list[dict]:
 
 def find_by_source_url(client: Client, source_url: str) -> dict | None:
     """Postojeci redak s istim source_url (za upsert umjesto insert) —
-    oslanja se na `events_source_url_unique` partial unique index."""
+    oslanja se na `events_source_url_unique` partial unique index.
+    Ukljucuje `source_content_hash` da pipeline.py moze preskociti Claude
+    ekstrakciju kad se sirovi sadrzaj s izvora nije promijenio (0028)."""
     res = (
         client.table("events")
-        .select("id, title, status")
+        .select("id, title, status, source_content_hash")
         .eq("source_url", source_url)
         .maybe_single()
         .execute()

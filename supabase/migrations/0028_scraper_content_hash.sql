@@ -1,0 +1,22 @@
+-- Kam denes — Faza 6-7 nastavak: sprjecavanje ponovljene Claude ekstrakcije
+-- nepromijenjenih scraped zapisa (DECISIONS.md ADR-020 dopuna 2026-08-07).
+-- Primijeniti kroz Supabase Dashboard SQL Editor ili `supabase db push`.
+--
+-- Problem: TribeEventsListAdapter dohvaca CIJELI 30-dnevni prozor na
+-- SVAKOM pokretanju (n8n cron je dnevni), a pipeline.py je do sada slao
+-- SVAKI zapis na Claude ekstrakciju cak i kad je source_url vec u bazi —
+-- dogadaj 25 dana unaprijed dobivao bi ekstrakciju ~25x zaredom prije
+-- vlastitog datuma pocetka, iako se sadrzaj na izvoru nije promijenio.
+--
+-- source_content_hash: sha256 hash sirovih polja s izvora (title,
+-- date_text, location_text, excerpt, image_url) prije Claude ekstrakcije.
+-- automation/pipeline.py usporeduje novi hash s pohranjenim prije poziva
+-- Claude API-ju — ako se poklapaju, ekstrakcija se potpuno preskace.
+-- NULL za sve postojece admin/CSV/rucno unesene dogadaje (nemaju izvorni
+-- "sirovi" tekst za hashiranje).
+alter table events add column source_content_hash text;
+
+-- Interno knjigovodstveno polje za automation/, ne dio javnog API-ja —
+-- namjerno NIJE dodano u anon column grant popis (0024 "Ispravak" zamka:
+-- svaki javno vidljiv stupac mora biti eksplicitno dodan, ovaj to ne
+-- treba biti).

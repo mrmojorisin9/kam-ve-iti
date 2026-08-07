@@ -635,6 +635,60 @@ VM odluku i unos pravih API ključeva. Svaki budući novi izvor implementira
 `SourceAdapter` sučelje i registrira se u `adapters/__init__.py`, bez
 izmjene ostatka pipelinea.
 
+**Dopuna (2026-08-07) — sadržajni fingerprint sprječava ponovljenu Claude ekstrakciju nepromijenjenih zapisa:**
+Nakon neočekivano visokog Anthropic troška (03.08. sesija, izgradnja prva
+dva izvora), korisnik zatražio plan za ograničavanje troška prije
+dodavanja novih izvora. Analizom pipelinea (bez izmjene koda) utvrđen
+strukturan uzrok, veći od bilo kojeg pojedinog testa: `TribeEventsListAdapter`
+dohvaća CIJELI `max_days_ahead` prozor na svakom pokretanju, a n8n cron je
+dnevni — `pipeline.py` je slao SVAKI dohvaćeni zapis na Claude ekstrakciju
+prije provjere postoji li već u bazi (`existing` se izračunao, ali se
+ignorirao). Događaj 25 dana unaprijed je tako dobivao ekstrakciju ~25×
+zaredom prije vlastitog datuma početka, iako se sadržaj na izvoru nije
+mijenjao — dnevni cron je taj trošak plaćao iznova svaki dan.
+
+**Odluka:** `events.source_content_hash` (sha256 sirovih polja s izvora —
+naslov, datum/vrijeme tekst, lokacija tekst, opis, slika — prije Claude
+poziva). `pipeline.py` uspoređuje novoizračunati hash s pohranjenim PRIJE
+poziva Claude API-ju; poklapanje = potpuno preskačanje ekstrakcije (novi
+`stats["skipped_unchanged"]` brojač), bez ikakvog API poziva. Hash se
+pohranjuje uz svaki insert/update, isto polje se koristi za sljedeću
+usporedbu. Pauza između poziva (`EXTRACT_DELAY_SECONDS`) sad broji samo
+stvarno izvedene API pozive, ne i one preskočene hashem, da razmak i dalje
+ima smisla kad je većina zapisa u pojedinom runu nepromijenjena.
+
+**Razmotrene alternative:**
+- Skratiti `max_days_ahead` prozor — odbačeno, ne rješava temeljni problem
+  (i unutar kraćeg prozora bi se isti zapis ponovno ekstrahirao svaki dan
+  do svog datuma), samo smanjuje razmjer simptoma.
+- Rjeđi cron (npr. tjedni umjesto dnevni) — odbačeno, izravno smanjuje
+  koliko brzo se novi događaji pojavljuju u admin queueu, cijena je
+  korisničko iskustvo umjesto stvarnog rješenja ponovljene obrade.
+- Hash na razini source_url u zasebnoj tablici umjesto stupca na `events`
+  — odbačeno za sad, isti ADR-020 duh ("zasebna staging tablica bi
+  duplicirala shemu") — `events` red već postoji za svaki uspješno
+  ekstrahiran zapis, dovoljno mjesto za fingerprint bez nove tablice.
+
+**Poznato preostalo ograničenje (namjerno nezatvoreno ovom izmjenom):**
+zapisi koje `dedup.py` prepozna kao vjerojatan duplikat DRUGOG izvora
+(`skipped_duplicate`) nikad ne dobiju vlastiti `events` redak, pa nemaju
+gdje pohraniti hash — ostaju bez zaštite, dobivaju Claude ekstrakciju na
+svakom pokretanju dok im datum ne istekne iz vremenskog prozora. Rjeđi
+slučaj od glavnog problema (zahtijeva da isti događaj postoji na dva
+izvora s dovoljno različitim URL-ovima), ostavljen za budući zahvat ako se
+pokaže značajnim (npr. zasebna tablica poznatih duplikatnih URL-ova).
+
+**Posljedice:**
+`supabase/migrations/0028_scraper_content_hash.sql` (čeka ručnu primjenu u
+Supabase SQL Editoru, isti obrazac kao dosad). `automation/db.py` —
+`find_by_source_url()` sad vraća i `source_content_hash`. Već postojeći
+`try/except` oko Claude poziva (`extract.py`, isti dan, manji zahvat bez
+vlastite ADR dopune) osigurava da pojedinačna API greška ne ruši cijeli
+run — komplementarno ovoj izmjeni, ne preklapa se s njom. Ostatak plana iz
+korisnikova zahtjeva (analiza izvora prije dodavanja, prompt caching/model
+izbor za dodatnu uštedu po pozivu, dodavanje novih izvora) ostaje otvoren
+za sljedeće sesije.
+
 ## ADR-021: Automatsko brisanje isteklih događaja — pg_cron u Supabaseu
 
 **Datum:** 2026-08-03
