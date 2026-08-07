@@ -161,7 +161,7 @@ export async function RangeView({
             {relaxedFrom && <FallbackNotice relaxedFrom={relaxedFrom} />}
             {[...grouped.entries()].map(([day, dayEvents]) => (
               <section key={day}>
-                <h2 className="text-parchment-muted font-mono text-xs tracking-[0.15em] uppercase">
+                <h2 className="border-gold/30 text-gold font-mono text-sm font-semibold tracking-[0.15em] uppercase border-b pb-2">
                   {formatHeaderDate(day)}
                 </h2>
                 <ul className="mt-2 space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">

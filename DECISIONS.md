@@ -893,6 +893,39 @@ kolovoza" i dalje ispisuje "26. srpnja, 10:00" kao vrijeme, bez "još
 traje"/"nastavlja se" oznake. Prihvatljivo za sada (ADR-006 duh), moguće
 buduće poboljšanje ako se pokaže zbunjujućim u praksi.
 
+**Dopuna (2026-08-07) — ispravak: 0027 je DROP+CREATE-om tiho izbrisao
+10 nepovezanih stupaca (broj pregleda, "U trendu", pametni filtri):**
+korisnik prijavio da su broj klikova i "U trendu"/"Najpopularnije" oznake
+nestali s prikaza događaja. Uzrok: 0027 je (ispravno, radi promjene
+where-klauzule) morao DROP+CREATE `events_on_date`/`events_in_range`, ali
+je pritom PREPISAO cijeli `RETURNS TABLE` popis stupaca umjesto da samo
+doda where-izmjenu — izgubljeni su `is_free`/`is_family_friendly`/
+`is_dog_friendly`/`is_solo_friendly`/`is_romantic`/`is_hidden_gem`/`pace`/
+`popularity_score`/`is_trending`/`view_count` (akumulirani kroz 0007→
+0008→0010→0011→0013, zadnja potpuna verzija bila 0017). Posljedica šira
+od prijavljenog: `src/lib/events.ts` `computePopularityBadges()` filtrira
+sve događaje bez `popularity_score` (tiho prazno), `EventRow.tsx`
+prikazuje broj pregleda samo kad je `view_count` broj (tiho skriveno) —
+ALI i pametni filtri (Besplatno/Obitelj/itd., `filterEventsBySmartTags`)
+su tiho slomljeni na isti način, neprijavljeno (undefined boolean se
+tretira kao "ne zadovoljava filtar", filtar bi vratio 0 rezultata).
+Isti obrazac buga kao 0025 ("fix_sponsored_until_grant_regression") —
+DROP+CREATE na funkciji/gepolitici je rizičan upravo zato što PREPISUJE
+cijelu definiciju, ne samo namjeravanu izmjenu; lako je nehotice izostaviti
+nešto što je akumulirano kroz više prijašnjih migracija.
+
+**Popravak:** `supabase/migrations/0029_restore_event_functions_missing_
+columns.sql` — DROP+CREATE ponovljen s punim popisom stupaca (identičan
+0013) UZ zadržanu 0027 where-klauzulu (preklapanje). Nema izmjene TS koda
+— `EventListItem` tip i sva mjesta koja čitaju ta polja već su ispravno
+postojala, samo je SQL izlaz bio nepotpun. **Poznato preostalo
+ograničenje:** ovakva tiha regresija (DROP+CREATE izgubi akumulirane
+stupce) ostaje strukturan rizik za svaku BUDUĆU izmjenu ovih funkcija —
+razmotriti ubuduće `\d+ events_on_date` (ili ekvivalentnu provjeru
+stvarne sheme u produkciji) prije pisanja DROP+CREATE migracije, ne
+oslanjati se na repo povijest kao izvor istine (ADR-010 pouka, ista kao
+za return-type grešku).
+
 ---
 _Format za nove zapise:_
 ```
