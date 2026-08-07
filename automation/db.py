@@ -93,8 +93,19 @@ def update_event_by_source_url(
 ) -> dict:
     """Re-scrape istog source_url: azurira postojeci redak umjesto novog
     inserta. Ne dira `status` (admin je mozda vec odobrio/odbio — re-scrape
-    ne smije ponistiti ljudsku odluku, samo osvjezava sadrzajna polja)."""
-    event = {k: v for k, v in event.items() if k not in ("status", "created_by")}
+    ne smije ponistiti ljudsku odluku, samo osvjezava sadrzajna polja).
+
+    Polja s vrijednosti None se NE upisuju preko postojece vrijednosti u
+    bazi — sprjecava re-scrape da tiho izbrise rucni admin unos. Otkriveno
+    uzivo 2026-08-07: mnovine.hr nikad ne daje sliku u listi (uvijek
+    image_url=None), pa je re-scrape prepisao rucno dodanu sliku admina
+    natrag na prazno. Isti rizik postoji za description/venue_name/end_at
+    kod izvora koji ta polja ne pruzaju."""
+    event = {
+        k: v
+        for k, v in event.items()
+        if k not in ("status", "created_by") and v is not None
+    }
     res = (
         client.table("events")
         .update(event)

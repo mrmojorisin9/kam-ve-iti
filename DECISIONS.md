@@ -746,6 +746,36 @@ odluka: NE pokretati stvaran upis danas — adapter ostaje spreman,
 registriran, čeka sljedeći prirodni cron ciklus kad se pojave stvarno
 novi prelog.hr događaji koji nisu već ručno uneseni.
 
+**Dopuna (2026-08-07, isti dan) — ispravak: re-scrape brisao ručne admin
+izmjene poljima koje izvor ne pruža:** posljedica gornjeg stvarnog cron
+pokretanja (emedjimurje+mnovine+prelog, 58 ažuriranih redaka) — korisnik
+prijavio da je ručno dodana slika na jednom događaju nestala. Direktna
+DB provjera: `image_url=None`, `updated_at` točno u trenutku današnjeg
+mnovine runa. Uzrok: mnovine.hr adapter nikad ne daje sliku u listi
+(poznato, dokumentirano od Dan 6), pa je `update_event_by_source_url()`
+dobio `image_url=None` iz svježeg scrapea i njime prepisao postojeću
+ručno dodanu vrijednost — funkcija je dosad štitila samo `status`/
+`created_by` od prepisivanja, ne i "izvor nema ovo polje" slučaj.
+
+**Odluka:** `automation/db.py` — `update_event_by_source_url()` sad
+izbacuje SVA polja s vrijednosti `None` iz update payloada (ne samo
+`status`/`created_by`) prije upisa u bazu — Postgres update bez tog
+ključa jednostavno ne dira postojeću vrijednost stupca. Štiti
+`image_url`/`description`/`venue_name`/`end_at` (polja koja pojedini
+izvori legitimo ne pružaju) od tihog brisanja ručnog admin unosa pri
+sljedećem re-scrapeu.
+
+**Poznato preostalo ograničenje (namjerno nezatvoreno ovom izmjenom):**
+zaštita pokriva samo None-vrijednosti. Ako scraper vrati NEKU (ne-None,
+ali drugačiju) vrijednost za polje koje je admin ručno ispravio — npr.
+pogrešnu kategoriju koju je admin ručno promijenio — re-scrape će je i
+dalje prepisati AI ekstrakcijom, jer trenutni model nema način razlikovati
+"vrijednost koju je postavio scraper" od "vrijednost koju je ručno
+ispravio čovjek". Rješavanje bi zahtijevalo eksplicitno praćenje
+"ručno uređeno" stanja (npr. novi stupac ili provjera je li zadnja
+izmjena došla iz admin akcije vs. scrapera) — veći zahvat, izvan opsega
+ovog hitnog popravka, ostaje otvoreno za buduću sesiju.
+
 ## ADR-021: Automatsko brisanje isteklih događaja — pg_cron u Supabaseu
 
 **Datum:** 2026-08-03
