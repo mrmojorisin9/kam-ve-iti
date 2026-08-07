@@ -708,6 +708,44 @@ bitno nižu cijenu po tokenu. `automation/extract.py` — `MODEL =
 Ostatak plana iz korisnikova zahtjeva (formalan checklist za analizu
 novih izvora, dodavanje novih izvora) ostaje otvoren za sljedeće sesije.
 
+**Dopuna (2026-08-07, isti dan) — treći izvor (prelog.hr) prihvaćen,
+dva razmotrena i odbačena/odgođena, checklist prvi put primijenjen u
+praksi:** korisnik predložio tri kandidata (`prelog.hr/najave`,
+`evento.sh/ck`, `medjimurjepress.net/vijesti/najave/`) — analizirani prema
+gore navedenom checklistu prije pisanja koda. `medjimurjepress.net`
+odbačen (opći news portal, 0/17 stvarnih najava u uzorku, isti profil kao
+msm.hr). `evento.sh/ck` odgođen — potvrđeno da je stvarna Međimurska
+županija stranica s bogatim podacima (kategorija/geolokacija/slika već
+gotovi), ali podaci se učitavaju kroz modernu React Router SPA; pravi
+API (`api.evento.sh/api`) postoji i vraća stvarne zapise, no pogodeni
+parametar filtriranja po županiji vratio je nepovezan događaj — stvaran
+oblik zahtjeva zahtijeva zaseban zadatak s Browser pane network
+inspekcijom, ne samo `curl`. `prelog.hr/najave` prihvaćen — vlastiti
+"Abacus Croatia" CMS (NE `TribeEventsListAdapter` obitelj), status bedž
+(Traje/Uskoro/Završeno) po zapisu, uzorak 12/12 stvarnih najava.
+
+Novi `automation/adapters/prelog.py` (`PrelogAdapter`) — bespoke parser.
+**Otkriven pravi arhitekturni detalj uživim testiranjem:** lista NIJE
+kronološki sortirana po datumu događaja (mijesa Traje/Uskoro/Završeno
+prema vremenu OBJAVE, ne datumu pocetka), pa se — za razliku od
+`TribeEventsListAdapter`, koji se oslanja na kronoloski rastuci poredak —
+rano-prekidanje paginacije oslanja na status bedž umjesto datum: prva
+"Završeno" stavka označava početak arhive (uživo potvrđeno: druga
+stranica sadrži ISKLJUČIVO "Završeno" zapise), dohvat se prekida ondje.
+Registriran u `adapters/__init__.py` i `n8n/scraper-workflow.json` (treći
+HTTP Request čvor, isti obrazac kao mnovine).
+
+**Nalaz iz dry-run testa, stvaran upis namjerno odgođen:** svih 6
+dohvaćenih prelog.hr zapisa u trenutku testa već postoji u bazi kao
+ručno uneseni i objavljeni događaji (`status='published'`,
+`source_content_hash=NULL` — nikad dosad dirani scraperom). Stvaran upis
+bi ih odmah osvježio AI ekstrakcijom (postojeći `update_event_by_
+source_url` obrazac namjerno ne mijenja `status`, ADR-020 izvorna
+odluka), bez ikakvog ljudskog pregleda tog prepisivanja. Korisnikova
+odluka: NE pokretati stvaran upis danas — adapter ostaje spreman,
+registriran, čeka sljedeći prirodni cron ciklus kad se pojave stvarno
+novi prelog.hr događaji koji nisu već ručno uneseni.
+
 ## ADR-021: Automatsko brisanje isteklih događaja — pg_cron u Supabaseu
 
 **Datum:** 2026-08-03

@@ -84,6 +84,28 @@ okida samo dok je računalo upaljeno i Docker Desktop pokrenut.
   s drugog izvora. Korisnikova odluka: preskočiti, nizak prinos ne
   opravdava održavanje adaptera. Ponovno razmotriti ako se pronađe
   konkretnija stranica (npr. službeni raspored lige/saveza).
+- **medjimurjepress.net/vijesti/najave/** (2026-08-07) — nije kalendar
+  događaja unatoč nazivu URL-a. Opći lokalni news portal (Penci
+  WordPress tema) — uzorak ~17 naslova bio je kronika (krađe/provale),
+  policijske objave, osmrtnice, politika; "najave" ovdje znači "javne
+  objave", ne najave događaja. 0/17 stvarnih najava — isti profil kao
+  msm.hr, ista odluka.
+
+## Odgođeni izvori (tehnicki razlog, ne kvaliteta)
+
+- **evento.sh/ck** (2026-08-07) — potvrđeno da je ovo stvarna
+  Međimurska županija stranica na profesionalno građenoj event-platformi
+  (kategorija/geolokacija/slika već gotovi po događaju, ~20 događaja u
+  jednom prefetch popisu) — potencijalno najbogatiji kandidat od svih
+  razmotrenih. Podaci se NE nalaze u statičnom HTML-u (moderna React
+  Router SPA) — stvaran JSON API (`api.evento.sh/api`) postoji i vraća
+  prave zapise, ali pogodeni parametar filtriranja po županiji
+  (`countyCode=ck`) vratio je nepovezan događaj iz Istre umjesto
+  Međimurja, znači stvaran oblik zahtjeva nije pouzdano utvrđen ovom
+  analizom. Treba zaseban zadatak fokusiran na hvatanje stvarnog mrežnog
+  zahtjeva (Browser pane network inspekcija dok stranica radi, ne samo
+  statični `curl`) prije pisanja adaptera. Korisnikova odluka: odgoditi,
+  ne trošiti dodatno vrijeme u ovoj sesiji.
 
 ## Dodavanje novog izvora
 
