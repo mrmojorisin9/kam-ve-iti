@@ -41,10 +41,14 @@ type AdminEventListRow = {
  * Svi događaji (admin — RLS "events_admin_full_access"), najbliži početak
  * prvi (korisnikov zahtjev — današnji/skorašnji događaji na vrhu liste).
  * `status` filtrira na jedan status (npr. "Na čekanju" prečac u
- * `/admin/dogadjaji`) — bez njega vraća sve statuse.
+ * `/admin/dogadjaji`) — bez njega vraća sve statuse. `categoryId`/
+ * `locationId` filtriraju po FK-u izravno (id, ne slug — admin dropdown
+ * već radi s idjevima, isti obrazac kao `EventForm`), bez njih vraća sve.
  */
 export async function listEventsForAdmin(
   status?: string,
+  categoryId?: string,
+  locationId?: string,
 ): Promise<AdminEventListItem[]> {
   const supabase = await createClient();
   let query = supabase
@@ -60,6 +64,12 @@ export async function listEventsForAdmin(
 
   if (status) {
     query = query.eq("status", status);
+  }
+  if (categoryId) {
+    query = query.eq("category_id", categoryId);
+  }
+  if (locationId) {
+    query = query.eq("location_id", locationId);
   }
 
   const { data, error } = await query;

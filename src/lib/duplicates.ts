@@ -5,19 +5,26 @@
  * (Faza 6-7, ADR-020) — samo bez rapidfuzz ovisnosti (Python-only paket)
  * jer ovaj alat radi u TypeScript admin sučelju, ne u scraper pipelineu.
  *
- * Lokacija nije tvrdi uvjet — isti događaj zna biti prijavljen s pogrešnom/
- * drugačijom lokacijom kod ručnog unosa (npr. mjesto organizatora umjesto
- * mjesta održavanja). Zato:
- * - istovjetan `start_at` (do minute) je siguran duplikat neovisno o lokaciji;
+ * Lokacija je tvrdi uvjet (baza kandidata se filtrira po njoj PRIJE
+ * ikakve usporedbe naslova/vremena, isto kao `db.find_fuzzy_candidates`
+ * u `automation/db.py`):
+ * - ista lokacija + istovjetan `start_at` (do minute) je siguran duplikat
+ *   neovisno o naslovu;
  * - ista lokacija + prozor od 24h + naslov >= FUZZY_TITLE_THRESHOLD je
- *   vjerojatan duplikat;
- * - različita lokacija + prozor od 24h treba viši prag naslova
- *   (FUZZY_TITLE_THRESHOLD_CROSS_LOCATION) jer nema potvrdu lokacije koja bi
- *   smanjila rizik lažnog pogotka (dva nepovezana događaja u isto vrijeme).
+ *   vjerojatan duplikat.
+ *
+ * **Ispravak (2026-08-07):** lokacija je kratko bila popuštena (dopuštala
+ * se cross-location usporedba uz viši prag naslova) da uhvati rijedak
+ * slučaj "isti događaj prijavljen pod pogrešnom lokacijom" — ali to je u
+ * praksi proizvelo lažne pogotke: bez lokacijskog filtra, "istovjetan
+ * start_at" sam po sebi nije pouzdan signal (npr. 18 potpuno različitih
+ * nogometnih utakmica u različitim mjestima dijeli isti standardni termin
+ * kola, "2026-08-15T15:30", i sve bi se pogrešno grupiralo). Vraćeno na
+ * tvrdi lokacijski uvjet; rijedak slučaj krive lokacije ostaje na ručnom
+ * pregledu admina, ista sigurnosna mreža kao i za sve ostalo (ADR-002).
  */
 
 const FUZZY_TITLE_THRESHOLD = 85;
-const FUZZY_TITLE_THRESHOLD_CROSS_LOCATION = 92;
 const CANDIDATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export type DuplicateCandidateEvent = {
@@ -102,18 +109,15 @@ export function findDuplicateGroups<T extends DuplicateCandidateEvent>(
       const a = events[i];
       const b = events[j];
 
+      if (a.location_id !== b.location_id) continue;
+
       const diffMs = Math.abs(
         new Date(a.start_at).getTime() - new Date(b.start_at).getTime(),
       );
       if (diffMs > CANDIDATE_WINDOW_MS) continue;
 
-      const sameLocation = a.location_id === b.location_id;
-      const threshold = sameLocation
-        ? FUZZY_TITLE_THRESHOLD
-        : FUZZY_TITLE_THRESHOLD_CROSS_LOCATION;
-
       const isDuplicate =
-        diffMs === 0 || titleSimilarity(a.title, b.title) >= threshold;
+        diffMs === 0 || titleSimilarity(a.title, b.title) >= FUZZY_TITLE_THRESHOLD;
       if (isDuplicate) union(i, j);
     }
   }

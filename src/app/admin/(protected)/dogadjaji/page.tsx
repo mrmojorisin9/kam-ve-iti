@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { listEventsForAdmin } from "@/lib/admin-events";
 import { formatEventDateTime } from "@/lib/format";
+import { createClient } from "@/lib/supabase/server";
 import { bulkUpdateStatus } from "./bulk-actions";
 
 export const metadata: Metadata = {
@@ -30,16 +31,38 @@ export default async function AdminEventsPage({
     updated?: string;
     deleted?: string;
     status?: string;
+    kategorija?: string;
+    lokacija?: string;
     bulkUpdated?: string;
     bulkError?: string;
   }>;
 }) {
-  const { updated, deleted, status, bulkUpdated, bulkError } =
+  const { updated, deleted, status, kategorija, lokacija, bulkUpdated, bulkError } =
     await searchParams;
-  const events = await listEventsForAdmin(status);
+  const supabase = await createClient();
+  const [events, { data: categories }, { data: locations }] =
+    await Promise.all([
+      listEventsForAdmin(status, kategorija, lokacija),
+      supabase
+        .from("categories")
+        .select("id, name")
+        .order("sort_order", { ascending: true }),
+      supabase.from("locations").select("id, name").order("name"),
+    ]);
   const showBulkActions = status === "pending_review";
   const bulkApprove = bulkUpdateStatus.bind(null, "published");
   const bulkReject = bulkUpdateStatus.bind(null, "rejected");
+
+  // Status-tabovi moraju sacuvati aktivan kategorija/lokacija filter kod
+  // prebacivanja taba, inace bi svaki klik na tab tiho ponistio filter.
+  function tabHref(statusValue?: string): string {
+    const params = new URLSearchParams();
+    if (statusValue) params.set("status", statusValue);
+    if (kategorija) params.set("kategorija", kategorija);
+    if (lokacija) params.set("lokacija", lokacija);
+    const query = params.toString();
+    return query ? `/admin/dogadjaji?${query}` : "/admin/dogadjaji";
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-12">
@@ -66,13 +89,10 @@ export default async function AdminEventsPage({
       <nav className="mt-6 flex flex-wrap gap-2">
         {STATUS_TABS.map((tab) => {
           const isActive = (status ?? undefined) === tab.value;
-          const href = tab.value
-            ? `/admin/dogadjaji?status=${tab.value}`
-            : "/admin/dogadjaji";
           return (
             <Link
               key={tab.label}
-              href={href}
+              href={tabHref(tab.value)}
               aria-current={isActive ? "true" : undefined}
               className={
                 isActive
@@ -85,6 +105,59 @@ export default async function AdminEventsPage({
           );
         })}
       </nav>
+
+      <form
+        method="get"
+        className="border-line mt-4 flex flex-col gap-3 border-b pb-6 sm:flex-row sm:items-end"
+      >
+        {status && <input type="hidden" name="status" value={status} />}
+        <label className="flex-1 text-sm">
+          <span className="text-parchment-muted mb-1 block">Kategorija</span>
+          <select
+            name="kategorija"
+            defaultValue={kategorija ?? ""}
+            className="border-line bg-oak text-parchment focus-visible:outline-gold w-full rounded-md border px-3.5 py-2.5 text-sm shadow-sm shadow-black/10 focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            <option value="">Sve kategorije</option>
+            {(categories ?? []).map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex-1 text-sm">
+          <span className="text-parchment-muted mb-1 block">Lokacija</span>
+          <select
+            name="lokacija"
+            defaultValue={lokacija ?? ""}
+            className="border-line bg-oak text-parchment focus-visible:outline-gold w-full rounded-md border px-3.5 py-2.5 text-sm shadow-sm shadow-black/10 focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            <option value="">Sve lokacije</option>
+            {(locations ?? []).map((location) => (
+              <option key={location.id} value={location.id}>
+                {location.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <button
+          type="submit"
+          className="border-gold text-gold hover:bg-gold hover:text-night rounded-md border px-5 py-2.5 text-sm font-medium"
+        >
+          Primijeni
+        </button>
+        {(kategorija || lokacija) && (
+          <Link
+            href={tabHref(status)}
+            className="border-line text-parchment-muted hover:text-parchment rounded-md border px-5 py-2.5 text-center text-sm"
+          >
+            Poništi filter
+          </Link>
+        )}
+      </form>
 
       {updated && (
         <p className="border-gold text-gold mt-6 rounded-md border px-4 py-3 text-sm">
