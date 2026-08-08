@@ -278,6 +278,11 @@ function EventRow({
             >
               {STATUS_LABELS[event.status] ?? event.status}
             </span>
+            {event.is_archived && (
+              <span className="border-line text-parchment-muted ml-1.5 rounded border px-1.5 py-0.5 text-xs">
+                📦 Arhiviran
+              </span>
+            )}
             {event.source_name && (
               <>
                 {" · "}

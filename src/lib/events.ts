@@ -38,6 +38,14 @@ export type EventDetail = EventListItem & {
   source_url: string | null;
   /** Dodatne fotografije (do 6), odvojeno od naslovne image_url — vidi C4/ADR napomenu u CHANGELOG.md. */
   gallery: { id: string; url: string }[];
+  /** Vidi 0030 migraciju — arhivirani dogadaj ima ocisceno description,
+   * image_url, organizer polja, source_url i galeriju; stranica prikazuje
+   * fiksnu obavijest umjesto 404 (SEO — vec indeksirani URL-ovi ostaju 200 OK). */
+  is_archived: boolean;
+  /** Sirovi FK-ovi (uz vec postojece *_slug/*_name) — treba ih
+   * getSimilarActiveEvents za preporuku na arhiviranoj stranici. */
+  category_id: string;
+  location_id: string;
 };
 
 export type EventFilters = {
@@ -146,6 +154,8 @@ type EventBySlugRow = {
   organizer_name: string | null;
   organizer_contact: string | null;
   source_url: string | null;
+  category_id: string;
+  location_id: string;
   category: { name: string; slug: string } | null;
   location: { name: string; slug: string } | null;
   is_free: boolean;
@@ -154,6 +164,7 @@ type EventBySlugRow = {
   is_solo_friendly: boolean;
   is_romantic: boolean;
   is_hidden_gem: boolean;
+  is_archived: boolean;
   event_images: { id: string; url: string; sort_order: number }[] | null;
 };
 
@@ -369,6 +380,8 @@ type AdminFeaturedRow = {
   is_solo_friendly: boolean;
   is_romantic: boolean;
   is_hidden_gem: boolean;
+  is_trending_cached: boolean;
+  view_count_cached: number;
 };
 
 /**
@@ -388,7 +401,7 @@ export async function getAdminFeaturedEvent(): Promise<EventListItem | null> {
       category:categories ( name, slug ),
       location:locations ( name, slug ),
       is_free, is_family_friendly, is_dog_friendly, is_solo_friendly,
-      is_romantic, is_hidden_gem
+      is_romantic, is_hidden_gem, is_trending_cached, view_count_cached
     `,
     )
     .eq("is_admin_featured", true)
@@ -400,11 +413,6 @@ export async function getAdminFeaturedEvent(): Promise<EventListItem | null> {
   if (!featured || !featured.category || !featured.location) {
     return null;
   }
-
-  const [{ data: isTrending }, { data: viewCount }] = await Promise.all([
-    supabase.rpc("event_is_trending", { p_event_id: featured.id }),
-    supabase.rpc("event_view_count", { p_event_id: featured.id }),
-  ]);
 
   return {
     id: featured.id,
@@ -426,8 +434,8 @@ export async function getAdminFeaturedEvent(): Promise<EventListItem | null> {
     is_romantic: featured.is_romantic,
     is_hidden_gem: featured.is_hidden_gem,
     is_admin_featured: true,
-    is_trending: isTrending ?? false,
-    view_count: viewCount ?? 0,
+    is_trending: featured.is_trending_cached,
+    view_count: featured.view_count_cached,
   };
 }
 
@@ -718,7 +726,11 @@ export async function getCategories(): Promise<FilterOption[]> {
   return data ?? [];
 }
 
-export type SitemapEntry = { slug: string; updatedAt: string };
+export type SitemapEntry = {
+  slug: string;
+  updatedAt: string;
+  isArchived: boolean;
+};
 
 /**
  * Slug + zadnja izmjena svih objavljenih događaja, za `sitemap.ts`. RLS
@@ -732,7 +744,7 @@ export async function getPublishedEventsForSitemap(): Promise<
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("events")
-    .select("slug, updated_at")
+    .select("slug, updated_at, is_archived")
     .eq("status", "published");
 
   if (error) {
@@ -743,6 +755,7 @@ export async function getPublishedEventsForSitemap(): Promise<
   return (data ?? []).map((row) => ({
     slug: row.slug,
     updatedAt: row.updated_at,
+    isArchived: row.is_archived,
   }));
 }
 
@@ -777,6 +790,8 @@ export const getEventBySlug = cache(
         organizer_name,
         organizer_contact,
         source_url,
+        category_id,
+        location_id,
         category:categories ( name, slug ),
         location:locations ( name, slug ),
         is_free,
@@ -785,6 +800,7 @@ export const getEventBySlug = cache(
         is_solo_friendly,
         is_romantic,
         is_hidden_gem,
+        is_archived,
         event_images ( id, url, sort_order )
       `,
       )
@@ -814,6 +830,8 @@ export const getEventBySlug = cache(
       organizer_name: row.organizer_name,
       organizer_contact: row.organizer_contact,
       source_url: row.source_url,
+      category_id: row.category_id,
+      location_id: row.location_id,
       category_name: row.category.name,
       category_slug: row.category.slug,
       location_name: row.location.name,
@@ -824,9 +842,154 @@ export const getEventBySlug = cache(
       is_solo_friendly: row.is_solo_friendly,
       is_romantic: row.is_romantic,
       is_hidden_gem: row.is_hidden_gem,
+      is_archived: row.is_archived,
       gallery: (row.event_images ?? [])
         .sort((a, b) => a.sort_order - b.sort_order)
         .map((img) => ({ id: img.id, url: img.url })),
     };
   },
 );
+
+type SimilarEventRow = {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  venue_name: string | null;
+  start_at: string;
+  end_at: string | null;
+  image_url: string | null;
+  category: { name: string; slug: string } | null;
+  location: { name: string; slug: string } | null;
+  is_free: boolean;
+  is_family_friendly: boolean;
+  is_dog_friendly: boolean;
+  is_solo_friendly: boolean;
+  is_romantic: boolean;
+  is_hidden_gem: boolean;
+};
+
+function toEventListItem(row: SimilarEventRow): EventListItem | null {
+  if (!row.category || !row.location) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    description: row.description,
+    venue_name: row.venue_name,
+    start_at: row.start_at,
+    end_at: row.end_at,
+    image_url: row.image_url,
+    category_name: row.category.name,
+    category_slug: row.category.slug,
+    location_name: row.location.name,
+    location_slug: row.location.slug,
+    is_free: row.is_free,
+    is_family_friendly: row.is_family_friendly,
+    is_dog_friendly: row.is_dog_friendly,
+    is_solo_friendly: row.is_solo_friendly,
+    is_romantic: row.is_romantic,
+    is_hidden_gem: row.is_hidden_gem,
+  };
+}
+
+const SIMILAR_EVENTS_SELECT = `
+  id, title, slug, description, venue_name, start_at, end_at, image_url,
+  category:categories ( name, slug ),
+  location:locations ( name, slug ),
+  is_free, is_family_friendly, is_dog_friendly, is_solo_friendly,
+  is_romantic, is_hidden_gem
+`;
+
+async function fetchUpcomingEvents(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  {
+    categoryId,
+    locationId,
+    excludeIds,
+    limit,
+  }: {
+    categoryId?: string;
+    locationId?: string;
+    excludeIds: string[];
+    limit: number;
+  },
+): Promise<EventListItem[]> {
+  let query = supabase
+    .from("events")
+    .select(SIMILAR_EVENTS_SELECT)
+    .eq("status", "published")
+    .eq("is_archived", false)
+    .gte("start_at", new Date().toISOString())
+    .order("start_at", { ascending: true })
+    .limit(limit + excludeIds.length);
+
+  if (categoryId) query = query.eq("category_id", categoryId);
+  if (locationId) query = query.eq("location_id", locationId);
+  if (excludeIds.length > 0) query = query.not("id", "in", `(${excludeIds.join(",")})`);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("getSimilarActiveEvents:", error.message);
+    return [];
+  }
+
+  return ((data ?? []) as unknown as SimilarEventRow[])
+    .map(toEventListItem)
+    .filter((item): item is EventListItem => item !== null)
+    .slice(0, limit);
+}
+
+/**
+ * Do `limit` preporučenih aktivnih događaja za arhiviranu stranicu (SEO —
+ * umjesto praznog "završeno" ekrana, ponudi nešto relevantno). Progresivni
+ * fallback, isti duh kao `applyFiltersWithFallback` u ovoj datoteci: prvo
+ * ista kategorija I lokacija, zatim dopuni istom kategorijom, na kraju
+ * bilo kojim nadolazećim objavljenim događajem — nikad manje od `limit`
+ * ako ima dovoljno objavljenih događaja u bazi.
+ */
+export async function getSimilarActiveEvents({
+  categoryId,
+  locationId,
+  excludeEventId,
+  limit = 3,
+}: {
+  categoryId: string;
+  locationId: string;
+  excludeEventId: string;
+  limit?: number;
+}): Promise<EventListItem[]> {
+  const supabase = await createClient();
+  const results: EventListItem[] = [];
+  const excludeIds = () => [excludeEventId, ...results.map((e) => e.id)];
+
+  results.push(
+    ...(await fetchUpcomingEvents(supabase, {
+      categoryId,
+      locationId,
+      excludeIds: excludeIds(),
+      limit: limit - results.length,
+    })),
+  );
+
+  if (results.length < limit) {
+    results.push(
+      ...(await fetchUpcomingEvents(supabase, {
+        categoryId,
+        excludeIds: excludeIds(),
+        limit: limit - results.length,
+      })),
+    );
+  }
+
+  if (results.length < limit) {
+    results.push(
+      ...(await fetchUpcomingEvents(supabase, {
+        excludeIds: excludeIds(),
+        limit: limit - results.length,
+      })),
+    );
+  }
+
+  return results;
+}

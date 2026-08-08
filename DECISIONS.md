@@ -927,6 +927,85 @@ oslanjati se na repo povijest kao izvor istine (ADR-010 pouka, ista kao
 za return-type grešku).
 
 ---
+
+## ADR-022: Arhiviranje (ne brisanje) isteklih događaja + pg_cron cache brojača umjesto Redisa
+
+**Datum:** 2026-08-08
+**Status:** Prihvaćeno
+
+**Kontekst:**
+Korisnikov zahtjev (SEO optimizacija): `delete_expired_events()` (ADR-021,
+0026) trajno briše svaki događaj 3 dana nakon efektivnog završetka — svaki
+takav URL koji je Google već indeksirao počinje vraćati 404, što s
+vremenom šteti SEO autoritetu portala. Paralelno, korisnik je tražio
+batch-anje brojača pregleda (Redis ili in-memory cache) jer trenutni
+brojač navodno radi izravan `UPDATE` po pregledu.
+
+**Odluka:**
+- **Soft delete + data stripping** umjesto trajnog brisanja: novi stupci
+  `is_archived`/`archived_at` na `events`. `archive_expired_events()`
+  (zamjenjuje `delete_expired_events()`, isti pg_cron raspored 03:00 UTC)
+  umjesto `DELETE` radi `UPDATE` koji briše teška/osobna polja
+  (`description`, `image_url`, `organizer_*`, `source_url`,
+  `submitter_*`, `sponsored_until`) i zadržava `title`/`slug`/`start_at`/
+  `end_at`/`category_id`/`location_id`/`venue_name` (minimalni SEO skup +
+  potrebni za preporuku sličnih aktivnih događaja). Stranica
+  `/dogadjaji/[slug]` vraća 200 OK s fiksnom obavijesti umjesto 404.
+- **Bez Event JSON-LD na arhiviranoj stranici** — `eventStatus:
+  "EventCompleted"` (korisnikov izvorni prijedlog) ne postoji u Schema.org
+  vokabularu (enum ima samo Scheduled/Cancelled/Postponed/Rescheduled/
+  MovedOnline, sve za buduće/tekuće događaje); Google-ove smjernice
+  preporučuju uklanjanje Event markupa za završene događaje, ne izmišljanje
+  statusa. Odlučeno nakon eksplicitnog razjašnjenja s korisnikom
+  (AskUserQuestion) — aktivni događaji zadržavaju postojeći JSON-LD
+  nepromijenjen.
+- **Cache stupci na `events` + pg_cron batch (ne Redis)** za brojač
+  pregleda/trending/popularnost: `view_count_cached`/
+  `popularity_score_cached`/`is_trending_cached`, osvježavani svakih 15
+  min preko nove `refresh_event_stats()` (isti pg_cron obrazac kao
+  arhiviranje). `events_on_date`/`events_in_range` sad čitaju te stupce
+  umjesto da uživo pozivaju `event_popularity_score`/`event_is_trending`/
+  `event_view_count` (0010/0011/0013) po retku na svakom učitavanju liste
+  — to je bio stvaran bottleneck, ne sam upis pregleda (koji je već
+  jeftin append-only `INSERT` u `event_interactions`, ne `UPDATE` kako je
+  korisnik pretpostavio). Arhivirani događaji su isključeni iz batch
+  osvježavanja (brojač ostaje zamrznut na zadnjem snimku prije arhiviranja)
+  i iz RLS-a za upis (`event_interactions_public_insert` politika sad
+  provjerava `not is_archived`).
+
+**Razmotrene alternative:**
+- Redis/Upstash za brojač pregleda — odbačeno nakon objašnjenja
+  korisniku: projekt je Redis već jednom eksplicitno odbio za vrlo sličan
+  problem (ADR-018, rate limiting), a in-memory cache u aplikacijskom
+  sloju ne radi pouzdano na Vercel serverless instancama (nema dijeljene
+  memorije između instanci/cold startova). pg_cron + cache stupci postižu
+  isti "batch update svakih 10-15 min" cilj bez nove infrastrukture,
+  ponovnom upotrebom obrasca koji već postoji i radi u ovom repou (0026).
+- `eventStatus: "EventCompleted"` doslovno kako je korisnik tražio —
+  odbačeno, nevažeći Schema.org zapis (rizik od upozorenja u Google
+  Search Consoleu umjesto koristi).
+- Zadržati `EventScheduled` na arhiviranoj stranici — odbačeno, tehnički
+  netočno (događaj više nije zakazan) i može zavarati Google da i dalje
+  tretira stranicu kao nadolazeći događaj.
+
+**Posljedice:**
+`supabase/migrations/0030_event_archival_and_stats_cache.sql` — jedna
+migracija (arhiviranje i cache brojača su međusobno ovisni: arhiviranje
+upisuje zadnji snimak brojača prije zamrzavanja). **Otkriven i odmah
+ispravljen propust uživo** (isti obrazac kao ADR-016 "Ispravak"
+zamka/0015/0024/0025): `events` tablica nema table-level SELECT za `anon`,
+samo column-level — 0030 je dodao 5 novih stupaca bez odgovarajućeg
+granta, što je srušilo SVE javne rute ("permission denied for table
+events") dok grant nije dodan zasebnom migracijom
+(`0031_grant_archival_stats_columns.sql`). **Poznato ograničenje**
+(nasljeđeno iz ADR-021): Storage datoteke arhiviranih događaja ostaju
+osirotjele (plpgsql ne može pozvati Storage API) — isti prihvaćen
+kompromis kao dosad. Baza `events` sad samo raste (arhivirani retci se
+nikad ne brišu) — namjeran tradeoff, to je cijela poanta (zadržati
+indeksirane URL-ove zauvijek); Postgres podnosi milijune malih redaka bez
+problema, nije razlog za brigu na ovoj veličini portala.
+
+---
 _Format za nove zapise:_
 ```
 ## ADR-00X: [naslov odluke]

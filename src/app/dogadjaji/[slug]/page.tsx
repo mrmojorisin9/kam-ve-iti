@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getEventBySlug } from "@/lib/events";
+import { getEventBySlug, getSimilarActiveEvents } from "@/lib/events";
 import { formatEventDateTime, formatEventEnd } from "@/lib/format";
 import {
   buildEventJsonLd,
@@ -13,6 +13,7 @@ import { PinIcon } from "@/components/PinIcon";
 import { ViewTracker } from "@/components/ViewTracker";
 import { ShareButtons } from "@/components/ShareButtons";
 import { EventGallery } from "@/components/EventGallery";
+import { EventRow } from "@/components/EventRow";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -28,7 +29,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: "Događaj nije pronađen — Kam denes" };
   }
 
-  const title = `${event.title} — Kam denes`;
+  const title = event.is_archived
+    ? `${event.title} (Završeno) — Kam denes`
+    : `${event.title} — Kam denes`;
   const description = event.description
     ? event.description.length > 160
       ? `${event.description.slice(0, 157)}...`
@@ -62,17 +65,34 @@ export default async function EventPage({ params }: Props) {
     notFound();
   }
 
-  const jsonLd = buildEventJsonLd(event, SITE_URL);
   const mapsQuery = encodeURIComponent(buildLocationQuery(event));
+  const similarEvents = event.is_archived
+    ? await getSimilarActiveEvents({
+        categoryId: event.category_id,
+        locationId: event.location_id,
+        excludeEventId: event.id,
+      })
+    : [];
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20 md:max-w-3xl">
-      <ViewTracker eventId={event.id} />
+      {!event.is_archived && (
+        <>
+          <ViewTracker eventId={event.id} />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: jsonLdToScriptString(buildEventJsonLd(event, SITE_URL)),
+            }}
+          />
+        </>
+      )}
 
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLdToScriptString(jsonLd) }}
-      />
+      {event.is_archived && (
+        <p className="border-gold/40 bg-gold/10 text-gold mb-6 rounded-md border px-4 py-3 text-sm">
+          Ovaj događaj je završio.
+        </p>
+      )}
 
       <Link
         href="/"
@@ -160,6 +180,19 @@ export default async function EventPage({ params }: Props) {
         title={event.title}
         url={`${SITE_URL}/dogadjaji/${event.slug}`}
       />
+
+      {event.is_archived && similarEvents.length > 0 && (
+        <section className="border-line mt-10 border-t pt-8">
+          <h2 className="font-display text-parchment text-xl font-semibold">
+            Možda te zanima
+          </h2>
+          <ul className="mt-4 flex flex-col gap-3">
+            {similarEvents.map((similar) => (
+              <EventRow key={similar.id} event={similar} />
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   );
 }

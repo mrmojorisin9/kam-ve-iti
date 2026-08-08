@@ -46,6 +46,7 @@ export type AdminEventListItem = {
   source_url: string | null;
   submitter_email: string | null;
   submitter_phone: string | null;
+  is_archived: boolean;
 };
 
 type AdminEventListRow = {
@@ -58,6 +59,7 @@ type AdminEventListRow = {
   source_url: string | null;
   submitter_email: string | null;
   submitter_phone: string | null;
+  is_archived: boolean;
   category: { name: string } | null;
   location: { name: string } | null;
 };
@@ -81,7 +83,7 @@ export async function listEventsForAdmin(
     .select(
       `
       id, title, slug, start_at, status, source_name, source_url,
-      submitter_email, submitter_phone,
+      submitter_email, submitter_phone, is_archived,
       category:categories ( name ),
       location:locations ( name )
     `,
@@ -117,6 +119,7 @@ export async function listEventsForAdmin(
     source_url: row.source_url,
     submitter_email: row.submitter_email,
     submitter_phone: row.submitter_phone,
+    is_archived: row.is_archived,
     category_name: row.category?.name ?? "—",
     location_name: row.location?.name ?? "—",
   }));
