@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { zagrebLocalToUtcIso } from "@/lib/zagreb-time";
 
 /**
  * Dopušta samo apsolutne http(s) URL-ove za `image_url` (glavna fotografija
@@ -13,6 +14,26 @@ export function isAbsoluteUrl(value: string): boolean {
   return /^https?:\/\//i.test(value);
 }
 
+const ALLOWED_RETURN_PATHS = new Set<string>([
+  "/admin/dogadjaji",
+  "/admin/dogadjaji/duplikati",
+]);
+
+/**
+ * Sanitizira "vrati me natrag" putanju za tok brisanja događaja (pozivaju
+ * ga i stranica za prikaz i server akcija — jedan izvor istine). Točno
+ * podudaranje (ne `startsWith`) — bez ovoga bi `returnTo` iz URL-a/forme
+ * postao open-redirect vektor.
+ */
+export function sanitizeAdminReturnPath(
+  value: string | null | undefined,
+): string {
+  if (value && ALLOWED_RETURN_PATHS.has(value)) {
+    return value;
+  }
+  return "/admin/dogadjaji";
+}
+
 export type AdminEventListItem = {
   id: string;
   title: string;
@@ -23,6 +44,8 @@ export type AdminEventListItem = {
   location_name: string;
   source_name: string | null;
   source_url: string | null;
+  submitter_email: string | null;
+  submitter_phone: string | null;
 };
 
 type AdminEventListRow = {
@@ -33,6 +56,8 @@ type AdminEventListRow = {
   status: string;
   source_name: string | null;
   source_url: string | null;
+  submitter_email: string | null;
+  submitter_phone: string | null;
   category: { name: string } | null;
   location: { name: string } | null;
 };
@@ -56,6 +81,7 @@ export async function listEventsForAdmin(
     .select(
       `
       id, title, slug, start_at, status, source_name, source_url,
+      submitter_email, submitter_phone,
       category:categories ( name ),
       location:locations ( name )
     `,
@@ -89,9 +115,57 @@ export async function listEventsForAdmin(
     status: row.status,
     source_name: row.source_name,
     source_url: row.source_url,
+    submitter_email: row.submitter_email,
+    submitter_phone: row.submitter_phone,
     category_name: row.category?.name ?? "—",
     location_name: row.location?.name ?? "—",
   }));
+}
+
+export type PendingEventGroupKey = "cron" | "korisnici" | "rucno";
+
+export type PendingEventGroup = {
+  key: PendingEventGroupKey;
+  label: string;
+  events: AdminEventListItem[];
+};
+
+const PENDING_GROUP_LABELS: Record<PendingEventGroupKey, string> = {
+  cron: "Cron/scraper",
+  korisnici: "Korisnici",
+  rucno: "Ručno (uključujući CSV uvoz)",
+};
+
+/**
+ * Grupira događaje na čekanju po kanalu unosa radi lakšeg moderiranja —
+ * porijeklo se raspoznaje kombinacijom postojećih stupaca (nema zasebnog
+ * "source" enuma): scraper uvijek postavlja `source_name`, javna prijava
+ * uvijek postavlja `submitter_email`/`submitter_phone`, a CSV uvoz i ručni
+ * unos su međusobno nerazlučivi u bazi (oba admin-autentificirana, bez tih
+ * polja) pa se namjerno svrstavaju u istu grupu.
+ */
+export function groupPendingEventsBySource(
+  events: AdminEventListItem[],
+): PendingEventGroup[] {
+  const buckets: Record<PendingEventGroupKey, AdminEventListItem[]> = {
+    cron: [],
+    korisnici: [],
+    rucno: [],
+  };
+
+  for (const event of events) {
+    if (event.source_name) {
+      buckets.cron.push(event);
+    } else if (event.submitter_email || event.submitter_phone) {
+      buckets.korisnici.push(event);
+    } else {
+      buckets.rucno.push(event);
+    }
+  }
+
+  return (["cron", "korisnici", "rucno"] as const)
+    .map((key) => ({ key, label: PENDING_GROUP_LABELS[key], events: buckets[key] }))
+    .filter((group) => group.events.length > 0);
 }
 
 /**
@@ -245,6 +319,213 @@ export async function getEventForEdit(
       .sort((a, b) => a.sort_order - b.sort_order)
       .map((img) => ({ id: img.id, url: img.url })),
   };
+}
+
+export type MergeCandidateEvent = AdminEventDetail & {
+  source_name: string | null;
+  created_at: string;
+};
+
+type MergeCandidateRow = Omit<AdminEventDetail, "gallery"> & {
+  source_name: string | null;
+  created_at: string;
+  event_images: { id: string; url: string; sort_order: number }[] | null;
+};
+
+/** Puni skup polja za N kandidata istovremeno, za alat spajanja duplikata. */
+export async function getEventsForMerge(
+  ids: string[],
+): Promise<MergeCandidateEvent[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("events")
+    .select(
+      `id, slug, title, description, category_id, location_id, venue_name,
+       start_at, end_at, organizer_name, organizer_contact, source_url,
+       image_url, status, is_free, is_family_friendly, is_dog_friendly,
+       is_solo_friendly, is_romantic, is_hidden_gem, is_admin_featured,
+       sponsored_until, submitter_email, submitter_phone, source_name,
+       created_at,
+       event_images ( id, url, sort_order )`,
+    )
+    .in("id", ids);
+
+  if (error) {
+    console.error("getEventsForMerge:", error.message);
+    return [];
+  }
+
+  return ((data ?? []) as unknown as MergeCandidateRow[]).map((row) => {
+    const { event_images, ...rest } = row;
+    return {
+      ...rest,
+      gallery: (event_images ?? [])
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((img) => ({ id: img.id, url: img.url })),
+    };
+  });
+}
+
+function readFormText(formData: FormData, field: string): string | null {
+  const value = String(formData.get(field) ?? "").trim();
+  return value || null;
+}
+
+function readFormBool(formData: FormData, field: string): boolean {
+  return formData.get(field) === "on";
+}
+
+/**
+ * Jezgra validacije + upisa `EventForm` podataka — dijeli je `updateEvent`
+ * (uredi/actions.ts) i `mergeEvents` (duplikati/spoji/actions.ts), oba
+ * ciljaju isti oblik forme. `options.existingGallery` nadjačava interni upit
+ * za postojeću galeriju — nužno za spajanje, gdje se strop od 6 slika mora
+ * računati preko unije galerija svih kandidata, ne samo cilja `id`.
+ */
+export async function applyEventFormUpdate(
+  supabase: SupabaseClient,
+  id: string,
+  formData: FormData,
+  options?: { existingGallery?: { id: string; url: string }[] },
+): Promise<{ error: string | null }> {
+  const title = readFormText(formData, "title");
+  const categoryId = readFormText(formData, "category_id");
+  const locationId = readFormText(formData, "location_id");
+  const startAtLocal = readFormText(formData, "start_at");
+  const endAtLocal = readFormText(formData, "end_at");
+  const imageUrlText = readFormText(formData, "image_url");
+  const imageFile = formData.get("image_file");
+  const hasImageFile = imageFile instanceof File && imageFile.size > 0;
+  const status = readFormText(formData, "status") ?? "published";
+
+  if (
+    !title ||
+    !categoryId ||
+    !locationId ||
+    !startAtLocal ||
+    (!imageUrlText && !hasImageFile)
+  ) {
+    return {
+      error:
+        "Naslov, kategorija, lokacija, početak i fotografija (URL ili datoteka) su obavezni.",
+    };
+  }
+
+  const startAt = zagrebLocalToUtcIso(startAtLocal);
+  const endAt = endAtLocal ? zagrebLocalToUtcIso(endAtLocal) : null;
+
+  if (endAt && endAt < startAt) {
+    return { error: "Kraj događaja ne može biti prije početka." };
+  }
+
+  if (imageUrlText && !hasImageFile && !isAbsoluteUrl(imageUrlText)) {
+    return {
+      error:
+        "Fotografija (URL) mora biti puna adresa koja počinje s http:// ili https://.",
+    };
+  }
+
+  const isHiddenGem = readFormBool(formData, "is_hidden_gem");
+  const isAdminFeatured = readFormBool(formData, "is_admin_featured");
+  const sponsoredUntilLocal = readFormText(formData, "sponsored_until");
+  const sponsoredUntil = sponsoredUntilLocal
+    ? zagrebLocalToUtcIso(sponsoredUntilLocal)
+    : null;
+
+  if (isAdminFeatured) {
+    await clearOtherAdminFeatured(supabase, id);
+  }
+
+  if (isHiddenGem) {
+    const { data: category } = await supabase
+      .from("categories")
+      .select("slug")
+      .eq("id", categoryId)
+      .maybeSingle();
+    if (category?.slug === "manifestacije-i-feste") {
+      return {
+        error:
+          '"Skriveni dragulj" ne može biti označen uz kategoriju "Velike Manifestacije" (proturječno).',
+      };
+    }
+  }
+
+  let imageUrl = imageUrlText;
+  if (hasImageFile) {
+    try {
+      imageUrl = await uploadEventImage(supabase, imageFile);
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  }
+
+  const galleryFiles = formData
+    .getAll("gallery_files")
+    .filter((f): f is File => f instanceof File && f.size > 0);
+  const deleteGalleryIds = new Set<string>();
+  for (const key of formData.keys()) {
+    if (key.startsWith("delete_gallery_") && formData.get(key) === "on") {
+      deleteGalleryIds.add(key.slice("delete_gallery_".length));
+    }
+  }
+
+  let gallery: { id: string; url: string }[];
+  if (options?.existingGallery) {
+    gallery = options.existingGallery;
+  } else {
+    const { data: existingGallery } = await supabase
+      .from("event_images")
+      .select("id, url")
+      .eq("event_id", id);
+    gallery = (existingGallery ?? []) as { id: string; url: string }[];
+  }
+  const imagesToDelete = gallery.filter((img) => deleteGalleryIds.has(img.id));
+  const remainingCount = gallery.length - imagesToDelete.length;
+
+  if (remainingCount + galleryFiles.length > 6) {
+    return {
+      error: `Galerija smije imati najviše 6 slika (ostalo bi ${remainingCount}, pokušaj dodati ${galleryFiles.length}).`,
+    };
+  }
+
+  const { error } = await supabase
+    .from("events")
+    .update({
+      title,
+      description: readFormText(formData, "description"),
+      category_id: categoryId,
+      location_id: locationId,
+      venue_name: readFormText(formData, "venue_name"),
+      start_at: startAt,
+      end_at: endAt,
+      organizer_name: readFormText(formData, "organizer_name"),
+      organizer_contact: readFormText(formData, "organizer_contact"),
+      source_url: readFormText(formData, "source_url"),
+      image_url: imageUrl,
+      status,
+      is_free: readFormBool(formData, "is_free"),
+      is_family_friendly: readFormBool(formData, "is_family_friendly"),
+      is_dog_friendly: readFormBool(formData, "is_dog_friendly"),
+      is_solo_friendly: readFormBool(formData, "is_solo_friendly"),
+      is_romantic: readFormBool(formData, "is_romantic"),
+      is_hidden_gem: isHiddenGem,
+      is_admin_featured: isAdminFeatured,
+      sponsored_until: sponsoredUntil,
+    })
+    .eq("id", id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  await deleteEventGalleryImages(supabase, imagesToDelete);
+  try {
+    await addEventGalleryImages(supabase, id, galleryFiles, remainingCount);
+  } catch (err) {
+    return { error: (err as Error).message };
+  }
+
+  return { error: null };
 }
 
 /**

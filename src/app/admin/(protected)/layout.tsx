@@ -20,8 +20,8 @@ export default async function AdminLayout({
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="border-line flex items-center justify-between border-b px-6 py-4">
-        <nav className="flex items-center gap-4">
+      <header className="border-line flex flex-col gap-3 border-b px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <nav className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
           <Link
             href="/"
             className="text-parchment-muted hover:text-parchment focus-visible:outline-gold font-mono text-xs tracking-[0.2em] uppercase focus-visible:outline-2 focus-visible:outline-offset-2"

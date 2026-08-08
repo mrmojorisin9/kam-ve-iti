@@ -51,6 +51,7 @@ export function EventForm({
   defaultValues,
   eventId,
   galleryImages,
+  beforeFields,
 }: {
   categories: { id: string; name: string }[];
   locations: { id: string; name: string }[];
@@ -60,10 +61,13 @@ export function EventForm({
   defaultValues?: EventFormValues;
   eventId?: string;
   galleryImages?: { id: string; url: string }[];
+  beforeFields?: React.ReactNode;
 }) {
   return (
     <form action={action} className="mt-8 flex flex-col gap-4">
       {eventId && <input type="hidden" name="id" value={eventId} />}
+
+      {beforeFields}
 
       {defaultValues?.submitter_email && (
         <div className="border-gold/40 bg-gold/10 rounded-md border p-4 text-sm">

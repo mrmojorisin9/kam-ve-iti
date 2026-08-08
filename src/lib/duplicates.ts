@@ -24,7 +24,6 @@
  * pregledu admina, ista sigurnosna mreža kao i za sve ostalo (ADR-002).
  */
 
-const FUZZY_TITLE_THRESHOLD = 85;
 const CANDIDATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export type DuplicateCandidateEvent = {
@@ -33,6 +32,45 @@ export type DuplicateCandidateEvent = {
   location_id: string;
   start_at: string;
 };
+
+export type DuplicateTitleThreshold = 50 | 65 | 85;
+
+export type DuplicateMatchOptions = {
+  compareLocation: boolean;
+  compareTime: boolean;
+  titleThreshold: DuplicateTitleThreshold;
+};
+
+export const DEFAULT_DUPLICATE_MATCH_OPTIONS: DuplicateMatchOptions = {
+  compareLocation: true,
+  compareTime: true,
+  titleThreshold: 85,
+};
+
+const VALID_TITLE_THRESHOLDS: DuplicateTitleThreshold[] = [50, 65, 85];
+
+/**
+ * Parsira/validira sirove searchParams iz `/admin/dogadjaji/duplikati` u
+ * `DuplicateMatchOptions`. Nedostajući ili neprepoznat parametar pada nazad
+ * na `DEFAULT_DUPLICATE_MATCH_OPTIONS` — gol URL bez parametara mora
+ * reproducirati točno prijašnje (tvrdo-kodirano) ponašanje.
+ */
+export function parseDuplicateMatchOptions(params: {
+  usporedi_lokaciju?: string;
+  usporedi_vrijeme?: string;
+  prag_naslova?: string;
+}): DuplicateMatchOptions {
+  const compareLocation = params.usporedi_lokaciju !== "0";
+  const compareTime = params.usporedi_vrijeme !== "0";
+  const parsedThreshold = Number(params.prag_naslova);
+  const titleThreshold = VALID_TITLE_THRESHOLDS.includes(
+    parsedThreshold as DuplicateTitleThreshold,
+  )
+    ? (parsedThreshold as DuplicateTitleThreshold)
+    : DEFAULT_DUPLICATE_MATCH_OPTIONS.titleThreshold;
+
+  return { compareLocation, compareTime, titleThreshold };
+}
 
 function normalizeForCompare(title: string): string {
   return title
@@ -87,6 +125,7 @@ export function titleSimilarity(a: string, b: string): number {
  */
 export function findDuplicateGroups<T extends DuplicateCandidateEvent>(
   events: T[],
+  options: DuplicateMatchOptions = DEFAULT_DUPLICATE_MATCH_OPTIONS,
 ): T[][] {
   const parent = events.map((_, i) => i);
 
@@ -109,15 +148,21 @@ export function findDuplicateGroups<T extends DuplicateCandidateEvent>(
       const a = events[i];
       const b = events[j];
 
-      if (a.location_id !== b.location_id) continue;
+      if (options.compareLocation && a.location_id !== b.location_id) continue;
 
-      const diffMs = Math.abs(
-        new Date(a.start_at).getTime() - new Date(b.start_at).getTime(),
-      );
-      if (diffMs > CANDIDATE_WINDOW_MS) continue;
+      let isDuplicate: boolean;
+      if (options.compareTime) {
+        const diffMs = Math.abs(
+          new Date(a.start_at).getTime() - new Date(b.start_at).getTime(),
+        );
+        if (diffMs > CANDIDATE_WINDOW_MS) continue;
+        isDuplicate =
+          diffMs === 0 ||
+          titleSimilarity(a.title, b.title) >= options.titleThreshold;
+      } else {
+        isDuplicate = titleSimilarity(a.title, b.title) >= options.titleThreshold;
+      }
 
-      const isDuplicate =
-        diffMs === 0 || titleSimilarity(a.title, b.title) >= FUZZY_TITLE_THRESHOLD;
       if (isDuplicate) union(i, j);
     }
   }

@@ -5,13 +5,19 @@ import { createClient } from "@/lib/supabase/server";
 import {
   deleteEventImageIfOrphaned,
   deleteEventGalleryImages,
+  sanitizeAdminReturnPath,
 } from "@/lib/admin-events";
 
 export async function deleteEvent(formData: FormData) {
   const id = String(formData.get("id") ?? "");
+  // Re-sanitiziran ovdje neovisno o stranici — forma se može replay-ati
+  // mimo renderiranog HTML-a, pa se serveru ne smije vjerovati klijentu.
+  const returnTo = sanitizeAdminReturnPath(
+    String(formData.get("returnTo") ?? ""),
+  );
 
   if (!id) {
-    redirect("/admin/dogadjaji");
+    redirect(returnTo);
   }
 
   const supabase = await createClient();
@@ -25,7 +31,7 @@ export async function deleteEvent(formData: FormData) {
 
   if (error) {
     redirect(
-      `/admin/dogadjaji/${id}/obrisi?error=${encodeURIComponent(error.message)}`,
+      `/admin/dogadjaji/${id}/obrisi?error=${encodeURIComponent(error.message)}&returnTo=${encodeURIComponent(returnTo)}`,
     );
   }
 
@@ -37,5 +43,5 @@ export async function deleteEvent(formData: FormData) {
     (galleryImages ?? []) as { id: string; url: string }[],
   );
 
-  redirect("/admin/dogadjaji?deleted=1");
+  redirect(`${returnTo}?deleted=1`);
 }

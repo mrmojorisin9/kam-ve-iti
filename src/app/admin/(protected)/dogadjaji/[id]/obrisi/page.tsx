@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getEventForEdit } from "@/lib/admin-events";
+import { getEventForEdit, sanitizeAdminReturnPath } from "@/lib/admin-events";
 import { formatEventDateTime } from "@/lib/format";
 import { deleteEvent } from "./actions";
 
@@ -14,10 +14,11 @@ export default async function DeleteEventPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; returnTo?: string }>;
 }) {
   const { id } = await params;
-  const { error } = await searchParams;
+  const { error, returnTo: rawReturnTo } = await searchParams;
+  const returnTo = sanitizeAdminReturnPath(rawReturnTo);
   const event = await getEventForEdit(id);
 
   if (!event) {
@@ -50,6 +51,7 @@ export default async function DeleteEventPage({
       <div className="mt-6 flex gap-3">
         <form action={deleteEvent}>
           <input type="hidden" name="id" value={event.id} />
+          <input type="hidden" name="returnTo" value={returnTo} />
           <button
             type="submit"
             className="border-wine-light text-wine-light hover:bg-wine rounded-md border px-4 py-2 text-sm font-medium hover:text-white"
@@ -59,7 +61,7 @@ export default async function DeleteEventPage({
         </form>
 
         <Link
-          href="/admin/dogadjaji"
+          href={returnTo}
           className="border-line text-parchment-muted hover:text-parchment rounded-md border px-4 py-2 text-sm font-medium"
         >
           Odustani

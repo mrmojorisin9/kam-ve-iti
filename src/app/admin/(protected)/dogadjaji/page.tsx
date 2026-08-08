@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listEventsForAdmin } from "@/lib/admin-events";
+import {
+  listEventsForAdmin,
+  groupPendingEventsBySource,
+  type AdminEventListItem,
+} from "@/lib/admin-events";
 import { formatEventDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { bulkUpdateStatus } from "./bulk-actions";
@@ -207,80 +211,110 @@ export default async function AdminEventsPage({
             </div>
           )}
 
-          <ul className="border-line divide-line mt-4 divide-y border-t">
-            {events.map((event) => (
-              <li
-                key={event.id}
-                className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="flex min-w-0 items-start gap-3">
-                  {showBulkActions && (
-                    <input
-                      type="checkbox"
-                      name="ids"
-                      value={event.id}
-                      className="border-line mt-1.5 shrink-0"
-                      aria-label={`Odaberi "${event.title}"`}
-                    />
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-parchment truncate font-medium">
-                      {event.title}
-                    </p>
-                    <p className="text-parchment-muted mt-1 text-sm">
-                      {formatEventDateTime(event.start_at)} ·{" "}
-                      {event.category_name} · {event.location_name} ·{" "}
-                      <span
-                        className={
-                          event.status === "published"
-                            ? "text-gold"
-                            : undefined
-                        }
-                      >
-                        {STATUS_LABELS[event.status] ?? event.status}
-                      </span>
-                      {event.source_name && (
-                        <>
-                          {" · "}
-                          {event.source_url ? (
-                            <a
-                              href={event.source_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="border-line text-parchment-muted hover:text-parchment rounded border px-1.5 py-0.5 text-xs"
-                            >
-                              🔗 {event.source_name}
-                            </a>
-                          ) : (
-                            <span className="border-line text-parchment-muted rounded border px-1.5 py-0.5 text-xs">
-                              🔗 {event.source_name}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex shrink-0 gap-3 text-sm">
-                  <Link
-                    href={`/admin/dogadjaji/${event.id}/uredi`}
-                    className="border-line text-parchment-muted hover:text-parchment rounded-md border px-3 py-1.5"
-                  >
-                    Uredi
-                  </Link>
-                  <Link
-                    href={`/admin/dogadjaji/${event.id}/obrisi`}
-                    className="border-line text-wine-light rounded-md border px-3 py-1.5"
-                  >
-                    Obriši
-                  </Link>
-                </div>
-              </li>
-            ))}
-          </ul>
+          {status === "pending_review" ? (
+            <div className="mt-4 flex flex-col gap-8">
+              {groupPendingEventsBySource(events).map((group) => (
+                <section key={group.key}>
+                  <h2 className="text-parchment-muted text-sm font-semibold tracking-wide uppercase">
+                    {group.label} ({group.events.length})
+                  </h2>
+                  <ul className="border-line divide-line mt-2 divide-y border-t">
+                    {group.events.map((event) => (
+                      <EventRow
+                        key={event.id}
+                        event={event}
+                        showCheckbox={showBulkActions}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          ) : (
+            <ul className="border-line divide-line mt-4 divide-y border-t">
+              {events.map((event) => (
+                <EventRow
+                  key={event.id}
+                  event={event}
+                  showCheckbox={showBulkActions}
+                />
+              ))}
+            </ul>
+          )}
         </form>
       )}
     </main>
+  );
+}
+
+function EventRow({
+  event,
+  showCheckbox,
+}: {
+  event: AdminEventListItem;
+  showCheckbox: boolean;
+}) {
+  return (
+    <li className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-start gap-3">
+        {showCheckbox && (
+          <input
+            type="checkbox"
+            name="ids"
+            value={event.id}
+            className="border-line mt-1.5 shrink-0"
+            aria-label={`Odaberi "${event.title}"`}
+          />
+        )}
+        <div className="min-w-0">
+          <p className="text-parchment truncate font-medium">
+            {event.title}
+          </p>
+          <p className="text-parchment-muted mt-1 text-sm">
+            {formatEventDateTime(event.start_at)} · {event.category_name} ·{" "}
+            {event.location_name} ·{" "}
+            <span
+              className={event.status === "published" ? "text-gold" : undefined}
+            >
+              {STATUS_LABELS[event.status] ?? event.status}
+            </span>
+            {event.source_name && (
+              <>
+                {" · "}
+                {event.source_url ? (
+                  <a
+                    href={event.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="border-line text-parchment-muted hover:text-parchment rounded border px-1.5 py-0.5 text-xs"
+                  >
+                    🔗 {event.source_name}
+                  </a>
+                ) : (
+                  <span className="border-line text-parchment-muted rounded border px-1.5 py-0.5 text-xs">
+                    🔗 {event.source_name}
+                  </span>
+                )}
+              </>
+            )}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex shrink-0 gap-3 text-sm">
+        <Link
+          href={`/admin/dogadjaji/${event.id}/uredi`}
+          className="border-line text-parchment-muted hover:text-parchment rounded-md border px-3 py-1.5"
+        >
+          Uredi
+        </Link>
+        <Link
+          href={`/admin/dogadjaji/${event.id}/obrisi`}
+          className="border-line text-wine-light rounded-md border px-3 py-1.5"
+        >
+          Obriši
+        </Link>
+      </div>
+    </li>
   );
 }
