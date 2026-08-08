@@ -776,6 +776,72 @@ ispravio čovjek". Rješavanje bi zahtijevalo eksplicitno praćenje
 izmjena došla iz admin akcije vs. scrapera) — veći zahvat, izvan opsega
 ovog hitnog popravka, ostaje otvoreno za buduću sesiju.
 
+**Dopuna (2026-08-08) — zatvoreno: praćenje polja koja je admin ručno
+uredio.** Korisnikov eksplicitan zahtjev da se gornje ograničenje riješi
+prije kraja sesije, točno smjerom koji je gornji odlomak već predložio
+("novi stupac ili provjera je li zadnja izmjena došla iz admin akcije vs.
+scrapera").
+
+**Odluka:** novi `events.admin_edited_fields text[]` stupac (0032
+migracija) — bilježi TOČNO koja polja je admin ručno promijenio, ne cijeli
+redak. `applyEventFormUpdate` (`src/lib/admin-events.ts`, dijele je i
+`/uredi` i alat za spajanje duplikata — oba admin write-puta pokrivena
+jednim mjestom) prije upisa dohvaća trenutne vrijednosti retka za
+scraper-dodirljiv skup polja (`title`, `description`, `category_id`,
+`location_id`, `venue_name`, `start_at`, `end_at`, `image_url`),
+uspoređuje ih sa submitanim vrijednostima, i uniju stvarno promijenjenih
+polja dodaje (nikad ne uklanja) u `admin_edited_fields`. `automation/db.py`
+`update_event_by_source_url()` prima taj popis (`find_by_source_url()`
+proširen da ga vrati bez dodatnog upita) i preskače upravo ta polja pri
+re-scrapeu — bez obzira daje li scraper `None` ili stvarnu, drugačiju
+vrijednost. Zaštićen skup polja je namjerno ograničen na ono što scraper
+uopće ikad piše (`source_url`/`source_name`/`source_content_hash` su
+scraperovo vlastito knjigovodstvo, ne admin-uredljiv sadržaj; `organizer_*`/
+pametni filteri/`is_admin_featured`/`sponsored_until`/arhiv-polja scraper
+nikad ne dira, pa nemaju smisla u ovom popisu).
+
+**Razmotrene alternative:**
+- Redis/eksterni cache za "zadnja poznata scraper vrijednost" po polju,
+  usporedba pri svakom re-scrapeu — odbačeno, ista logika kao ADR-022
+  (izbjegavanje nove infrastrukture bez dokazane potrebe); obična kolona
+  na već postojećem retku je dovoljna i jednostavnija.
+- Automatsko "otključavanje" polja ako scraper N puta zaredom vrati istu
+  vrijednost kao admin — odbačeno kao prerano/prekompleksno za sad (ADR-006
+  duh); jednom zaključano polje ostaje zaključano dok ga admin ručno ne
+  promijeni natrag kroz formu (što bi ga zadržalo zaključanim, ne
+  otključalo — nema UI-a za eksplicitno otključavanje, poznato ograničenje
+  ostavljeno za buduću sesiju ako se pokaže potrebnim).
+
+**Posljedice:** `supabase/migrations/0032_admin_edited_fields_protection.sql`
+čeka ručno lijepljenje u Supabase Dashboard SQL Editoru (isti obrazac kao
+dosad). Nema RLS/grant izmjena — stupac nije izložen `anon` upitima (samo
+service-role Python i authenticated admin TS put ga dotiču, oba već imaju
+pun pristup).
+
+**Dva bug-a otkrivena i odmah ispravljena UŽIVO testiranjem** (ne
+hipotetski — oba su se stvarno dogodila na prvom testu protiv pravih
+podataka, ne samo teorijski rizik):
+1. Prvotna usporedba `start_at`/`end_at` bila je doslovna string-jednakost
+   ISO vrijednosti — retci upisani izvan ovog TS puta (Python scraper, CSV
+   uvoz) zapisuju isti trenutak u drugačijem ISO zapisu (npr. `+00:00`
+   umjesto `.000Z`), pa bi svako admin spremanje LAŽNO zaključalo datume
+   za gotovo svaki scraped događaj u bazi. Popravljeno usporedbom po
+   `Date.getTime()` umjesto po stringu.
+2. I nakon toga, isti test je otkrio drugi sloj istog problema: `datetime-
+   local` polje ima samo minutnu preciznost, pa bi redak upisan sa
+   sekundama (potvrđeno uživo da se stvarno događa, ne samo teoretski)
+   nužno "izgubio" te sekunde pri round-tripu kroz formu i lažno se
+   prijavio kao promijenjen. Popravljeno zaokruživanjem obje strane
+   usporedbe na minutu prije usporedbe.
+
+Oba popravka su u `src/lib/admin-events.ts` (`applyEventFormUpdate`).
+Provjereno uživo na tri stvarna događaja (dva netaknuta redom potvrdila
+prazan `admin_edited_fields` nakon spremanja bez izmjena, jedan s ručno
+izmijenjenim opisom ispravno prijavio samo `["description"]`) — bez ovog
+drugog kruga popravaka, zaštita bi u praksi lažno zaključala datume kod
+većine postojećih scraped događaja već pri prvom admin spremanju bilo
+kojeg polja.
+
 ## ADR-021: Automatsko brisanje isteklih događaja — pg_cron u Supabaseu
 
 **Datum:** 2026-08-03

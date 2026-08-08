@@ -43,10 +43,12 @@ def find_by_source_url(client: Client, source_url: str) -> dict | None:
     """Postojeci redak s istim source_url (za upsert umjesto insert) —
     oslanja se na `events_source_url_unique` partial unique index.
     Ukljucuje `source_content_hash` da pipeline.py moze preskociti Claude
-    ekstrakciju kad se sirovi sadrzaj s izvora nije promijenio (0028)."""
+    ekstrakciju kad se sirovi sadrzaj s izvora nije promijenio (0028).
+    Ukljucuje `admin_edited_fields` (0032) da update_event_by_source_url
+    zna koja polja NE smije prepisati, bez dodatnog upita."""
     res = (
         client.table("events")
-        .select("id, title, status, source_content_hash")
+        .select("id, title, status, source_content_hash, admin_edited_fields")
         .eq("source_url", source_url)
         .maybe_single()
         .execute()
@@ -89,7 +91,10 @@ def insert_event(client: Client, event: dict) -> dict:
 
 
 def update_event_by_source_url(
-    client: Client, source_url: str, event: dict
+    client: Client,
+    source_url: str,
+    event: dict,
+    admin_edited_fields: list[str] | None = None,
 ) -> dict:
     """Re-scrape istog source_url: azurira postojeci redak umjesto novog
     inserta. Ne dira `status` (admin je mozda vec odobrio/odbio — re-scrape
@@ -100,11 +105,20 @@ def update_event_by_source_url(
     uzivo 2026-08-07: mnovine.hr nikad ne daje sliku u listi (uvijek
     image_url=None), pa je re-scrape prepisao rucno dodanu sliku admina
     natrag na prazno. Isti rizik postoji za description/venue_name/end_at
-    kod izvora koji ta polja ne pruzaju."""
+    kod izvora koji ta polja ne pruzaju.
+
+    `admin_edited_fields` (0032) — polja koja je admin RUCNO izmijenio kroz
+    /uredi ili alat za spajanje duplikata (vidi applyEventFormUpdate u
+    src/lib/admin-events.ts) se preskacu OVDJE isto, cak i kad scraper vrati
+    stvarnu (ne-None) vrijednost — zatvara preostali propust iz ADR-020
+    dopune (2026-08-07): prijasnja zastita je stitila samo od None, ne i od
+    scraperove drugacije vrijednosti koja bi prepisala rucnu ispravku
+    (npr. admin ispravljena kategorija)."""
+    skip = set(admin_edited_fields or [])
     event = {
         k: v
         for k, v in event.items()
-        if k not in ("status", "created_by") and v is not None
+        if k not in ("status", "created_by") and v is not None and k not in skip
     }
     res = (
         client.table("events")

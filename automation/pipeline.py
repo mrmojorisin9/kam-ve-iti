@@ -158,9 +158,17 @@ def run(source: str, dry_run: bool) -> dict:
 
         if existing:
             stats["updated"] += 1
-            print(f"  [azuriranje postojeceg (source_url)] {event['title']}")
+            admin_edited_fields = existing.get("admin_edited_fields") or []
+            skipped_note = (
+                f" (preskace {len(admin_edited_fields)} rucno uredenih polja)"
+                if admin_edited_fields
+                else ""
+            )
+            print(f"  [azuriranje postojeceg (source_url)]{skipped_note} {event['title']}")
             if not dry_run:
-                db.update_event_by_source_url(client, raw.source_url, event)
+                db.update_event_by_source_url(
+                    client, raw.source_url, event, admin_edited_fields
+                )
             continue
 
         fuzzy_candidates = db.find_fuzzy_candidates(

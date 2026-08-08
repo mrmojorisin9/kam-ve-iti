@@ -462,6 +462,70 @@ export async function applyEventFormUpdate(
     }
   }
 
+  const description = readFormText(formData, "description");
+  const venueName = readFormText(formData, "venue_name");
+
+  // "Sticky admin edits" (DECISIONS.md ADR-020 dopuna, 2026-08-07): prati
+  // TOCNO koja polja admin ovdje stvarno mijenja (ne cijeli redak), da
+  // automation/db.py update_event_by_source_url zna koja polja preskociti
+  // pri re-scrapeu — cak i kad scraper vrati ne-None (ali drugaciju)
+  // vrijednost. Jednom zakljucano polje ostaje zakljucano (nema
+  // automatskog otkljucavanja).
+  const { data: beforeRow } = await supabase
+    .from("events")
+    .select(
+      "title, description, category_id, location_id, venue_name, start_at, end_at, image_url, admin_edited_fields",
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  const newlyEditedFields: string[] = [];
+  if (beforeRow) {
+    const textComparisons: [string, string | null, string | null][] = [
+      ["title", beforeRow.title, title],
+      ["description", beforeRow.description, description],
+      ["category_id", beforeRow.category_id, categoryId],
+      ["location_id", beforeRow.location_id, locationId],
+      ["venue_name", beforeRow.venue_name, venueName],
+      ["image_url", beforeRow.image_url, imageUrl],
+    ];
+    for (const [field, oldValue, newValue] of textComparisons) {
+      if (oldValue !== newValue) newlyEditedFields.push(field);
+    }
+
+    // start_at/end_at se uspoređuju po STVARNOM trenutku, zaokruženom na
+    // minutu — ne po sirovom ISO stringu. Dva razloga, oba otkrivena uživo
+    // pri testiranju ove izmjene: (1) retci upisani izvan ovog TS puta
+    // (Python scraper, CSV uvoz) mogu zapisati isti trenutak u drugačijem
+    // ISO zapisu (npr. "+00:00" umjesto ".000Z"), pa bi doslovna string
+    // usporedba lažno prijavila promjenu na SVAKOM admin spremanju; (2)
+    // `datetime-local` polje ima samo minutnu preciznost, pa bi red
+    // upisan sa sekundama (npr. iz CSV uvoza) NUŽNO "izgubio" te sekunde
+    // pri svakom round-tripu kroz formu — to nikad nije stvarna admin
+    // namjera izmjene, admin tu preciznost kroz ovo polje ne može ni
+    // vidjeti ni namjerno promijeniti.
+    const MINUTE_MS = 60_000;
+    const dateComparisons: [string, string | null, string | null][] = [
+      ["start_at", beforeRow.start_at, startAt],
+      ["end_at", beforeRow.end_at, endAt],
+    ];
+    for (const [field, oldValue, newValue] of dateComparisons) {
+      const oldMinute = oldValue
+        ? Math.floor(new Date(oldValue).getTime() / MINUTE_MS)
+        : null;
+      const newMinute = newValue
+        ? Math.floor(new Date(newValue).getTime() / MINUTE_MS)
+        : null;
+      if (oldMinute !== newMinute) newlyEditedFields.push(field);
+    }
+  }
+  const adminEditedFields = Array.from(
+    new Set([
+      ...((beforeRow?.admin_edited_fields as string[] | null) ?? []),
+      ...newlyEditedFields,
+    ]),
+  );
+
   const galleryFiles = formData
     .getAll("gallery_files")
     .filter((f): f is File => f instanceof File && f.size > 0);
@@ -495,10 +559,10 @@ export async function applyEventFormUpdate(
     .from("events")
     .update({
       title,
-      description: readFormText(formData, "description"),
+      description,
       category_id: categoryId,
       location_id: locationId,
-      venue_name: readFormText(formData, "venue_name"),
+      venue_name: venueName,
       start_at: startAt,
       end_at: endAt,
       organizer_name: readFormText(formData, "organizer_name"),
@@ -514,6 +578,7 @@ export async function applyEventFormUpdate(
       is_hidden_gem: isHiddenGem,
       is_admin_featured: isAdminFeatured,
       sponsored_until: sponsoredUntil,
+      admin_edited_fields: adminEditedFields,
     })
     .eq("id", id);
 
