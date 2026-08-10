@@ -39,6 +39,18 @@ export function utcIsoToZagrebLocalInput(iso: string): string {
   return `${get("year")}-${get("month")}-${get("day")}T${hour}:${get("minute")}`;
 }
 
+/**
+ * Današnji datum u Europe/Zagreb, "YYYY-MM-DD" (en-CA locale format je
+ * već taj oblik). Koristi ga interni brojač posjetitelja (ADR-023) i za
+ * dnevnu sol hasha i za "od ponoći danas" granicu upita — obje potrebe
+ * dijele istu vrijednost, bez duplicirane DST logike.
+ */
+export function todayInZagreb(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zagreb" }).format(
+    new Date(),
+  );
+}
+
 function zagrebOffsetMinutes(instant: Date): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Europe/Zagreb",

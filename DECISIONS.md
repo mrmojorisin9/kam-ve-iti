@@ -1071,6 +1071,74 @@ nikad ne brišu) — namjeran tradeoff, to je cijela poanta (zadržati
 indeksirane URL-ove zauvijek); Postgres podnosi milijune malih redaka bez
 problema, nije razlog za brigu na ovoj veličini portala.
 
+## ADR-023: Interni brojač pregleda/posjetitelja bez kolačića — dnevno-rotirajući hash umjesto Google Analytics/consent bannera
+
+**Datum:** 2026-08-10
+**Status:** Prihvaćeno
+
+**Kontekst:**
+Korisnikov zahtjev: uvid u promet portala (broj pregleda stranica i broj
+posjetitelja) uživo u `/admin`, uz izričit zahtjev da se izbjegne cookie
+consent popup i da se ne prekrši regulativa (GDPR/ePrivacy). Postojeći
+`event_interactions` (ADR-014) već dokazuje da je "bez identifikacije"
+pristup dovoljan za brojanje PREGLEDA — problem je kako dodati i broj
+JEDINSTVENIH POSJETITELJA (deduplikacija ponovljenih pregleda iste osobe)
+a da se ništa ne sprema na klijentu (što bi aktiviralo ePrivacy zahtjev
+za pristankom na "pristup terminalnoj opremi korisnika").
+
+**Odluka:**
+- Nova, odvojena tablica `page_views` (site-wide, ne po eventu) —
+  `path`, `visitor_hash`, `created_at`, isti append-only/RLS-public-insert
+  obrazac kao `event_interactions`.
+- `visitor_hash` = `sha256(dailySalt:ip:userAgent)`, gdje je `dailySalt =
+  sha256(VISITOR_HASH_SECRET:danas-u-Zagrebu)`. Izračun je isključivo
+  server-side (Server Action), IP/User-Agent se NIKAD ne spremaju sirovi
+  — samo izvedeni hash. Sol se mijenja svaki dan (Europe/Zagreb ponoć),
+  pa se isti posjetitelj ne može povezati kroz dane niti unatrag
+  identificirati (jednosmjeran hash, tajna sol nikad ne napušta server).
+- Ništa se ne sprema na klijentu (nema kolačića/localStoragea za ovu
+  svrhu) — ePrivacy okidač ("pristup/spremanje na terminalnoj opremi
+  korisnika", čl. 5(3) ePrivacy direktive, razlog zašto GA/Meta Pixel i
+  sl. trebaju consent banner) time uopće ne nastupa. Isti princip kao
+  cookieless analytics alati (Plausible, Fathom, CNIL-ova iznimka za
+  privacy-friendly analitiku) koji zbog toga javno tvrde da im ne treba
+  banner.
+- Admin panel dobiva auto-osvježavajući prikaz (poll svakih 5s preko
+  Server Actiona), NE websocket/Supabase Realtime "trenutno aktivnih"
+  brojač — korisnikov odabir (jednostavnije, dosljedno ostatku projekta
+  koji nema real-time infrastrukturu, ADR-018/ADR-022 duh "bez nove
+  infrastrukture dok stvarno ne zatreba").
+
+**Razmotrene alternative:**
+- Google Analytics / bilo koji vanjski analytics skript — odbačeno,
+  zahtijeva cookie consent banner (treća strana, cross-site tracking),
+  točno ono što korisnik želi izbjeći.
+- Kolačić s trajnim anonimnim ID-em (uobičajen "first-party analytics"
+  pristup) — odbačeno, i dalje je "pristup terminalnoj opremi korisnika"
+  pod ePrivacy direktivom pa bi tehnički trebao consent (iako blaži od
+  GA); dnevno-rotirajući server-side hash postiže isti cilj (dedup
+  posjetitelja) bez ikakvog klijentskog spremanja.
+- IP adresa spremljena sirova radi analize — odbačeno, nepotrebno veći
+  privatnosni rizik (IP je osobni podatak pod GDPR-om) za istu funkciju;
+  jednosmjeran dnevni hash je dovoljan i sigurniji.
+- Supabase Realtime pretplata za "uživo" prikaz — odbačeno za sad
+  (korisnikov odabir kroz AskUserQuestion), poll je jednostavniji i
+  dovoljan za admin dashboard use-case; ostaje otvorena opcija za budući
+  zahtjev.
+
+**Posljedice:**
+`supabase/migrations/0035_page_views.sql`. Novi obavezan env secret
+`VISITOR_HASH_SECRET` (dodan u `.env.example`, mora se postaviti u
+`.env.local` i Vercel Environment Variables — bez njega hash i dalje
+radi, ali predvidljivo/nesigurno jer bi `undefined` bio dio inputa).
+**Napomena, ne pravni savjet**: ovo je inženjerska procjena po uzoru na
+priznatu praksu cookieless analytics alata, ne formalna pravna potvrda
+usklađenosti — preporuka za korisnika je kratka provjera sa stvarnim
+pravnim savjetnikom ako se ova metrika koristi u ikakvom službenom/
+regulatornom kontekstu. "Posjetitelj" je jedinstven UNUTAR jednog dana,
+ne stvaran "unique visitor" kroz vrijeme (isti čovjek sutra broji se kao
+nova posjeta) — namjeran tradeoff za privatnost, ne bug.
+
 ---
 _Format za nove zapise:_
 ```

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LiveStatsPanel } from "@/components/admin/LiveStatsPanel";
 
 export default async function AdminDashboardPage({
   searchParams,
@@ -12,6 +13,11 @@ export default async function AdminDashboardPage({
       <h1 className="font-display text-parchment text-3xl font-semibold tracking-tight">
         Nadzorna ploča
       </h1>
+
+      <div className="mt-6">
+        <LiveStatsPanel />
+      </div>
+
       {created && (
         <p className="border-gold text-gold mt-6 rounded-md border px-4 py-3 text-sm">
           Događaj spremljen.{" "}
