@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
+import { SponsorWidget } from "@/components/SponsorWidget";
+import { getGeneralSponsor } from "@/lib/sponsor";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,11 +35,23 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const sponsor = await getGeneralSponsor();
+  const sponsorReady =
+    sponsor?.isActive && sponsor.sponsorName && sponsor.logoUrl && sponsor.linkUrl
+      ? {
+          sponsorName: sponsor.sponsorName,
+          logoUrl: sponsor.logoUrl,
+          promoText: sponsor.promoText,
+          linkUrl: sponsor.linkUrl,
+          displayFrequency: sponsor.displayFrequency,
+        }
+      : null;
+
   return (
     <html
       lang="hr"
@@ -45,6 +59,7 @@ export default function RootLayout({
     >
       <body className="bg-night text-parchment flex min-h-full flex-col">
         {children}
+        {sponsorReady && <SponsorWidget sponsor={sponsorReady} />}
       </body>
     </html>
   );

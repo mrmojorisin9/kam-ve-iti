@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DISPLAY_FREQUENCY_OPTIONS, getGeneralSponsor } from "@/lib/admin-sponsor";
+import { DISPLAY_FREQUENCY_OPTIONS, getGeneralSponsor } from "@/lib/sponsor";
 import { saveSponsor } from "./actions";
 
 export const metadata: Metadata = {
