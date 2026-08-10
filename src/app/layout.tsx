@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import { SponsorWidget } from "@/components/SponsorWidget";
 import { PageViewTracker } from "@/components/PageViewTracker";
+import { Footer } from "@/components/Footer";
 import { getGeneralSponsor } from "@/lib/sponsor";
 import "./globals.css";
 
@@ -63,6 +64,7 @@ export default async function RootLayout({
     >
       <body className="bg-night text-parchment flex min-h-full flex-col">
         {children}
+        <Footer />
         <PageViewTracker />
         {sponsorReady && <SponsorWidget sponsor={sponsorReady} />}
       </body>
