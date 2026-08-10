@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { EventForm } from "@/components/admin/EventForm";
 import { createEvent } from "./actions";
@@ -10,9 +11,9 @@ export const metadata: Metadata = {
 export default async function NewEventPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; link?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, link } = await searchParams;
   const supabase = await createClient();
 
   const [{ data: categories }, { data: locations }] = await Promise.all([
@@ -29,12 +30,23 @@ export default async function NewEventPage({
         Novi događaj
       </h1>
 
+      {link && (
+        <p className="text-parchment-muted mt-2 text-sm">
+          Pred-popunjeno iz{" "}
+          <Link href="/admin/prijave-linkom" className="hover:text-parchment underline">
+            prijave linkom
+          </Link>
+          .
+        </p>
+      )}
+
       <EventForm
         categories={categories ?? []}
         locations={locations ?? []}
         action={createEvent}
         error={error}
         submitLabel="Spremi događaj"
+        defaultValues={link ? { source_url: link } : undefined}
       />
     </main>
   );

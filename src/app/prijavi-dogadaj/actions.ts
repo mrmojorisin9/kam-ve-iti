@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
 import { zagrebLocalToUtcIso } from "@/lib/zagreb-time";
-import { uniqueSlug } from "@/lib/admin-events";
+import { uniqueSlug, isAbsoluteUrl } from "@/lib/admin-events";
 
 function readText(formData: FormData, field: string): string | null {
   const value = String(formData.get(field) ?? "").trim();
@@ -13,6 +13,10 @@ function readText(formData: FormData, field: string): string | null {
 
 function fail(message: string): never {
   redirect(`/prijavi-dogadaj?error=${encodeURIComponent(message)}`);
+}
+
+function failLink(message: string): never {
+  redirect(`/prijavi-dogadaj?linkError=${encodeURIComponent(message)}`);
 }
 
 export async function submitEvent(formData: FormData) {
@@ -94,4 +98,44 @@ export async function submitEvent(formData: FormData) {
   }
 
   redirect("/prijavi-dogadaj/hvala");
+}
+
+/**
+ * "Imaš događaj? Pošalji nam link" — brz put pored pune ručne forme
+ * (korisnikov zahtjev). Namjerno NE ide u `events` (vidi
+ * 0036_event_link_submissions.sql za obrazloženje) — sprema se u
+ * jednostavan inbox koji admin ručno prazni preko `/admin/dogadjaji/novi`
+ * (`/admin/prijave-linkom`).
+ */
+export async function submitEventLink(formData: FormData) {
+  const url = readText(formData, "link_url");
+  const captchaA = Number(formData.get("link_captcha_a"));
+  const captchaB = Number(formData.get("link_captcha_b"));
+  const captchaAnswer = Number(formData.get("link_captcha_answer"));
+
+  if (captchaAnswer !== captchaA + captchaB) {
+    failLink("Pogrešan odgovor na računsko pitanje, pokušaj ponovno.");
+  }
+
+  if (!url) {
+    failLink("Link je obavezan.");
+  }
+
+  if (!isAbsoluteUrl(url)) {
+    failLink("Link mora biti puna adresa koja počinje s http:// ili https://.");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("event_link_submissions").insert({
+    url,
+    note: readText(formData, "link_note"),
+    submitter_email: readText(formData, "link_submitter_email"),
+    submitter_phone: readText(formData, "link_submitter_phone"),
+  });
+
+  if (error) {
+    failLink("Link nije spremljen, pokušaj ponovno.");
+  }
+
+  redirect("/prijavi-dogadaj?linkSaved=1");
 }

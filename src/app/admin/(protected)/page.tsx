@@ -52,6 +52,12 @@ export default async function AdminDashboardPage({
         >
           Generalni sponzor
         </Link>
+        <Link
+          href="/admin/prijave-linkom"
+          className="border-line text-parchment-muted hover:text-parchment self-start rounded-md border px-4 py-2 text-sm font-medium"
+        >
+          Prijave linkom
+        </Link>
       </div>
     </main>
   );
