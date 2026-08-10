@@ -40,6 +40,12 @@ export default async function AdminDashboardPage({
         >
           CSV uvoz
         </Link>
+        <Link
+          href="/admin/sponzor"
+          className="border-line text-parchment-muted hover:text-parchment self-start rounded-md border px-4 py-2 text-sm font-medium"
+        >
+          Generalni sponzor
+        </Link>
       </div>
     </main>
   );
