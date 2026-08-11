@@ -16,5 +16,5 @@ export async function deleteLinkSubmission(formData: FormData) {
     await supabase.from("event_link_submissions").delete().eq("id", id);
   }
 
-  redirect("/admin/prijave-linkom");
+  redirect("/admin/dogadjaji?status=prijave-linkom");
 }

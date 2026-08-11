@@ -105,7 +105,7 @@ export async function submitEvent(formData: FormData) {
  * (korisnikov zahtjev). Namjerno NE ide u `events` (vidi
  * 0036_event_link_submissions.sql za obrazloženje) — sprema se u
  * jednostavan inbox koji admin ručno prazni preko `/admin/dogadjaji/novi`
- * (`/admin/prijave-linkom`).
+ * (`/admin/dogadjaji?status=prijave-linkom`).
  */
 export async function submitEventLink(formData: FormData) {
   const url = readText(formData, "link_url");

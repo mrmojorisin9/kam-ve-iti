@@ -33,7 +33,7 @@ export default async function NewEventPage({
       {link && (
         <p className="text-parchment-muted mt-2 text-sm">
           Pred-popunjeno iz{" "}
-          <Link href="/admin/prijave-linkom" className="hover:text-parchment underline">
+          <Link href="/admin/dogadjaji?status=prijave-linkom" className="hover:text-parchment underline">
             prijave linkom
           </Link>
           .

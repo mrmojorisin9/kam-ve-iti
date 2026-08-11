@@ -116,7 +116,7 @@ export async function importCsv(formData: FormData) {
       errors.push(`red ${sheetRow}: neispravan format kraja (očekuje se GGGG-MM-DDTSS:mm)`);
       continue;
     }
-    const status = statusRaw ?? "published";
+    const status = statusRaw ?? "pending_review";
     if (!VALID_STATUSES.has(status)) {
       errors.push(`red ${sheetRow}: nepoznat status "${status}"`);
       continue;

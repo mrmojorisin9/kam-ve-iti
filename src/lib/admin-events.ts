@@ -65,6 +65,18 @@ type AdminEventListRow = {
 };
 
 /**
+ * Događaji čiji je efektivni završetak (`end_at`, ili `start_at` ako nema
+ * `end_at`) prošao prije više od 24h se ne prikazuju u `/admin/dogadjaji`
+ * (korisnikov zahtjev — svakodnevni pregled se guši u davno prošlim
+ * događajima dok ih arhivski cron ne pokupi tek nakon 3 dana,
+ * `archive_expired_events`, 0030). Čisto prikazni filter, ne dira
+ * arhiviranje. Supabase JS builder nema `coalesce` — emulirano preko `.or`
+ * (prihvati red ako mu je `end_at` iza granice, ILI `end_at` uopće ne
+ * postoji i `start_at` je iza granice).
+ */
+const ADMIN_HIDE_EXPIRED_AFTER_MS = 24 * 60 * 60 * 1000;
+
+/**
  * Svi događaji (admin — RLS "events_admin_full_access"), najbliži početak
  * prvi (korisnikov zahtjev — današnji/skorašnji događaji na vrhu liste).
  * `status` filtrira na jedan status (npr. "Na čekanju" prečac u
@@ -78,6 +90,9 @@ export async function listEventsForAdmin(
   locationId?: string,
 ): Promise<AdminEventListItem[]> {
   const supabase = await createClient();
+  const cutoffIso = new Date(
+    Date.now() - ADMIN_HIDE_EXPIRED_AFTER_MS,
+  ).toISOString();
   let query = supabase
     .from("events")
     .select(
@@ -88,6 +103,7 @@ export async function listEventsForAdmin(
       location:locations ( name )
     `,
     )
+    .or(`end_at.gte.${cutoffIso},and(end_at.is.null,start_at.gte.${cutoffIso})`)
     .order("start_at", { ascending: true });
 
   if (status) {

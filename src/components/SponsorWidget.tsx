@@ -268,7 +268,7 @@ export function SponsorWidget({ sponsor }: { sponsor: SponsorWidgetSponsor }) {
             <span aria-hidden="true">✕</span> Preskoči
           </button>
           <p
-            className={`text-night fixed left-1/2 top-[calc(50%-6.5rem)] z-[60] -translate-x-1/2 animate-fade-in font-mono text-xs tracking-[0.2em] uppercase opacity-70 transition-opacity duration-700 ${
+            className={`text-night fixed left-1/2 top-[calc(50%-3.5rem)] z-[60] -translate-x-1/2 animate-fade-in font-mono text-xs font-bold tracking-[0.2em] uppercase opacity-90 [text-shadow:0_1px_3px_rgba(0,0,0,0.35)] transition-opacity duration-700 ${
               collapsing ? "!opacity-0" : ""
             }`}
           >

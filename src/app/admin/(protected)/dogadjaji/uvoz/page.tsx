@@ -44,8 +44,9 @@ export default async function ImportCsvPage({
             is_family_friendly, is_dog_friendly, is_solo_friendly,
             is_romantic, is_hidden_gem
           </code>{" "}
-          (status: draft / pending_review / published, zadano published;
-          is_* stupci: true/false, zadano false).
+          (status: draft / pending_review / published, zadano
+          pending_review — prolazi pregled kao i ostali automatizirani
+          unosi; is_* stupci: true/false, zadano false).
         </p>
         <p className="mt-2">
           Datum i vrijeme u formatu{" "}
