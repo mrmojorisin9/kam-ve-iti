@@ -47,6 +47,7 @@ export type AdminEventListItem = {
   submitter_email: string | null;
   submitter_phone: string | null;
   is_archived: boolean;
+  image_url: string | null;
 };
 
 type AdminEventListRow = {
@@ -60,6 +61,7 @@ type AdminEventListRow = {
   submitter_email: string | null;
   submitter_phone: string | null;
   is_archived: boolean;
+  image_url: string | null;
   category: { name: string } | null;
   location: { name: string } | null;
 };
@@ -98,7 +100,7 @@ export async function listEventsForAdmin(
     .select(
       `
       id, title, slug, start_at, status, source_name, source_url,
-      submitter_email, submitter_phone, is_archived,
+      submitter_email, submitter_phone, is_archived, image_url,
       category:categories ( name ),
       location:locations ( name )
     `,
@@ -136,6 +138,7 @@ export async function listEventsForAdmin(
     submitter_email: row.submitter_email,
     submitter_phone: row.submitter_phone,
     is_archived: row.is_archived,
+    image_url: row.image_url,
     category_name: row.category?.name ?? "—",
     location_name: row.location?.name ?? "—",
   }));
@@ -222,6 +225,7 @@ export type DuplicateCandidateEvent = {
   location_id: string;
   location_name: string;
   source_name: string | null;
+  image_url: string | null;
 };
 
 type DuplicateCandidateRow = {
@@ -232,6 +236,7 @@ type DuplicateCandidateRow = {
   status: string;
   location_id: string;
   source_name: string | null;
+  image_url: string | null;
   location: { name: string } | null;
 };
 
@@ -249,7 +254,7 @@ export async function listEventsForDuplicateScan(): Promise<
     .from("events")
     .select(
       `
-      id, title, slug, start_at, status, location_id, source_name,
+      id, title, slug, start_at, status, location_id, source_name, image_url,
       location:locations ( name )
     `,
     )
@@ -270,6 +275,7 @@ export async function listEventsForDuplicateScan(): Promise<
     location_id: row.location_id,
     location_name: row.location?.name ?? "—",
     source_name: row.source_name,
+    image_url: row.image_url,
   }));
 }
 

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { listEventsForDuplicateScan } from "@/lib/admin-events";
 import { findDuplicateGroups, parseDuplicateMatchOptions } from "@/lib/duplicates";
 import { formatEventDateTime } from "@/lib/format";
+import { EventThumb } from "@/components/admin/EventThumb";
+import { keepEvent } from "./keep-actions";
 
 export const metadata: Metadata = {
   title: "Mogući duplikati — Kam denes admin",
@@ -23,6 +25,8 @@ export default async function DuplicateEventsPage({
   searchParams: Promise<{
     deleted?: string;
     merged?: string;
+    kept?: string;
+    error?: string;
     usporedi_lokaciju?: string;
     usporedi_vrijeme?: string;
     prag_naslova?: string;
@@ -31,6 +35,8 @@ export default async function DuplicateEventsPage({
   const {
     deleted,
     merged,
+    kept,
+    error,
     usporedi_lokaciju,
     usporedi_vrijeme,
     prag_naslova,
@@ -134,6 +140,16 @@ export default async function DuplicateEventsPage({
           Grupa spojena u jedan događaj.
         </p>
       )}
+      {kept && (
+        <p className="border-gold text-gold mt-4 rounded-md border px-4 py-3 text-sm">
+          Zadržan odabrani događaj, ostali iz grupe obrisani.
+        </p>
+      )}
+      {error && (
+        <p className="border-wine-light text-wine-light mt-4 rounded-md border px-4 py-3 text-sm">
+          Greška: {error}
+        </p>
+      )}
 
       {groups.length === 0 ? (
         <p className="text-parchment-muted mt-8">
@@ -160,18 +176,36 @@ export default async function DuplicateEventsPage({
                     key={event.id}
                     className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div className="min-w-0">
-                      <p className="text-parchment truncate font-medium">
-                        {event.title}
-                      </p>
-                      <p className="text-parchment-muted mt-1 text-sm">
-                        {formatEventDateTime(event.start_at)} ·{" "}
-                        {event.location_name} ·{" "}
-                        {STATUS_LABELS[event.status] ?? event.status}
-                        {event.source_name && <> · 🔗 {event.source_name}</>}
-                      </p>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <EventThumb imageUrl={event.image_url} />
+                      <div className="min-w-0">
+                        <p className="text-parchment truncate font-medium">
+                          {event.title}
+                        </p>
+                        <p className="text-parchment-muted mt-1 text-sm">
+                          {formatEventDateTime(event.start_at)} ·{" "}
+                          {event.location_name} ·{" "}
+                          {STATUS_LABELS[event.status] ?? event.status}
+                          {event.source_name && <> · 🔗 {event.source_name}</>}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex shrink-0 gap-3 text-sm">
+                      <form action={keepEvent}>
+                        <input
+                          type="hidden"
+                          name="event_ids"
+                          value={group.map((e) => e.id).join(",")}
+                        />
+                        <input type="hidden" name="keep_id" value={event.id} />
+                        <button
+                          type="submit"
+                          title={`Zadrži ovaj, obriši ostale (${group.length - 1})`}
+                          className="border-gold text-gold hover:bg-gold hover:text-night rounded-md border px-3 py-1.5"
+                        >
+                          Zadrži ovaj
+                        </button>
+                      </form>
                       <Link
                         href={`/admin/dogadjaji/${event.id}/uredi`}
                         className="border-line text-parchment-muted hover:text-parchment rounded-md border px-3 py-1.5"

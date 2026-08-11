@@ -14,6 +14,7 @@ debug (`python -m automation.pipeline --source emedjimurje --dry-run`).
 import argparse
 import hashlib
 import re
+import sys
 import time
 import unicodedata
 
@@ -198,6 +199,14 @@ def run(source: str, dry_run: bool) -> dict:
 
 
 def main() -> None:
+    # Windows konzola defaultira na lokalnu OS kodnu stranicu (npr. cp1250),
+    # ne UTF-8 — otkriveno uzivo (2026-08-11): evento.sh naslov s emoji-jem
+    # ("🎸 PSIHOMODO POP") srusio je citav run na obicnom print()-u, na pola
+    # obrade izvora. Docker kontejner (Linux) ovo ne pogadja, ali CLI (ovaj
+    # main()) je bas za lokalno pokretanje, pa treba biti otporan i ovdje.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     load_dotenv()
     parser = argparse.ArgumentParser(description="Kam denes scraper pipeline")
     parser.add_argument("--source", required=True, choices=list(ADAPTERS))

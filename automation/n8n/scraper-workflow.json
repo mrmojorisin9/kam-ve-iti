@@ -59,6 +59,21 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [520, 540]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://automation:8000/run",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [{ "name": "source", "value": "evento" }]
+        },
+        "options": {}
+      },
+      "name": "Pokreni scraper (evento)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 700]
     }
   ],
   "connections": {
@@ -67,7 +82,8 @@
         [
           { "node": "Pokreni scraper (emedjimurje)", "type": "main", "index": 0 },
           { "node": "Pokreni scraper (mnovine)", "type": "main", "index": 0 },
-          { "node": "Pokreni scraper (prelog)", "type": "main", "index": 0 }
+          { "node": "Pokreni scraper (prelog)", "type": "main", "index": 0 },
+          { "node": "Pokreni scraper (evento)", "type": "main", "index": 0 }
         ]
       ]
     }

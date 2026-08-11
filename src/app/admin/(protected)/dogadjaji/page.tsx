@@ -7,6 +7,7 @@ import {
 } from "@/lib/admin-events";
 import { formatEventDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
+import { EventThumb } from "@/components/admin/EventThumb";
 import { bulkUpdateStatus } from "./bulk-actions";
 import { deleteLinkSubmission } from "./link-actions";
 
@@ -388,6 +389,7 @@ function EventRow({
             aria-label={`Odaberi "${event.title}"`}
           />
         )}
+        <EventThumb imageUrl={event.image_url} />
         <div className="min-w-0">
           <p className="text-parchment truncate font-medium">
             {event.title}
