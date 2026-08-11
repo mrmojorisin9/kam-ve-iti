@@ -8,13 +8,21 @@ const URL_PATTERN = /^https?:\/\//i;
  * razini grada/općine, bez ulice/koordinata.
  */
 export function buildEventJsonLd(event: EventDetail, siteUrl: string) {
-  // Google zahtijeva apsolutne URL-ove za `image` — filtrira relativne
-  // putanje (npr. stariji `/event-placeholder.svg` upisan izravno kao
-  // image_url) koje ovdje ne bi bile razrješive.
+  // Google zahtijeva apsolutne URL-ove za `image`. Otkriveno uzivo
+  // (GSC "Nedostaje polje image", 2026-08-11): `event.image_url` je NULL za
+  // 44 objavljena dogadaja (placeholder `/event-placeholder.svg` je dosad
+  // bio SAMO prikazni fallback u komponentama — vidi EventRow.tsx/
+  // `[slug]/page.tsx`, `event.image_url ?? "/event-placeholder.svg"` — a
+  // ovaj builder je primao sirovi `event.image_url`, pa je "image" polje
+  // za te dogadaje potpuno izostajalo iz JSON-LD-a). Isti fallback sad i
+  // ovdje, pretvoren u apsolutni URL (Google odbija relativne putanje) —
+  // placeholder je stvaran, dostupan URL, ne izmisljena vrijednost.
+  const toAbsolute = (url: string) =>
+    URL_PATTERN.test(url) ? url : `${siteUrl}${url}`;
   const images = [
-    ...(event.image_url ? [event.image_url] : []),
+    event.image_url ?? "/event-placeholder.svg",
     ...event.gallery.map((img) => img.url),
-  ].filter((url) => URL_PATTERN.test(url));
+  ].map(toAbsolute);
   const eventUrl = `${siteUrl}/dogadjaji/${event.slug}`;
 
   return {
