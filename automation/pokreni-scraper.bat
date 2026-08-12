@@ -8,6 +8,16 @@ rem terminal, precica) - uvijek se prvo pozicionira u korijen repoa
 rem (jedan direktorij iznad automation\).
 cd /d "%~dp0.."
 
+rem ---------------------------------------------------------------
+rem UKLJUCI/ISKLJUCI POJEDINE IZVORE - samo za ovu .bat skriptu, ne
+rem dira automatski n8n cron (to je odvojena, neovisna postavka).
+rem Promijeni "1" u "0" da izvor nestane iz izbornika ispod.
+rem ---------------------------------------------------------------
+set "EMEDJIMURJE_OMOGUCEN=1"
+set "MNOVINE_OMOGUCEN=1"
+set "PRELOG_OMOGUCEN=1"
+set "EVENTO_OMOGUCEN=1"
+
 if exist "automation\.venv\Scripts\activate.bat" goto venv_ok
 echo GRESKA: automation\.venv ne postoji.
 echo Pogledaj automation\README.md za upute o postavljanju.
@@ -22,12 +32,21 @@ echo   Kam denes - rucno pokretanje scrapera
 echo ===============================================
 echo.
 echo Izvor:
-echo   1. emedjimurje  (emedjimurje.net.hr)
-echo   2. mnovine      (mnovine.hr)
-echo   3. prelog       (prelog.hr)
-echo   4. evento       (evento.sh)
+if "%EMEDJIMURJE_OMOGUCEN%"=="1" echo   1. emedjimurje  (emedjimurje.net.hr)
+if not "%EMEDJIMURJE_OMOGUCEN%"=="1" echo   1. emedjimurje  - ISKLJUCENO
+if "%MNOVINE_OMOGUCEN%"=="1" echo   2. mnovine      (mnovine.hr)
+if not "%MNOVINE_OMOGUCEN%"=="1" echo   2. mnovine      - ISKLJUCENO
+if "%PRELOG_OMOGUCEN%"=="1" echo   3. prelog       (prelog.hr)
+if not "%PRELOG_OMOGUCEN%"=="1" echo   3. prelog       - ISKLJUCENO
+if "%EVENTO_OMOGUCEN%"=="1" echo   4. evento       (evento.sh)
+if not "%EVENTO_OMOGUCEN%"=="1" echo   4. evento       - ISKLJUCENO
 echo.
 set /p IZVOR_ODABIR="Odaberi izvor (1-4): "
+
+if "%IZVOR_ODABIR%"=="1" if not "%EMEDJIMURJE_OMOGUCEN%"=="1" goto izvor_iskljucen
+if "%IZVOR_ODABIR%"=="2" if not "%MNOVINE_OMOGUCEN%"=="1" goto izvor_iskljucen
+if "%IZVOR_ODABIR%"=="3" if not "%PRELOG_OMOGUCEN%"=="1" goto izvor_iskljucen
+if "%IZVOR_ODABIR%"=="4" if not "%EVENTO_OMOGUCEN%"=="1" goto izvor_iskljucen
 
 if "%IZVOR_ODABIR%"=="1" set "IZVOR=emedjimurje" & goto nacin
 if "%IZVOR_ODABIR%"=="2" set "IZVOR=mnovine" & goto nacin
@@ -36,6 +55,14 @@ if "%IZVOR_ODABIR%"=="4" set "IZVOR=evento" & goto nacin
 
 echo.
 echo Nepoznat odabir. Pokreni skriptu ponovno i upisi broj od 1 do 4.
+pause
+exit /b 1
+
+:izvor_iskljucen
+echo.
+echo Taj izvor je trenutno ISKLJUCEN (postavka na vrhu pokreni-scraper.bat).
+echo Otvori datoteku desnim klikom - Uredi, promijeni "0" natrag u "1" za taj
+echo izvor ako ga zelis ponovno ukljuciti u ovaj izbornik.
 pause
 exit /b 1
 
