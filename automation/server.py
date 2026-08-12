@@ -28,11 +28,20 @@ def health():
 def run_endpoint():
     source = request.args.get("source", "")
     dry_run = request.args.get("dry_run", "false").lower() == "true"
+    # Prisutnost parametra (cak i bez vrijednosti, ?export_csv) trazi izvoz;
+    # izostanak parametra (None) ga iskljucuje — vidi pipeline.run() docstring.
+    # NAPOMENA: unutar Docker kontejnera ovo pise na kontejnerov filesystem
+    # (automation/exports/), koji NIJE volume-mountan u docker-compose.yml —
+    # datoteka ce postojati unutar kontejnera (dohvatljivo preko
+    # `docker cp`/`docker exec`), ali se ne pojavljuje automatski na hostu
+    # dok se ne doda volume. Za CSV dohvatljiv izravno na disku, koristiti
+    # CLI (`python -m automation.pipeline --export-csv`) lokalno.
+    export_csv = request.args.get("export_csv")
 
     if source not in ADAPTERS:
         return jsonify(
             {"error": f"nepoznat izvor '{source}'. dostupno: {list(ADAPTERS)}"}
         ), 400
 
-    stats = run(source, dry_run)
+    stats = run(source, dry_run, export_csv=export_csv)
     return jsonify({"source": source, "dry_run": dry_run, "stats": stats})

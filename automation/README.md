@@ -62,6 +62,22 @@ python -m automation.pipeline --source emedjimurje
 
 Stvarni upis. Provjeriti rezultat u `/admin/dogadjaji?status=pending_review`.
 
+### CSV izvoz (uz upis u bazu, ne umjesto njega)
+
+```bash
+python -m automation.pipeline --source emedjimurje --export-csv
+```
+
+Uz normalan upis u Supabase, sprema i pregledan popis **svih** obrađenih
+zapisa iz tog pokretanja (novi/ažurirani/preskočeni duplikat/neuspjela
+ekstrakcija/nepromijenjeno — vidi stupac `status`) u
+`automation/exports/<izvor>_<vrijeme>.csv` (UTF-8 s BOM-om, otvara se
+ispravno u Excelu s hrvatskom dijakritikom). Radi i uz `--dry-run` (CSV
+nastaje bez ikakvog upisa u bazu). Za točnu putanju:
+`--export-csv putanja/do/datoteke.csv`. Isti parametar postoji na `/run`
+HTTP endpointu (`?export_csv`) — napomena o Docker volumenu u
+`server.py` komentaru ako se koristi preko n8n-a.
+
 ## n8n hosting (ADR-020, Korak 5)
 
 Docker Compose setup — n8n self-hosted **lokalno preko Docker Desktopa**

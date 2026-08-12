@@ -12,11 +12,14 @@ debug (`python -m automation.pipeline --source emedjimurje --dry-run`).
 """
 
 import argparse
+import csv
 import hashlib
 import re
 import sys
 import time
 import unicodedata
+from datetime import datetime
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -38,6 +41,59 @@ EXTRACT_DELAY_SECONDS = 1
 # prvi run posve novog izvora moze legalno trebati nekoliko desetaka —
 # 100 je namjerno iznad tog legalnog slucaja, ne strogi dnevni budzet.
 MAX_EXTRACTIONS_PER_RUN = 100
+
+# CSV izvoz (korisnikov zahtjev, 2026-08-12) — opcionalan, uz postojeci upis
+# u Supabase, ne umjesto njega. Pregledna lista SVIH obradenih sirovih
+# zapisa iz ovog pokretanja (ne samo novih), bez obzira na ishod, da se
+# jednim pogledom u Excelu vidi sto je scraper tog dana zatekao.
+EXPORTS_DIR = Path(__file__).resolve().parent / "exports"
+CSV_FIELDNAMES = [
+    "status",
+    "naslov",
+    "kategorija",
+    "lokacija",
+    "mjesto_odrzavanja",
+    "pocetak",
+    "kraj",
+    "izvor",
+    "izvor_url",
+    "napomena",
+]
+
+
+def default_export_path(source: str) -> Path:
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return EXPORTS_DIR / f"{source}_{stamp}.csv"
+
+
+def _csv_row(
+    raw: RawEvent,
+    status: str,
+    *,
+    naslov: str | None = None,
+    kategorija: str = "",
+    lokacija: str = "",
+    mjesto: str = "",
+    pocetak: str = "",
+    kraj: str = "",
+    napomena: str = "",
+) -> dict:
+    """Jedan red CSV izvoza. Prima najbolje dostupne podatke u trenutku
+    poziva — za zapise koji nisu prosli (punu) ekstrakciju to su sirova
+    polja s izvora (raw.date_text/location_text), ne normalizirani podaci,
+    da se izbjegne dodatni Claude poziv samo radi izvjestaja."""
+    return {
+        "status": status,
+        "naslov": naslov or raw.title,
+        "kategorija": kategorija,
+        "lokacija": lokacija,
+        "mjesto_odrzavanja": mjesto,
+        "pocetak": pocetak,
+        "kraj": kraj,
+        "izvor": raw.source_name,
+        "izvor_url": raw.source_url,
+        "napomena": napomena,
+    }
 
 
 def content_hash(raw: RawEvent) -> str:
@@ -82,7 +138,11 @@ def unique_slug(client, base_slug: str) -> str:
     return f"{base_slug}-{suffix}"
 
 
-def run(source: str, dry_run: bool) -> dict:
+def run(source: str, dry_run: bool, export_csv: str | None = None) -> dict:
+    """`export_csv`: None = bez izvoza (zadano). Prazan string = izvezi na
+    automatski generiranu putanju u `automation/exports/`. Bilo koja druga
+    vrijednost = izvezi na tu tocnu putanju. Ne utjece na dry_run/upis u
+    Supabase — oba se mogu kombinirati neovisno."""
     if source not in ADAPTERS:
         raise SystemExit(
             f"Nepoznat izvor '{source}'. Dostupno: {', '.join(ADAPTERS)}"
@@ -94,6 +154,9 @@ def run(source: str, dry_run: bool) -> dict:
     locations = db.get_locations(client)
     category_by_slug = {c["slug"]: c["id"] for c in categories}
     location_by_slug = {l["slug"]: l["id"] for l in locations}
+    category_name_by_id = {c["id"]: c["name"] for c in categories}
+    location_name_by_id = {l["id"]: l["name"] for l in locations}
+    export_rows: list[dict] = []
 
     adapter = ADAPTERS[source]()
     raw_events: list[RawEvent] = adapter.fetch_raw_events()
@@ -116,6 +179,16 @@ def run(source: str, dry_run: bool) -> dict:
         if existing and existing.get("source_content_hash") == raw_hash:
             stats["skipped_unchanged"] += 1
             print(f"  [preskoceno: nepromijenjeno od proslog pokretanja, bez Claude poziva] {raw.title}")
+            if export_csv is not None:
+                export_rows.append(
+                    _csv_row(
+                        raw,
+                        "nepromijenjeno (preskoceno)",
+                        lokacija=raw.location_text,
+                        pocetak=raw.date_text,
+                        napomena="isti sadrzaj kao prosli put, ekstrakcija preskocena radi troska — prikazana su sirova polja s izvora, ne normalizirana",
+                    )
+                )
             continue
 
         if api_calls_made >= MAX_EXTRACTIONS_PER_RUN:
@@ -125,6 +198,16 @@ def run(source: str, dry_run: bool) -> dict:
                 f"Claude poziva u ovom pokretanju — preskacem preostalih "
                 f"{len(raw_events) - i} zapisa, provjeri izvor prije sljedeceg runa]"
             )
+            if export_csv is not None:
+                for remaining in raw_events[i:]:
+                    export_rows.append(
+                        _csv_row(
+                            remaining,
+                            "nije obradeno (dosegnut sigurnosni strop)",
+                            lokacija=remaining.location_text,
+                            pocetak=remaining.date_text,
+                        )
+                    )
             break
 
         if api_calls_made > 0:
@@ -134,6 +217,16 @@ def run(source: str, dry_run: bool) -> dict:
         if not normalized:
             stats["skipped_extraction"] += 1
             print(f"  [preskoceno: ekstrakcija neizvjesna] {raw.title}")
+            if export_csv is not None:
+                export_rows.append(
+                    _csv_row(
+                        raw,
+                        "ekstrakcija neuspjela",
+                        lokacija=raw.location_text,
+                        pocetak=raw.date_text,
+                        napomena="Claude ekstrakcija nije vratila dovoljno pouzdan rezultat",
+                    )
+                )
             continue
 
         category_id = category_by_slug.get(normalized["category_slug"])
@@ -141,6 +234,16 @@ def run(source: str, dry_run: bool) -> dict:
         if not category_id or not location_id:
             stats["skipped_extraction"] += 1
             print(f"  [preskoceno: nepoznat slug] {raw.title}")
+            if export_csv is not None:
+                export_rows.append(
+                    _csv_row(
+                        raw,
+                        "ekstrakcija neuspjela",
+                        lokacija=raw.location_text,
+                        pocetak=raw.date_text,
+                        napomena=f"nepoznat slug kategorije/lokacije iz ekstrakcije ({normalized['category_slug']!r}/{normalized['location_slug']!r})",
+                    )
+                )
             continue
 
         event = {
@@ -166,6 +269,20 @@ def run(source: str, dry_run: bool) -> dict:
                 else ""
             )
             print(f"  [azuriranje postojeceg (source_url)]{skipped_note} {event['title']}")
+            if export_csv is not None:
+                export_rows.append(
+                    _csv_row(
+                        raw,
+                        "azurirano (postojeci)",
+                        naslov=event["title"],
+                        kategorija=category_name_by_id.get(category_id, ""),
+                        lokacija=location_name_by_id.get(location_id, ""),
+                        mjesto=event.get("venue_name") or "",
+                        pocetak=event["start_at"],
+                        kraj=event.get("end_at") or "",
+                        napomena=skipped_note.strip(" ()"),
+                    )
+                )
             if not dry_run:
                 db.update_event_by_source_url(
                     client, raw.source_url, event, admin_edited_fields
@@ -183,6 +300,20 @@ def run(source: str, dry_run: bool) -> dict:
             print(
                 f"  [preskoceno: vjerojatan duplikat postojeceg '{duplicate['title']}'] {event['title']}"
             )
+            if export_csv is not None:
+                export_rows.append(
+                    _csv_row(
+                        raw,
+                        "preskoceno (vjerojatan duplikat)",
+                        naslov=event["title"],
+                        kategorija=category_name_by_id.get(category_id, ""),
+                        lokacija=location_name_by_id.get(location_id, ""),
+                        mjesto=event.get("venue_name") or "",
+                        pocetak=event["start_at"],
+                        kraj=event.get("end_at") or "",
+                        napomena=f"podudara se s postojecim: {duplicate['title']}",
+                    )
+                )
             continue
 
         event["slug"] = unique_slug(client, slugify(event["title"]))
@@ -191,8 +322,31 @@ def run(source: str, dry_run: bool) -> dict:
 
         stats["inserted"] += 1
         print(f"  [novi] {event['title']}")
+        if export_csv is not None:
+            export_rows.append(
+                _csv_row(
+                    raw,
+                    "nov",
+                    naslov=event["title"],
+                    kategorija=category_name_by_id.get(category_id, ""),
+                    lokacija=location_name_by_id.get(location_id, ""),
+                    mjesto=event.get("venue_name") or "",
+                    pocetak=event["start_at"],
+                    kraj=event.get("end_at") or "",
+                )
+            )
         if not dry_run:
             db.insert_event(client, event)
+
+    if export_csv is not None:
+        export_path = Path(export_csv) if export_csv else default_export_path(source)
+        export_path.parent.mkdir(parents=True, exist_ok=True)
+        with export_path.open("w", newline="", encoding="utf-8-sig") as f:
+            writer = csv.DictWriter(f, fieldnames=CSV_FIELDNAMES)
+            writer.writeheader()
+            writer.writerows(export_rows)
+        stats["export_csv_path"] = str(export_path)
+        print(f"[{source}] CSV izvoz: {export_path} ({len(export_rows)} redaka)")
 
     print(f"[{source}] gotovo: {stats}")
     return stats
@@ -215,8 +369,21 @@ def main() -> None:
         action="store_true",
         help="Ispisuje sto bi se dogodilo, bez upisa u bazu.",
     )
+    parser.add_argument(
+        "--export-csv",
+        nargs="?",
+        const="",
+        default=None,
+        metavar="PUTANJA",
+        help=(
+            "Uz upis u bazu (radi i s --dry-run), izvozi pregledan popis "
+            "SVIH obradenih zapisa iz ovog pokretanja u CSV. Bez vrijednosti "
+            "sprema automatski u automation/exports/<izvor>_<vrijeme>.csv; "
+            "s vrijednoscu sprema na zadanu putanju."
+        ),
+    )
     args = parser.parse_args()
-    run(args.source, args.dry_run)
+    run(args.source, args.dry_run, export_csv=args.export_csv)
 
 
 if __name__ == "__main__":
