@@ -8,6 +8,16 @@ upis u Supabase, ne umjesto njega). Tehnički detalji implementacije su u
 `automation/.venv` (Python okruženje) i `automation/.env` (kredencijali) već
 postoje na ovom računalu — nije potreban dodatni setup, samo pokretanje.
 
+## Najbrži način — `pokreni-scraper.bat`
+
+Dvoklik na `automation\pokreni-scraper.bat` (u Exploreru) otvara terminal
+koji te provede kroz oba izbora — izvor (1-4) pa način rada (1 = upis u
+Supabase, 2 = izvoz u CSV bez upisa u bazu) — i sam aktivira `.venv`. Nakon
+odgovora pokreće se isti `python -m automation.pipeline` kao u koracima
+ispod. Ostatak ovog dokumenta objašnjava što se točno događa iza kulisa i
+kako pokrenuti ručno preko terminala (npr. za kombinacije koje `.bat` ne
+nudi, poput `--dry-run` bez CSV-a).
+
 ## 1. Otvori PowerShell u korijenu projekta
 
 ```powershell
