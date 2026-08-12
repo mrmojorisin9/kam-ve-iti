@@ -30,12 +30,11 @@ def run_endpoint():
     dry_run = request.args.get("dry_run", "false").lower() == "true"
     # Prisutnost parametra (cak i bez vrijednosti, ?export_csv) trazi izvoz;
     # izostanak parametra (None) ga iskljucuje — vidi pipeline.run() docstring.
-    # NAPOMENA: unutar Docker kontejnera ovo pise na kontejnerov filesystem
-    # (automation/exports/), koji NIJE volume-mountan u docker-compose.yml —
-    # datoteka ce postojati unutar kontejnera (dohvatljivo preko
-    # `docker cp`/`docker exec`), ali se ne pojavljuje automatski na hostu
-    # dok se ne doda volume. Za CSV dohvatljiv izravno na disku, koristiti
-    # CLI (`python -m automation.pipeline --export-csv`) lokalno.
+    # automation/deploy/docker-compose.yml bind-mounta kontejnerov
+    # automation/exports/ na ISTU host mapu koju koristi i lokalni CLI, pa
+    # je datoteka dohvatljiva izravno na disku bez obzira je li run pokrenut
+    # preko n8n-a (ovaj endpoint) ili preko `python -m automation.pipeline
+    # --export-csv` lokalno.
     export_csv = request.args.get("export_csv")
 
     if source not in ADAPTERS:

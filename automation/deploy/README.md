@@ -107,6 +107,26 @@ ovu instancu ubuduće (zapiši lozinku).
 5. Provjeri `/admin/dogadjaji?status=pending_review` na portalu — novi/
    ažurirani redovi trebaju se pojaviti nakon uspješnog pokretanja.
 
+## 7. CSV izvoz preko n8n-a (opcionalno)
+
+Uz upis u bazu, svako pokretanje (ručno ili cron) može dodatno spremiti i
+pregledan CSV popis obrađenih događaja — vidi
+`automation/UPUTE-CSV-IZVOZ.md` za objašnjenje stupaca/statusa. Preko n8n-a:
+
+1. Otvori "HTTP Request" čvor u workflowu.
+2. U query parametrima dodaj `export_csv` (bez vrijednosti je dovoljno —
+   automatski generira naziv datoteke).
+3. Spremi i (ponovno) aktiviraj workflow.
+
+`docker-compose.yml` bind-monta `automation/exports/` iz kontejnera na
+**istu** mapu na hostu koju koristi i lokalni CLI (`python -m
+automation.pipeline --export-csv`) — datoteka se pojavljuje izravno u
+`automation/exports/` na disku nakon svakog pokretanja, bez dodatnih
+koraka. Ako je `docker-compose.yml` mijenjan NAKON zadnjeg
+`docker compose up -d`, treba `docker compose up -d` ponovno (volumeni se
+primjenjuju pri (re)kreiranju kontejnera, ne pri rebuildu slike) da bind
+mount stvarno proradi.
+
 ## Održavanje (buduće izmjene koda)
 
 Nakon izmjene bilo čega u `automation/` (novi izvor, popravak adaptera):

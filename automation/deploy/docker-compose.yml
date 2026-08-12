@@ -32,6 +32,13 @@ services:
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - SCRAPER_USER_ID=${SCRAPER_USER_ID}
+    volumes:
+      # CSV izvoz (?export_csv na /run) — bez ovoga pipeline.py pise u
+      # kontejnerov filesystem, nedohvatljivo s hosta. Bind-mount na ISTU
+      # automation/exports/ mapu koju koristi i lokalni CLI (vidi
+      # pipeline.py EXPORTS_DIR), pa je izvoz preko n8n-a i preko CLI-ja
+      # dostupan na istom mjestu na disku bez obzira odakle je pokrenut.
+      - ../exports:/repo/automation/exports
 
 volumes:
   n8n_data:
