@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { importCsv } from "./actions";
 
 export const metadata: Metadata = {
@@ -27,6 +28,15 @@ export default async function ImportCsvPage({
       <h1 className="font-display text-parchment text-3xl font-semibold tracking-tight">
         CSV uvoz
       </h1>
+
+      <p className="text-parchment-muted mt-2 text-sm">
+        Trebaš popis svih postojećih događaja u istom formatu (npr. za skupno
+        uređivanje u Excelu pa ponovni uvoz)?{" "}
+        <Link href="/admin/dogadjaji/izvoz" className="text-gold hover:underline">
+          Izvoz CSV
+        </Link>
+        .
+      </p>
 
       <div className="border-line text-parchment-muted mt-6 rounded-md border p-4 text-sm">
         <p>

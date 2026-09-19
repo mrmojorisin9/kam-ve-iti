@@ -102,7 +102,13 @@ export default async function AdminEventsPage({
         <h1 className="font-display text-parchment text-3xl font-semibold tracking-tight">
           Događaji
         </h1>
-        <div className="flex shrink-0 gap-3">
+        <div className="flex shrink-0 flex-wrap gap-3">
+          <a
+            href="/admin/dogadjaji/izvoz"
+            className="border-line text-parchment-muted hover:text-parchment rounded-md border px-4 py-2 text-sm font-medium"
+          >
+            Izvoz CSV
+          </a>
           <Link
             href="/admin/dogadjaji/duplikati"
             className="border-line text-parchment-muted hover:text-parchment rounded-md border px-4 py-2 text-sm font-medium"

@@ -84,3 +84,29 @@ export function detectDelimiter(headerLine: string): string {
 export function stripBom(text: string): string {
   return text.replace(/^﻿/, "");
 }
+
+/**
+ * RFC4180 escaping za jedno polje pri izvozu — obrat od `parseCsv`. Polje se
+ * navodnicima omata samo kad sadrži razdjelnik, navodnik ili prijelom retka
+ * (standardno pravilo, izbjegava nepotrebno "zaprljati" jednostavne
+ * vrijednosti), s internim navodnicima udvostručenim (`"` → `""`).
+ */
+function toCsvField(value: string, delimiter: string): string {
+  if (value.includes(delimiter) || value.includes('"') || value.includes("\n") || value.includes("\r")) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+/**
+ * Gradi CSV tekst iz redaka (prvi red zaglavlje). CRLF završeci redaka
+ * (RFC4180 standard, Excel to očekuje) i `,` razdjelnik — izvezena datoteka
+ * mora biti čitljiva istim uvoznim putem (`detectDelimiter`/`parseCsv`) koji
+ * već podržava i `;`, ali izvoz namjerno bira `,` kao kanonski oblik.
+ */
+export function stringifyCsv(rows: string[][]): string {
+  const delimiter = ",";
+  return rows
+    .map((row) => row.map((field) => toCsvField(field, delimiter)).join(delimiter))
+    .join("\r\n");
+}

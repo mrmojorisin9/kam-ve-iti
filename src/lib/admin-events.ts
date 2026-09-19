@@ -144,6 +144,73 @@ export async function listEventsForAdmin(
   }));
 }
 
+export type EventExportRow = {
+  title: string;
+  category_slug: string;
+  location_slug: string;
+  start_at: string;
+  image_url: string;
+  description: string | null;
+  venue_name: string | null;
+  end_at: string | null;
+  organizer_name: string | null;
+  organizer_contact: string | null;
+  source_url: string | null;
+  status: string;
+  is_free: boolean;
+  is_family_friendly: boolean;
+  is_dog_friendly: boolean;
+  is_solo_friendly: boolean;
+  is_romantic: boolean;
+  is_hidden_gem: boolean;
+};
+
+type EventExportSourceRow = Omit<
+  EventExportRow,
+  "category_slug" | "location_slug"
+> & {
+  category: { slug: string } | null;
+  location: { slug: string } | null;
+};
+
+/**
+ * SVI događaji, bilo kojeg statusa, za CSV izvoz na `/admin/dogadjaji/izvoz`
+ * (korisnikov zahtjev — pandan `importCsv`-u, ISTI stupci istim redoslijedom
+ * da izvezena datoteka bude izravno ponovno uvoziva). Namjerno bez filtera
+ * (status/kategorija/lokacija/24h-sakrivanje isteklih iz
+ * `listEventsForAdmin`) — ovo je potpun izvoz baze, ne prikazni popis.
+ */
+export async function listAllEventsForExport(): Promise<EventExportRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("events")
+    .select(
+      `
+      title, start_at, image_url, description, venue_name, end_at,
+      organizer_name, organizer_contact, source_url, status,
+      is_free, is_family_friendly, is_dog_friendly, is_solo_friendly,
+      is_romantic, is_hidden_gem,
+      category:categories ( slug ),
+      location:locations ( slug )
+    `,
+    )
+    .order("start_at", { ascending: true });
+
+  if (error) {
+    console.error("listAllEventsForExport:", error.message);
+    return [];
+  }
+
+  return ((data ?? []) as unknown as EventExportSourceRow[]).map((row) => {
+    const { category, location, ...rest } = row;
+    return {
+      ...rest,
+      category_slug: category?.slug ?? "",
+      location_slug: location?.slug ?? "",
+    };
+  });
+}
+
 export type PendingEventGroupKey = "cron" | "korisnici" | "rucno";
 
 export type PendingEventGroup = {
