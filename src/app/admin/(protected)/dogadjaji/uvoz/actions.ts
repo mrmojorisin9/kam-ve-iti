@@ -4,16 +4,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
 import { zagrebLocalToUtcIso } from "@/lib/zagreb-time";
-import { uniqueSlug } from "@/lib/admin-events";
+import { uniqueSlug, applyCsvRowUpdate } from "@/lib/admin-events";
 import { parseCsv, detectDelimiter, stripBom } from "@/lib/csv";
 
-const REQUIRED_COLUMNS = [
-  "title",
-  "category_slug",
-  "location_slug",
-  "start_at",
-  "image_url",
-];
 const VALID_STATUSES = new Set(["draft", "pending_review", "published"]);
 const DATETIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const MAX_LISTED_ERRORS = 8;
@@ -31,6 +24,22 @@ function cell(row: string[], index: Record<string, number>, name: string): strin
 
 function cellBool(row: string[], index: Record<string, number>, name: string): boolean {
   return (cell(row, index, name) ?? "").toLowerCase() === "true";
+}
+
+/**
+ * Kao `cellBool`, ali razlikuje "polje uopće nije navedeno" (`null`) od
+ * "izričito false" — potrebno za ažuriranje postojećeg događaja (korisnikov
+ * zahtjev), gdje prazno/izostavljeno polje mora zadržati postojeću
+ * vrijednost, ne tiho postaviti na false.
+ */
+function cellBoolOrNull(
+  row: string[],
+  index: Record<string, number>,
+  name: string,
+): boolean | null {
+  const value = cell(row, index, name);
+  if (value === null) return null;
+  return value.toLowerCase() === "true";
 }
 
 export async function importCsv(formData: FormData) {
@@ -55,11 +64,6 @@ export async function importCsv(formData: FormData) {
     index[name] = i;
   });
 
-  const missing = REQUIRED_COLUMNS.filter((col) => !(col in index));
-  if (missing.length > 0) {
-    fail(`Nedostaju obavezni stupci: ${missing.join(", ")}.`);
-  }
-
   const dataRows = rows.slice(1).filter((r) => r.some((v) => v.trim() !== ""));
 
   const supabase = await createClient();
@@ -79,11 +83,28 @@ export async function importCsv(formData: FormData) {
   );
 
   let imported = 0;
+  let updated = 0;
   const errors: string[] = [];
 
   for (let rowIdx = 0; rowIdx < dataRows.length; rowIdx++) {
     const row = dataRows[rowIdx];
     const sheetRow = rowIdx + 2; // +1 za zaglavlje, +1 za 1-indeksiranje
+
+    // Red s popunjenim "id" stupcem koji se podudara s postojećim
+    // display_id ažurira TAJ događaj umjesto da uvijek stvara nov
+    // (korisnikov zahtjev) — prazan/odsutan "id" znači "uvijek nov događaj",
+    // nepromijenjeno ponašanje od prije.
+    const idRaw = cell(row, index, "id");
+    let targetDisplayId: number | null = null;
+    if (idRaw) {
+      const parsed = Number(idRaw);
+      if (!Number.isInteger(parsed) || parsed <= 0) {
+        errors.push(`red ${sheetRow}: neispravan ID "${idRaw}"`);
+        continue;
+      }
+      targetDisplayId = parsed;
+    }
+    const isUpdate = targetDisplayId !== null;
 
     const title = cell(row, index, "title");
     const categorySlug = cell(row, index, "category_slug");
@@ -93,22 +114,33 @@ export async function importCsv(formData: FormData) {
     const imageUrl = cell(row, index, "image_url");
     const statusRaw = cell(row, index, "status");
 
-    if (!title || !categorySlug || !locationSlug || !startAtLocal || !imageUrl) {
+    // Kod uvoza NOVOG događaja ova polja ostaju obavezna (nepromijenjeno).
+    // Kod ažuriranja postojećeg, prazno polje znači "zadrži postojeću
+    // vrijednost" — provjerava se samo ono što je stvarno navedeno.
+    if (!isUpdate && (!title || !categorySlug || !locationSlug || !startAtLocal || !imageUrl)) {
       errors.push(`red ${sheetRow}: nedostaje obavezno polje`);
       continue;
     }
 
-    const categoryId = categoryIdBySlug.get(categorySlug);
-    if (!categoryId) {
-      errors.push(`red ${sheetRow}: nepoznata kategorija "${categorySlug}"`);
-      continue;
+    let categoryId: string | undefined;
+    if (categorySlug) {
+      categoryId = categoryIdBySlug.get(categorySlug);
+      if (!categoryId) {
+        errors.push(`red ${sheetRow}: nepoznata kategorija "${categorySlug}"`);
+        continue;
+      }
     }
-    const locationId = locationIdBySlug.get(locationSlug);
-    if (!locationId) {
-      errors.push(`red ${sheetRow}: nepoznata lokacija "${locationSlug}"`);
-      continue;
+
+    let locationId: string | undefined;
+    if (locationSlug) {
+      locationId = locationIdBySlug.get(locationSlug);
+      if (!locationId) {
+        errors.push(`red ${sheetRow}: nepoznata lokacija "${locationSlug}"`);
+        continue;
+      }
     }
-    if (!DATETIME_PATTERN.test(startAtLocal)) {
+
+    if (startAtLocal && !DATETIME_PATTERN.test(startAtLocal)) {
       errors.push(`red ${sheetRow}: neispravan format početka (očekuje se GGGG-MM-DDTSS:mm)`);
       continue;
     }
@@ -116,24 +148,85 @@ export async function importCsv(formData: FormData) {
       errors.push(`red ${sheetRow}: neispravan format kraja (očekuje se GGGG-MM-DDTSS:mm)`);
       continue;
     }
-    const status = statusRaw ?? "pending_review";
-    if (!VALID_STATUSES.has(status)) {
-      errors.push(`red ${sheetRow}: nepoznat status "${status}"`);
-      continue;
+
+    let status: string | undefined;
+    if (statusRaw) {
+      if (!VALID_STATUSES.has(statusRaw)) {
+        errors.push(`red ${sheetRow}: nepoznat status "${statusRaw}"`);
+        continue;
+      }
+      status = statusRaw;
+    } else if (!isUpdate) {
+      status = "pending_review";
     }
 
-    const isHiddenGem = cellBool(row, index, "is_hidden_gem");
-    if (isHiddenGem && categorySlug === "manifestacije-i-feste") {
+    const isHiddenGem = cellBoolOrNull(row, index, "is_hidden_gem");
+    // Napomena: ako je ovo ažuriranje BEZ navedenog category_slug (kategorija
+    // se ne mijenja), a is_hidden_gem se postavlja na true, ova provjera se
+    // namjerno preskače (ne dohvaća postojeću kategoriju iz baze samo radi
+    // ove provjere) — rubni slučaj, poznato ograničenje.
+    if (isHiddenGem === true && categorySlug === "manifestacije-i-feste") {
       errors.push(
         `red ${sheetRow}: "skriveni dragulj" ne može biti uz kategoriju "Velike Manifestacije"`,
       );
       continue;
     }
 
-    const startAt = zagrebLocalToUtcIso(startAtLocal);
-    const endAt = endAtLocal ? zagrebLocalToUtcIso(endAtLocal) : null;
-    if (endAt && endAt < startAt) {
+    const startAt = startAtLocal ? zagrebLocalToUtcIso(startAtLocal) : undefined;
+    let endAt: string | null | undefined;
+    if (endAtLocal) {
+      endAt = zagrebLocalToUtcIso(endAtLocal);
+    } else if (!isUpdate) {
+      endAt = null;
+    } else {
+      endAt = undefined; // ažuriranje, kraj nije naveden -> zadrži postojeći
+    }
+
+    if (startAt && endAt && endAt < startAt) {
       errors.push(`red ${sheetRow}: kraj je prije početka`);
+      continue;
+    }
+
+    if (isUpdate) {
+      const { error, notFound } = await applyCsvRowUpdate(supabase, targetDisplayId!, {
+        title: title ?? undefined,
+        description: cell(row, index, "description") ?? undefined,
+        category_id: categoryId,
+        location_id: locationId,
+        venue_name: cell(row, index, "venue_name") ?? undefined,
+        start_at: startAt,
+        end_at: endAt,
+        organizer_name: cell(row, index, "organizer_name") ?? undefined,
+        organizer_contact: cell(row, index, "organizer_contact") ?? undefined,
+        source_url: cell(row, index, "source_url") ?? undefined,
+        image_url: imageUrl ?? undefined,
+        status,
+        is_free: cellBoolOrNull(row, index, "is_free") ?? undefined,
+        is_family_friendly: cellBoolOrNull(row, index, "is_family_friendly") ?? undefined,
+        is_dog_friendly: cellBoolOrNull(row, index, "is_dog_friendly") ?? undefined,
+        is_solo_friendly: cellBoolOrNull(row, index, "is_solo_friendly") ?? undefined,
+        is_romantic: cellBoolOrNull(row, index, "is_romantic") ?? undefined,
+        is_hidden_gem: isHiddenGem ?? undefined,
+      });
+
+      if (notFound) {
+        errors.push(`red ${sheetRow}: ID ${targetDisplayId} ne postoji, red preskočen`);
+        continue;
+      }
+      if (error) {
+        errors.push(`red ${sheetRow}: ${error}`);
+        continue;
+      }
+
+      updated++;
+      continue;
+    }
+
+    // Od ovdje nadalje je isUpdate uvijek false (uvijek nov događaj) — sve
+    // obavezno je već provjereno gore; ponovna provjera je čisto sigurnosna
+    // mreža za TypeScript (ne bi se smjela stvarno okinuti).
+    if (!title || !categoryId || !locationId || !startAt || !imageUrl || !status) {
+      errors.push(`red ${sheetRow}: nedostaje obavezno polje`);
       continue;
     }
 
@@ -152,7 +245,7 @@ export async function importCsv(formData: FormData) {
       location_id: locationId,
       venue_name: cell(row, index, "venue_name"),
       start_at: startAt,
-      end_at: endAt,
+      end_at: endAt ?? null,
       organizer_name: cell(row, index, "organizer_name"),
       organizer_contact: cell(row, index, "organizer_contact"),
       source_url: cell(row, index, "source_url"),
@@ -164,7 +257,7 @@ export async function importCsv(formData: FormData) {
       is_dog_friendly: cellBool(row, index, "is_dog_friendly"),
       is_solo_friendly: cellBool(row, index, "is_solo_friendly"),
       is_romantic: cellBool(row, index, "is_romantic"),
-      is_hidden_gem: isHiddenGem,
+      is_hidden_gem: isHiddenGem ?? false,
     });
 
     if (error) {
@@ -177,6 +270,7 @@ export async function importCsv(formData: FormData) {
 
   const params = new URLSearchParams();
   params.set("imported", String(imported));
+  params.set("updated", String(updated));
   params.set("total", String(dataRows.length));
   if (errors.length > 0) {
     params.set("errors", errors.slice(0, MAX_LISTED_ERRORS).join("|"));

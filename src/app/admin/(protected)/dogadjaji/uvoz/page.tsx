@@ -15,12 +15,14 @@ export default async function ImportCsvPage({
   searchParams: Promise<{
     error?: string;
     imported?: string;
+    updated?: string;
     total?: string;
     errors?: string;
     moreErrors?: string;
   }>;
 }) {
-  const { error, imported, total, errors, moreErrors } = await searchParams;
+  const { error, imported, updated, total, errors, moreErrors } =
+    await searchParams;
   const errorList = errors ? errors.split("|") : [];
 
   return (
@@ -74,9 +76,13 @@ export default async function ImportCsvPage({
           razdjelnikom (Excel s hrvatskim regionalnim postavkama).
         </p>
         <p className="mt-2">
-          Stupac <code className="text-parchment">id</code> (ako postoji,
-          npr. iz ponovno uvezene izvezene datoteke) se ignorira — svaki
-          novi red dobiva svoj ID automatski.
+          Stupac <code className="text-parchment">id</code> je opcionalan.
+          Prazan/odsutan — red uvijek postaje nov događaj (dobiva svoj ID
+          automatski). Popunjen i podudara se s postojećim ID-om — red
+          umjesto toga <strong className="text-parchment">ažurira</strong>{" "}
+          taj postojeći događaj; prazna polja u tom retku zadržavaju
+          postojeću vrijednost u bazi (samo popunjena polja se mijenjaju).
+          Popunjen, a ID ne postoji — red se preskače uz grešku.
         </p>
         <pre className="border-line bg-oak text-parchment mt-3 overflow-x-auto rounded-md border p-3 text-xs">
           {EXAMPLE_CSV}
@@ -86,7 +92,8 @@ export default async function ImportCsvPage({
       {imported !== undefined && (
         <div className="border-gold mt-6 rounded-md border px-4 py-3 text-sm">
           <p className="text-gold">
-            Uvezeno {imported} / {total} redaka.
+            Uvezeno {imported} novih, ažurirano {updated} postojećih — od
+            ukupno {total} redaka.
           </p>
           {errorList.length > 0 && (
             <ul className="text-parchment-muted mt-2 list-inside list-disc">

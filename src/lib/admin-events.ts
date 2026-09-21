@@ -539,6 +539,79 @@ function readFormBool(formData: FormData, field: string): boolean {
   return formData.get(field) === "on";
 }
 
+type AdminEditTrackedBefore = {
+  title: string;
+  description: string | null;
+  category_id: string;
+  location_id: string;
+  venue_name: string | null;
+  start_at: string;
+  end_at: string | null;
+  image_url: string | null;
+};
+
+type AdminEditTrackedNext = {
+  title?: string;
+  description?: string | null;
+  category_id?: string;
+  location_id?: string;
+  venue_name?: string | null;
+  start_at?: string;
+  end_at?: string | null;
+  image_url?: string | null;
+};
+
+/**
+ * "Sticky admin edits" (DECISIONS.md ADR-020 dopuna, 2026-08-07) — računa
+ * koja od 8 praćenih polja su STVARNO promijenjena u odnosu na `before`, da
+ * `automation/db.py` zna koja polja preskočiti pri re-scrapeu. Dijele je
+ * `applyEventFormUpdate` (puna forma — sva polja u `next` uvijek definirana)
+ * i `applyCsvRowUpdate` (parcijalno CSV ažuriranje — `undefined` u `next`
+ * znači "ovo polje se ne dira u ovoj operaciji", pa se izostavlja iz
+ * usporedbe umjesto da se lažno prijavi kao "promijenjeno").
+ *
+ * start_at/end_at uspoređeni po stvarnom trenutku zaokruženom na minutu, ne
+ * po sirovom ISO stringu — retci upisani izvan admin forme (CSV uvoz,
+ * Python scraper) mogu zapisati isti trenutak u drugačijem ISO zapisu, a
+ * `datetime-local` polje ima samo minutnu preciznost.
+ */
+function diffAdminEditedFields(
+  before: AdminEditTrackedBefore,
+  next: AdminEditTrackedNext,
+): string[] {
+  const changed: string[] = [];
+  const textPairs: [string, string | null, string | null | undefined][] = [
+    ["title", before.title, next.title],
+    ["description", before.description, next.description],
+    ["category_id", before.category_id, next.category_id],
+    ["location_id", before.location_id, next.location_id],
+    ["venue_name", before.venue_name, next.venue_name],
+    ["image_url", before.image_url, next.image_url],
+  ];
+  for (const [field, oldValue, newValue] of textPairs) {
+    if (newValue === undefined) continue;
+    if (oldValue !== newValue) changed.push(field);
+  }
+
+  const MINUTE_MS = 60_000;
+  const datePairs: [string, string | null, string | null | undefined][] = [
+    ["start_at", before.start_at, next.start_at],
+    ["end_at", before.end_at, next.end_at],
+  ];
+  for (const [field, oldValue, newValue] of datePairs) {
+    if (newValue === undefined) continue;
+    const oldMinute = oldValue
+      ? Math.floor(new Date(oldValue).getTime() / MINUTE_MS)
+      : null;
+    const newMinute = newValue
+      ? Math.floor(new Date(newValue).getTime() / MINUTE_MS)
+      : null;
+    if (oldMinute !== newMinute) changed.push(field);
+  }
+
+  return changed;
+}
+
 /**
  * Jezgra validacije + upisa `EventForm` podataka — dijeli je `updateEvent`
  * (uredi/actions.ts) i `mergeEvents` (duplikati/spoji/actions.ts), oba
@@ -640,46 +713,18 @@ export async function applyEventFormUpdate(
     .eq("id", id)
     .maybeSingle();
 
-  const newlyEditedFields: string[] = [];
-  if (beforeRow) {
-    const textComparisons: [string, string | null, string | null][] = [
-      ["title", beforeRow.title, title],
-      ["description", beforeRow.description, description],
-      ["category_id", beforeRow.category_id, categoryId],
-      ["location_id", beforeRow.location_id, locationId],
-      ["venue_name", beforeRow.venue_name, venueName],
-      ["image_url", beforeRow.image_url, imageUrl],
-    ];
-    for (const [field, oldValue, newValue] of textComparisons) {
-      if (oldValue !== newValue) newlyEditedFields.push(field);
-    }
-
-    // start_at/end_at se uspoređuju po STVARNOM trenutku, zaokruženom na
-    // minutu — ne po sirovom ISO stringu. Dva razloga, oba otkrivena uživo
-    // pri testiranju ove izmjene: (1) retci upisani izvan ovog TS puta
-    // (Python scraper, CSV uvoz) mogu zapisati isti trenutak u drugačijem
-    // ISO zapisu (npr. "+00:00" umjesto ".000Z"), pa bi doslovna string
-    // usporedba lažno prijavila promjenu na SVAKOM admin spremanju; (2)
-    // `datetime-local` polje ima samo minutnu preciznost, pa bi red
-    // upisan sa sekundama (npr. iz CSV uvoza) NUŽNO "izgubio" te sekunde
-    // pri svakom round-tripu kroz formu — to nikad nije stvarna admin
-    // namjera izmjene, admin tu preciznost kroz ovo polje ne može ni
-    // vidjeti ni namjerno promijeniti.
-    const MINUTE_MS = 60_000;
-    const dateComparisons: [string, string | null, string | null][] = [
-      ["start_at", beforeRow.start_at, startAt],
-      ["end_at", beforeRow.end_at, endAt],
-    ];
-    for (const [field, oldValue, newValue] of dateComparisons) {
-      const oldMinute = oldValue
-        ? Math.floor(new Date(oldValue).getTime() / MINUTE_MS)
-        : null;
-      const newMinute = newValue
-        ? Math.floor(new Date(newValue).getTime() / MINUTE_MS)
-        : null;
-      if (oldMinute !== newMinute) newlyEditedFields.push(field);
-    }
-  }
+  const newlyEditedFields = beforeRow
+    ? diffAdminEditedFields(beforeRow, {
+        title,
+        description,
+        category_id: categoryId,
+        location_id: locationId,
+        venue_name: venueName,
+        image_url: imageUrl,
+        start_at: startAt,
+        end_at: endAt,
+      })
+    : [];
   const adminEditedFields = Array.from(
     new Set([
       ...((beforeRow?.admin_edited_fields as string[] | null) ?? []),
@@ -755,6 +800,80 @@ export async function applyEventFormUpdate(
   }
 
   return { error: null };
+}
+
+export type CsvRowUpdateFields = {
+  title?: string;
+  description?: string | null;
+  category_id?: string;
+  location_id?: string;
+  venue_name?: string | null;
+  start_at?: string;
+  end_at?: string | null;
+  organizer_name?: string | null;
+  organizer_contact?: string | null;
+  source_url?: string | null;
+  image_url?: string;
+  status?: string;
+  is_free?: boolean;
+  is_family_friendly?: boolean;
+  is_dog_friendly?: boolean;
+  is_solo_friendly?: boolean;
+  is_romantic?: boolean;
+  is_hidden_gem?: boolean;
+};
+
+/**
+ * Ažurira postojeći događaj preko CSV uvoza kad red navede `id` koji se
+ * podudara s postojećim `display_id` (korisnikov zahtjev, 2026-09-21) — SAMO
+ * polja prisutna (ne `undefined`) u `fields` se mijenjaju; polja izostavljena
+ * iz CSV retka zadržavaju postojeću vrijednost u bazi. Oslanja se na to da
+ * Supabase klijent `undefined` vrijednosti u update objektu ne šalje u JSON
+ * tijelu zahtjeva (standardno `JSON.stringify` ponašanje) — isti krajnji
+ * efekt kao da polje uopće nije navedeno.
+ *
+ * Isto "sticky admin edits" praćenje kao `applyEventFormUpdate`
+ * (`diffAdminEditedFields`) — CSV uvoz je isto admin-pokrenuta izmjena, mora
+ * zaključati stvarno promijenjena polja protiv budućeg scraper re-scrapea na
+ * isti način kao ručna forma.
+ */
+export async function applyCsvRowUpdate(
+  supabase: SupabaseClient,
+  displayId: number,
+  fields: CsvRowUpdateFields,
+): Promise<{ error: string | null; notFound: boolean }> {
+  const { data: beforeRow, error: fetchError } = await supabase
+    .from("events")
+    .select(
+      "id, title, description, category_id, location_id, venue_name, start_at, end_at, image_url, admin_edited_fields",
+    )
+    .eq("display_id", displayId)
+    .maybeSingle();
+
+  if (fetchError) {
+    return { error: fetchError.message, notFound: false };
+  }
+  if (!beforeRow) {
+    return { error: null, notFound: true };
+  }
+
+  const newlyEditedFields = diffAdminEditedFields(beforeRow, fields);
+  const adminEditedFields = Array.from(
+    new Set([
+      ...((beforeRow.admin_edited_fields as string[] | null) ?? []),
+      ...newlyEditedFields,
+    ]),
+  );
+
+  const { error } = await supabase
+    .from("events")
+    .update({ ...fields, admin_edited_fields: adminEditedFields })
+    .eq("id", beforeRow.id);
+
+  if (error) {
+    return { error: error.message, notFound: false };
+  }
+  return { error: null, notFound: false };
 }
 
 /**
