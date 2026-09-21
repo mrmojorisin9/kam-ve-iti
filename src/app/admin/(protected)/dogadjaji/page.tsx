@@ -8,7 +8,7 @@ import {
 import { formatEventDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { EventThumb } from "@/components/admin/EventThumb";
-import { bulkUpdateStatus } from "./bulk-actions";
+import { bulkUpdateStatus, confirmBulkDelete } from "./bulk-actions";
 import { deleteLinkSubmission } from "./link-actions";
 
 export const metadata: Metadata = {
@@ -56,10 +56,19 @@ export default async function AdminEventsPage({
     lokacija?: string;
     bulkUpdated?: string;
     bulkError?: string;
+    bulkDeleted?: string;
   }>;
 }) {
-  const { updated, deleted, status, kategorija, lokacija, bulkUpdated, bulkError } =
-    await searchParams;
+  const {
+    updated,
+    deleted,
+    status,
+    kategorija,
+    lokacija,
+    bulkUpdated,
+    bulkError,
+    bulkDeleted,
+  } = await searchParams;
   const isLinkSubmissionsTab = status === LINK_SUBMISSIONS_TAB;
   const supabase = await createClient();
 
@@ -81,7 +90,11 @@ export default async function AdminEventsPage({
             .then(({ data }) => (data ?? []) as LinkSubmission[])
         : Promise.resolve([] as LinkSubmission[]),
     ]);
-  const showBulkActions = status === "pending_review";
+  // Odobri/odbaci ima smisla samo na "Na čekanju" (jedini status iz kojeg se
+  // prirodno prelazi u published/rejected); brisanje ima smisla na svakom
+  // tabu s pravim events retcima (sve osim "Prijave linkom", zaseban izvor).
+  const showApproveReject = status === "pending_review";
+  const showCheckboxes = !isLinkSubmissionsTab;
   const bulkApprove = bulkUpdateStatus.bind(null, "published");
   const bulkReject = bulkUpdateStatus.bind(null, "rejected");
 
@@ -219,6 +232,11 @@ export default async function AdminEventsPage({
           Greška kod bulk ažuriranja: {bulkError}
         </p>
       )}
+      {bulkDeleted && (
+        <p className="border-gold text-gold mt-6 rounded-md border px-4 py-3 text-sm">
+          {bulkDeleted} događaj(a) obrisano.
+        </p>
+      )}
 
       {isLinkSubmissionsTab ? (
         <>
@@ -294,23 +312,40 @@ export default async function AdminEventsPage({
             : "Još nema unesenih događaja."}
         </p>
       ) : (
-        <form action={showBulkActions ? bulkApprove : undefined}>
-          {showBulkActions && (
+        <form action={confirmBulkDelete}>
+          {status && <input type="hidden" name="status" value={status} />}
+          {kategorija && (
+            <input type="hidden" name="kategorija" value={kategorija} />
+          )}
+          {lokacija && <input type="hidden" name="lokacija" value={lokacija} />}
+
+          {showCheckboxes && (
             <div className="mt-6 flex justify-end gap-3 text-sm">
               <button
                 type="submit"
-                formAction={bulkReject}
+                formAction={confirmBulkDelete}
                 className="border-wine-light text-wine-light rounded-md border px-3 py-1.5"
               >
-                Odbaci odabrano
+                Obriši odabrano
               </button>
-              <button
-                type="submit"
-                formAction={bulkApprove}
-                className="border-gold text-gold rounded-md border px-3 py-1.5"
-              >
-                Odobri odabrano
-              </button>
+              {showApproveReject && (
+                <>
+                  <button
+                    type="submit"
+                    formAction={bulkReject}
+                    className="border-wine-light text-wine-light rounded-md border px-3 py-1.5"
+                  >
+                    Odbaci odabrano
+                  </button>
+                  <button
+                    type="submit"
+                    formAction={bulkApprove}
+                    className="border-gold text-gold rounded-md border px-3 py-1.5"
+                  >
+                    Odobri odabrano
+                  </button>
+                </>
+              )}
             </div>
           )}
 
@@ -326,7 +361,7 @@ export default async function AdminEventsPage({
                       <EventRow
                         key={event.id}
                         event={event}
-                        showCheckbox={showBulkActions}
+                        showCheckbox={showCheckboxes}
                       />
                     ))}
                   </ul>
@@ -339,7 +374,7 @@ export default async function AdminEventsPage({
                 <EventRow
                   key={event.id}
                   event={event}
-                  showCheckbox={showBulkActions}
+                  showCheckbox={showCheckboxes}
                 />
               ))}
             </ul>

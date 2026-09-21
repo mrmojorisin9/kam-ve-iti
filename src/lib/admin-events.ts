@@ -283,6 +283,64 @@ export async function bulkUpdateEventStatus(
   return { error: null };
 }
 
+/**
+ * Gradi URL natrag na `/admin/dogadjaji` s aktivnim tab/filter parametrima —
+ * dijele je forma za odabir (bulk brisanje), potvrdna stranica i sama akcija
+ * brisanja, svi se moraju složiti oko istog povratnog URL-a. Namjerno gradi
+ * putanju SAM iz zasebnih vrijednosti umjesto da prihvati gotov "returnTo"
+ * string iz formData (kao `sanitizeAdminReturnPath`) — status/kategorija/
+ * lokacija ovdje idu samo u query string FIKSNE putanje, nema
+ * open-redirect površine bez obzira što vrijednosti dolaze iz korisnikovog
+ * zahtjeva.
+ */
+export function eventsListHref(
+  status?: string | null,
+  kategorija?: string | null,
+  lokacija?: string | null,
+): string {
+  const params = new URLSearchParams();
+  if (status) params.set("status", status);
+  if (kategorija) params.set("kategorija", kategorija);
+  if (lokacija) params.set("lokacija", lokacija);
+  const query = params.toString();
+  return query ? `/admin/dogadjaji?${query}` : "/admin/dogadjaji";
+}
+
+/**
+ * Bulk brisanje više događaja odjednom (korisnikov zahtjev) — isti "dohvati
+ * prije brisanja pa Storage cleanup poslije" obrazac kao pojedinačni
+ * `deleteEvent` (obrisi/actions.ts), samo za N id-jeva odjednom. Galerija se
+ * dohvaća jednim upitom preko `event_id IN (...)` umjesto po jednom događaju.
+ */
+export async function bulkDeleteEvents(
+  supabase: SupabaseClient,
+  ids: string[],
+): Promise<{ error: string | null }> {
+  if (ids.length === 0) return { error: null };
+
+  const [{ data: events }, { data: galleryImages }] = await Promise.all([
+    supabase.from("events").select("image_url").in("id", ids),
+    supabase.from("event_images").select("id, url").in("event_id", ids),
+  ]);
+
+  const { error } = await supabase.from("events").delete().in("id", ids);
+
+  if (error) {
+    console.error("bulkDeleteEvents:", error.message);
+    return { error: error.message };
+  }
+
+  for (const event of (events ?? []) as { image_url: string | null }[]) {
+    await deleteEventImageIfOrphaned(supabase, event.image_url);
+  }
+  await deleteEventGalleryImages(
+    supabase,
+    (galleryImages ?? []) as { id: string; url: string }[],
+  );
+
+  return { error: null };
+}
+
 export type DuplicateCandidateEvent = {
   id: string;
   title: string;
