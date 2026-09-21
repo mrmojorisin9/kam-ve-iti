@@ -5,8 +5,13 @@ import { stringifyCsv } from "@/lib/csv";
 import { utcIsoToZagrebLocalInput, todayInZagreb } from "@/lib/zagreb-time";
 
 // Isti redoslijed stupaca kao dokumentacija na /admin/dogadjaji/uvoz — datoteka
-// mora biti izravno ponovno uvoziva istim putem (`importCsv`).
+// mora biti izravno ponovno uvoziva istim putem (`importCsv`). "id" je
+// namjerno prvi stupac (korisnikov zahtjev — sekvencijalni ljudski čitljiv
+// broj, `events.display_id` u bazi) — `importCsv` ga ne čita ni po jednom
+// nazivu stupca (nije ni u REQUIRED_COLUMNS ni u opcionalnima), pa se pri
+// eventualnom ponovnom uvozu ove datoteke jednostavno ignorira, bez greške.
 const COLUMNS = [
+  "id",
   "title",
   "category_slug",
   "location_slug",
@@ -48,7 +53,8 @@ export async function GET() {
     COLUMNS,
     ...events.map((event) =>
       COLUMNS.map((column) => {
-        const value = event[column as keyof typeof event];
+        if (column === "id") return String(event.display_id);
+        const value = event[column as keyof Omit<typeof event, "display_id">];
         if (typeof value === "boolean") return value ? "true" : "false";
         if (column === "start_at" || column === "end_at") {
           return value ? utcIsoToZagrebLocalInput(value as string) : "";

@@ -11,7 +11,8 @@ export async function confirmedBulkDelete(formData: FormData) {
   const status = String(formData.get("status") ?? "") || undefined;
   const kategorija = String(formData.get("kategorija") ?? "") || undefined;
   const lokacija = String(formData.get("lokacija") ?? "") || undefined;
-  const returnTo = eventsListHref(status, kategorija, lokacija);
+  const sort = String(formData.get("sort") ?? "") || undefined;
+  const returnTo = eventsListHref(status, kategorija, lokacija, sort);
 
   if (ids.length === 0) {
     redirect(returnTo);
@@ -26,6 +27,7 @@ export async function confirmedBulkDelete(formData: FormData) {
     if (status) params.set("status", status);
     if (kategorija) params.set("kategorija", kategorija);
     if (lokacija) params.set("lokacija", lokacija);
+    if (sort) params.set("sort", sort);
     params.set("error", error);
     redirect(`/admin/dogadjaji/obrisi-vise?${params.toString()}`);
   }

@@ -16,13 +16,14 @@ export default async function BulkDeleteEventsPage({
     status?: string;
     kategorija?: string;
     lokacija?: string;
+    sort?: string;
     error?: string;
   }>;
 }) {
-  const { ids: idsParam, status, kategorija, lokacija, error } =
+  const { ids: idsParam, status, kategorija, lokacija, sort, error } =
     await searchParams;
   const ids = (idsParam ?? "").split(",").filter(Boolean);
-  const returnTo = eventsListHref(status, kategorija, lokacija);
+  const returnTo = eventsListHref(status, kategorija, lokacija, sort);
   const events = ids.length > 0 ? await getEventsForMerge(ids) : [];
 
   return (
@@ -41,7 +42,12 @@ export default async function BulkDeleteEventsPage({
         <ul className="border-line divide-line mt-6 divide-y rounded-md border text-sm">
           {events.map((event) => (
             <li key={event.id} className="px-4 py-3">
-              <p className="text-parchment font-medium">{event.title}</p>
+              <p className="text-parchment font-medium">
+                <span className="text-parchment-muted font-mono text-xs">
+                  #{event.display_id}
+                </span>{" "}
+                {event.title}
+              </p>
               <p className="text-parchment-muted mt-1">
                 {formatEventDateTime(event.start_at)}
               </p>
@@ -73,6 +79,7 @@ export default async function BulkDeleteEventsPage({
             {lokacija && (
               <input type="hidden" name="lokacija" value={lokacija} />
             )}
+            {sort && <input type="hidden" name="sort" value={sort} />}
             <button
               type="submit"
               className="border-wine-light text-wine-light hover:bg-wine rounded-md border px-4 py-2 text-sm font-medium hover:text-white"

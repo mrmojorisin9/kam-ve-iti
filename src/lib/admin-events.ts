@@ -36,6 +36,7 @@ export function sanitizeAdminReturnPath(
 
 export type AdminEventListItem = {
   id: string;
+  display_id: number;
   title: string;
   slug: string;
   start_at: string;
@@ -52,6 +53,7 @@ export type AdminEventListItem = {
 
 type AdminEventListRow = {
   id: string;
+  display_id: number;
   title: string;
   slug: string;
   start_at: string;
@@ -66,6 +68,10 @@ type AdminEventListRow = {
   location: { name: string } | null;
 };
 
+/** Sortiranje na `/admin/dogadjaji` (korisnikov zahtjev) — "id" = display_id
+ * rastuće (redoslijed unosa), "start_at" (zadano) = kronološki po događaju. */
+export type AdminEventSort = "start_at" | "display_id";
+
 /**
  * Događaji čiji je efektivni završetak (`end_at`, ili `start_at` ako nema
  * `end_at`) prošao prije više od 24h se ne prikazuju u `/admin/dogadjaji`
@@ -79,8 +85,10 @@ type AdminEventListRow = {
 const ADMIN_HIDE_EXPIRED_AFTER_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Svi događaji (admin — RLS "events_admin_full_access"), najbliži početak
- * prvi (korisnikov zahtjev — današnji/skorašnji događaji na vrhu liste).
+ * Svi događaji (admin — RLS "events_admin_full_access"), zadano najbliži
+ * početak prvi (korisnikov zahtjev — današnji/skorašnji događaji na vrhu
+ * liste); `sort: "display_id"` prebacuje na redoslijed unosa (ID rastuće,
+ * korisnikov zahtjev za sortiranjem po ID/datumu na `/admin/dogadjaji`).
  * `status` filtrira na jedan status (npr. "Na čekanju" prečac u
  * `/admin/dogadjaji`) — bez njega vraća sve statuse. `categoryId`/
  * `locationId` filtriraju po FK-u izravno (id, ne slug — admin dropdown
@@ -90,6 +98,7 @@ export async function listEventsForAdmin(
   status?: string,
   categoryId?: string,
   locationId?: string,
+  sort: AdminEventSort = "start_at",
 ): Promise<AdminEventListItem[]> {
   const supabase = await createClient();
   const cutoffIso = new Date(
@@ -99,14 +108,14 @@ export async function listEventsForAdmin(
     .from("events")
     .select(
       `
-      id, title, slug, start_at, status, source_name, source_url,
+      id, display_id, title, slug, start_at, status, source_name, source_url,
       submitter_email, submitter_phone, is_archived, image_url,
       category:categories ( name ),
       location:locations ( name )
     `,
     )
     .or(`end_at.gte.${cutoffIso},and(end_at.is.null,start_at.gte.${cutoffIso})`)
-    .order("start_at", { ascending: true });
+    .order(sort, { ascending: true });
 
   if (status) {
     query = query.eq("status", status);
@@ -129,6 +138,7 @@ export async function listEventsForAdmin(
   // FK veza jedan-na-jedan — vidi isto obrazloženje u events.ts getEventBySlug.
   return ((data ?? []) as unknown as AdminEventListRow[]).map((row) => ({
     id: row.id,
+    display_id: row.display_id,
     title: row.title,
     slug: row.slug,
     start_at: row.start_at,
@@ -145,6 +155,7 @@ export async function listEventsForAdmin(
 }
 
 export type EventExportRow = {
+  display_id: number;
   title: string;
   category_slug: string;
   location_slug: string;
@@ -186,7 +197,7 @@ export async function listAllEventsForExport(): Promise<EventExportRow[]> {
     .from("events")
     .select(
       `
-      title, start_at, image_url, description, venue_name, end_at,
+      display_id, title, start_at, image_url, description, venue_name, end_at,
       organizer_name, organizer_contact, source_url, status,
       is_free, is_family_friendly, is_dog_friendly, is_solo_friendly,
       is_romantic, is_hidden_gem,
@@ -194,7 +205,7 @@ export async function listAllEventsForExport(): Promise<EventExportRow[]> {
       location:locations ( slug )
     `,
     )
-    .order("start_at", { ascending: true });
+    .order("display_id", { ascending: true });
 
   if (error) {
     console.error("listAllEventsForExport:", error.message);
@@ -297,11 +308,13 @@ export function eventsListHref(
   status?: string | null,
   kategorija?: string | null,
   lokacija?: string | null,
+  sort?: string | null,
 ): string {
   const params = new URLSearchParams();
   if (status) params.set("status", status);
   if (kategorija) params.set("kategorija", kategorija);
   if (lokacija) params.set("lokacija", lokacija);
+  if (sort) params.set("sort", sort);
   const query = params.toString();
   return query ? `/admin/dogadjaji?${query}` : "/admin/dogadjaji";
 }
@@ -406,6 +419,7 @@ export async function listEventsForDuplicateScan(): Promise<
 
 export type AdminEventDetail = {
   id: string;
+  display_id: number;
   slug: string;
   title: string;
   description: string | null;
@@ -444,11 +458,11 @@ export async function getEventForEdit(
   const { data, error } = await supabase
     .from("events")
     .select(
-      `id, slug, title, description, category_id, location_id, venue_name,
-       start_at, end_at, organizer_name, organizer_contact, source_url,
-       image_url, status, is_free, is_family_friendly, is_dog_friendly,
-       is_solo_friendly, is_romantic, is_hidden_gem, is_admin_featured,
-       sponsored_until, submitter_email, submitter_phone,
+      `id, display_id, slug, title, description, category_id, location_id,
+       venue_name, start_at, end_at, organizer_name, organizer_contact,
+       source_url, image_url, status, is_free, is_family_friendly,
+       is_dog_friendly, is_solo_friendly, is_romantic, is_hidden_gem,
+       is_admin_featured, sponsored_until, submitter_email, submitter_phone,
        event_images ( id, url, sort_order )`,
     )
     .eq("id", id)
@@ -490,12 +504,12 @@ export async function getEventsForMerge(
   const { data, error } = await supabase
     .from("events")
     .select(
-      `id, slug, title, description, category_id, location_id, venue_name,
-       start_at, end_at, organizer_name, organizer_contact, source_url,
-       image_url, status, is_free, is_family_friendly, is_dog_friendly,
-       is_solo_friendly, is_romantic, is_hidden_gem, is_admin_featured,
-       sponsored_until, submitter_email, submitter_phone, source_name,
-       created_at,
+      `id, display_id, slug, title, description, category_id, location_id,
+       venue_name, start_at, end_at, organizer_name, organizer_contact,
+       source_url, image_url, status, is_free, is_family_friendly,
+       is_dog_friendly, is_solo_friendly, is_romantic, is_hidden_gem,
+       is_admin_featured, sponsored_until, submitter_email, submitter_phone,
+       source_name, created_at,
        event_images ( id, url, sort_order )`,
     )
     .in("id", ids);

@@ -4,6 +4,7 @@ import {
   listEventsForAdmin,
   groupPendingEventsBySource,
   type AdminEventListItem,
+  type AdminEventSort,
 } from "@/lib/admin-events";
 import { formatEventDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
@@ -57,6 +58,7 @@ export default async function AdminEventsPage({
     bulkUpdated?: string;
     bulkError?: string;
     bulkDeleted?: string;
+    sort?: string;
   }>;
 }) {
   const {
@@ -68,15 +70,20 @@ export default async function AdminEventsPage({
     bulkUpdated,
     bulkError,
     bulkDeleted,
+    sort,
   } = await searchParams;
   const isLinkSubmissionsTab = status === LINK_SUBMISSIONS_TAB;
+  // Korisnikov zahtjev — sortiranje po ID-u (redoslijed unosa) ili datumu
+  // događaja; bilo koja druga/nepoznata vrijednost pada natrag na zadano.
+  const activeSort: AdminEventSort =
+    sort === "display_id" ? "display_id" : "start_at";
   const supabase = await createClient();
 
   const [events, { data: categories }, { data: locations }, linkSubmissions] =
     await Promise.all([
       isLinkSubmissionsTab
         ? Promise.resolve([])
-        : listEventsForAdmin(status, kategorija, lokacija),
+        : listEventsForAdmin(status, kategorija, lokacija, activeSort),
       supabase
         .from("categories")
         .select("id, name")
@@ -98,13 +105,26 @@ export default async function AdminEventsPage({
   const bulkApprove = bulkUpdateStatus.bind(null, "published");
   const bulkReject = bulkUpdateStatus.bind(null, "rejected");
 
-  // Status-tabovi moraju sacuvati aktivan kategorija/lokacija filter kod
+  // Status-tabovi moraju sacuvati aktivan kategorija/lokacija/sort kod
   // prebacivanja taba, inace bi svaki klik na tab tiho ponistio filter.
   function tabHref(statusValue?: string): string {
     const params = new URLSearchParams();
     if (statusValue) params.set("status", statusValue);
     if (kategorija) params.set("kategorija", kategorija);
     if (lokacija) params.set("lokacija", lokacija);
+    if (sort) params.set("sort", sort);
+    const query = params.toString();
+    return query ? `/admin/dogadjaji?${query}` : "/admin/dogadjaji";
+  }
+
+  // Isto, samo mijenja sort umjesto statusa — dijeli status/kategorija/
+  // lokacija s trenutnog prikaza.
+  function sortHref(sortValue: AdminEventSort): string {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (kategorija) params.set("kategorija", kategorija);
+    if (lokacija) params.set("lokacija", lokacija);
+    if (sortValue !== "start_at") params.set("sort", sortValue);
     const query = params.toString();
     return query ? `/admin/dogadjaji?${query}` : "/admin/dogadjaji";
   }
@@ -158,11 +178,41 @@ export default async function AdminEventsPage({
       </nav>
 
       {!isLinkSubmissionsTab && (
+        <div className="mt-4 flex gap-2 text-sm">
+          <span className="text-parchment-muted">Sortiraj:</span>
+          <Link
+            href={sortHref("start_at")}
+            aria-current={activeSort === "start_at" ? "true" : undefined}
+            className={
+              activeSort === "start_at"
+                ? "text-gold font-medium"
+                : "text-parchment-muted hover:text-parchment"
+            }
+          >
+            🕐 Datum
+          </Link>
+          <span className="text-parchment-muted">·</span>
+          <Link
+            href={sortHref("display_id")}
+            aria-current={activeSort === "display_id" ? "true" : undefined}
+            className={
+              activeSort === "display_id"
+                ? "text-gold font-medium"
+                : "text-parchment-muted hover:text-parchment"
+            }
+          >
+            # ID
+          </Link>
+        </div>
+      )}
+
+      {!isLinkSubmissionsTab && (
         <form
           method="get"
           className="border-line mt-4 flex flex-col gap-3 border-b pb-6 sm:flex-row sm:items-end"
         >
           {status && <input type="hidden" name="status" value={status} />}
+          {sort && <input type="hidden" name="sort" value={sort} />}
           <label className="flex-1 text-sm">
             <span className="text-parchment-muted mb-1 block">Kategorija</span>
             <select
@@ -318,6 +368,7 @@ export default async function AdminEventsPage({
             <input type="hidden" name="kategorija" value={kategorija} />
           )}
           {lokacija && <input type="hidden" name="lokacija" value={lokacija} />}
+          {sort && <input type="hidden" name="sort" value={sort} />}
 
           {showCheckboxes && (
             <div className="mt-6 flex justify-end gap-3 text-sm">
@@ -433,6 +484,9 @@ function EventRow({
         <EventThumb imageUrl={event.image_url} />
         <div className="min-w-0">
           <p className="text-parchment truncate font-medium">
+            <span className="text-parchment-muted font-mono text-xs">
+              #{event.display_id}
+            </span>{" "}
             {event.title}
           </p>
           <p className="text-parchment-muted mt-1 flex flex-wrap items-center gap-x-1 gap-y-1 text-sm">

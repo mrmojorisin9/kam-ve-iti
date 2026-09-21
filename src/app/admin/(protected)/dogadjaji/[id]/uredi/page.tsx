@@ -40,7 +40,10 @@ export default async function EditEventPage({
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12">
       <h1 className="font-display text-parchment text-3xl font-semibold tracking-tight">
-        Uredi događaj
+        Uredi događaj{" "}
+        <span className="text-parchment-muted font-mono text-xl font-normal">
+          #{event.display_id}
+        </span>
       </h1>
 
       <EventForm

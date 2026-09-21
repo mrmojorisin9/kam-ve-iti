@@ -73,6 +73,11 @@ export default async function ImportCsvPage({
           Podržan je i CSV s <code className="text-parchment">;</code> kao
           razdjelnikom (Excel s hrvatskim regionalnim postavkama).
         </p>
+        <p className="mt-2">
+          Stupac <code className="text-parchment">id</code> (ako postoji,
+          npr. iz ponovno uvezene izvezene datoteke) se ignorira — svaki
+          novi red dobiva svoj ID automatski.
+        </p>
         <pre className="border-line bg-oak text-parchment mt-3 overflow-x-auto rounded-md border p-3 text-xs">
           {EXAMPLE_CSV}
         </pre>
