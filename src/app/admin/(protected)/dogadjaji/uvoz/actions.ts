@@ -27,6 +27,34 @@ function cellBool(row: string[], index: Record<string, number>, name: string): b
 }
 
 /**
+ * Prevodi sirove Postgres/Supabase poruke greške (npr. "duplicate key value
+ * violates unique constraint...") u razumljivu hrvatsku napomenu — korisnikov
+ * zahtjev, sirove poruke bez konteksta o shemi baze bile su nerazumljive.
+ * Nepoznata greška i dalje prikazuje izvornu poruku (bolje vidljiva
+ * neprepoznata greška nego prešućena), samo s jasnom naznakom da je sirova.
+ */
+function friendlyDbError(message: string): string {
+  if (message.includes("events_source_url_unique")) {
+    return (
+      'izvorni link ("source_url") u ovom retku već postoji na nekom drugom ' +
+      "događaju u bazi (bez obzira na njegov status — uključujući odbijene/" +
+      "arhivirane) ili se ponavlja unutar iste CSV datoteke. Svaki izvorni " +
+      "link smije pripadati samo jednom događaju. Provjeri na " +
+      '"/admin/dogadjaji" (tab "Svi") ili alatom "Mogući duplikati" radi li ' +
+      "se o stvarnom duplikatu — ako ne, isprazni \"source_url\" polje za " +
+      "ovaj redak (polje je opcionalno) i pokušaj ponovno."
+    );
+  }
+  if (message.toLowerCase().includes("row-level security")) {
+    return (
+      "sesija prijave je istekla usred uvoza. Osvježi stranicu, ponovno se " +
+      "prijavi i pokušaj uvoz ponovno."
+    );
+  }
+  return `neočekivana greška baze (proslijeđeno bez prijevoda): ${message}`;
+}
+
+/**
  * Kao `cellBool`, ali razlikuje "polje uopće nije navedeno" (`null`) od
  * "izričito false" — potrebno za ažuriranje postojećeg događaja (korisnikov
  * zahtjev), gdje prazno/izostavljeno polje mora zadržati postojeću
@@ -214,7 +242,7 @@ export async function importCsv(formData: FormData) {
         continue;
       }
       if (error) {
-        errors.push(`red ${sheetRow}: ${error}`);
+        errors.push(`red ${sheetRow}: ${friendlyDbError(error)}`);
         continue;
       }
 
@@ -261,7 +289,7 @@ export async function importCsv(formData: FormData) {
     });
 
     if (error) {
-      errors.push(`red ${sheetRow}: ${error.message}`);
+      errors.push(`red ${sheetRow}: ${friendlyDbError(error.message)}`);
       continue;
     }
 
