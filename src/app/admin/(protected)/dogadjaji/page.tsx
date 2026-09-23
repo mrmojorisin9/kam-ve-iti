@@ -4,6 +4,7 @@ import {
   listEventsForAdmin,
   groupPendingEventsBySource,
   getAdminStatusCounts,
+  listPublicFormSubmissions,
   type AdminEventListItem,
   type AdminEventSort,
   type AdminStatusCounts,
@@ -90,25 +91,38 @@ export default async function AdminEventsPage({
     sort === "display_id" ? "display_id" : "start_at";
   const supabase = await createClient();
 
-  const [events, { data: categories }, { data: locations }, linkSubmissions, counts] =
-    await Promise.all([
-      isLinkSubmissionsTab
-        ? Promise.resolve([])
-        : listEventsForAdmin(status, kategorija, lokacija, activeSort),
-      supabase
-        .from("categories")
-        .select("id, name")
-        .order("sort_order", { ascending: true }),
-      supabase.from("locations").select("id, name").order("name"),
-      isLinkSubmissionsTab
-        ? supabase
-            .from("event_link_submissions")
-            .select("id, url, note, submitter_email, submitter_phone, created_at")
-            .order("created_at", { ascending: true })
-            .then(({ data }) => (data ?? []) as LinkSubmission[])
-        : Promise.resolve([] as LinkSubmission[]),
-      getAdminStatusCounts(),
-    ]);
+  const [
+    events,
+    { data: categories },
+    { data: locations },
+    linkSubmissions,
+    counts,
+    publicFormSubmissions,
+  ] = await Promise.all([
+    isLinkSubmissionsTab
+      ? Promise.resolve([])
+      : listEventsForAdmin(status, kategorija, lokacija, activeSort),
+    supabase
+      .from("categories")
+      .select("id, name")
+      .order("sort_order", { ascending: true }),
+    supabase.from("locations").select("id, name").order("name"),
+    isLinkSubmissionsTab
+      ? supabase
+          .from("event_link_submissions")
+          .select("id, url, note, submitter_email, submitter_phone, created_at")
+          .order("created_at", { ascending: true })
+          .then(({ data }) => (data ?? []) as LinkSubmission[])
+      : Promise.resolve([] as LinkSubmission[]),
+    getAdminStatusCounts(),
+    // Puna javna prijava (/prijavi-dogadaj) — prikazana i ovdje uz prijave
+    // linkom, korisnikov zahtjev ("tako da znam da su to 'vanjske'
+    // prijave"). Ostaje i dalje vidljiva u "Na čekanju" (normalan
+    // odobri/odbaci tok), ovo je dodatan pregled, ne premještanje.
+    isLinkSubmissionsTab
+      ? listPublicFormSubmissions()
+      : Promise.resolve([] as AdminEventListItem[]),
+  ]);
   // Odobri/odbaci ima smisla samo na "Na čekanju" (jedini status iz kojeg se
   // prirodno prelazi u published/rejected); brisanje ima smisla na svakom
   // tabu s pravim events retcima (sve osim "Prijave linkom", zaseban izvor).
@@ -317,13 +331,40 @@ export default async function AdminEventsPage({
       {isLinkSubmissionsTab ? (
         <>
           <p className="text-parchment-muted mt-6 text-sm">
-            Poslani linkovi s javnog obrasca &quot;Imaš događaj? Pošalji nam
-            link&quot;. Otvori link, prenesi podatke u novi događaj, pa
-            označi kao riješeno.
+            Sve vanjske (javne) prijave — puna forma i brzi link — na jednom
+            mjestu.
           </p>
 
+          {publicFormSubmissions.length > 0 && (
+            <section className="mt-6">
+              <h2 className="text-parchment-muted text-sm font-semibold tracking-wide uppercase">
+                Puna prijava (forma) ({publicFormSubmissions.length})
+              </h2>
+              <p className="text-parchment-muted mt-1 text-xs">
+                Već je pravi događaj na čekanju odobrenja (i dalje vidljiv i pod
+                &quot;Na čekanju&quot;, gdje se i odobrava/odbacuje) — ovdje
+                samo za brz pregled/uređivanje.
+              </p>
+              <ul className="border-line divide-line mt-2 divide-y border-t">
+                {publicFormSubmissions.map((event) => (
+                  <EventRow key={event.id} event={event} showCheckbox={false} />
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {publicFormSubmissions.length > 0 && linkSubmissions.length > 0 && (
+            <h2 className="text-parchment-muted mt-8 text-sm font-semibold tracking-wide uppercase">
+              Prijava linkom ({linkSubmissions.length})
+            </h2>
+          )}
+
           {linkSubmissions.length === 0 ? (
-            <p className="text-parchment-muted mt-8">Nema neriješenih prijava.</p>
+            publicFormSubmissions.length === 0 && (
+              <p className="text-parchment-muted mt-8">
+                Nema neriješenih prijava.
+              </p>
+            )
           ) : (
             <ul className="border-line divide-line mt-4 divide-y border-t">
               {linkSubmissions.map((submission) => (
@@ -336,7 +377,7 @@ export default async function AdminEventsPage({
                       href={submission.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-gold hover:underline break-all"
+                      className="text-gold break-all hover:underline"
                     >
                       {submission.url}
                     </a>
@@ -345,10 +386,12 @@ export default async function AdminEventsPage({
                         {submission.note}
                       </p>
                     )}
-                    {(submission.submitter_email || submission.submitter_phone) && (
+                    {(submission.submitter_email ||
+                      submission.submitter_phone) && (
                       <p className="text-parchment-muted mt-1 text-sm">
                         {submission.submitter_email}
-                        {submission.submitter_email && submission.submitter_phone
+                        {submission.submitter_email &&
+                        submission.submitter_phone
                           ? " · "
                           : ""}
                         {submission.submitter_phone}
@@ -520,7 +563,9 @@ function EventRow({
               {formatEventDateTime(event.start_at)} · {event.category_name} ·{" "}
               {event.location_name} ·{" "}
               <span
-                className={event.status === "published" ? "text-gold" : undefined}
+                className={
+                  event.status === "published" ? "text-gold" : undefined
+                }
               >
                 {STATUS_LABELS[event.status] ?? event.status}
               </span>

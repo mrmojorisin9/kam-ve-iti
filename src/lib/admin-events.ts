@@ -74,24 +74,27 @@ export type AdminEventSort = "start_at" | "display_id";
 
 /**
  * Događaji čiji je efektivni završetak (`end_at`, ili `start_at` ako nema
- * `end_at`) prošao prije više od 24h se ne prikazuju u `/admin/dogadjaji`
- * (korisnikov zahtjev — svakodnevni pregled se guši u davno prošlim
- * događajima dok ih arhivski cron ne pokupi tek nakon 3 dana,
- * `archive_expired_events`, 0030). Čisto prikazni filter, ne dira
- * arhiviranje. Supabase JS builder nema `coalesce` — emulirano preko `.or`
- * (prihvati red ako mu je `end_at` iza granice, ILI `end_at` uopće ne
- * postoji i `start_at` je iza granice).
- *
- * IZNIMKA (korisnikov zahtjev, 2026-09-23, otkriveno preko neslaganja
- * brojčanih oznaka na tab-pilulama i stvarnog popisa): `pending_review`/
- * `rejected` retci NIKAD se ne skrivaju ovim filterom, bez obzira koliko
- * je datum događaja prošao — to su neriješeni zadaci (čekaju
- * odobrenje/su već razmotreni), ne informativni "prošli događaji" poput
- * `published`. Bez ove iznimke, stara neobrađena prijava bi tiho
- * nestala iz "Na čekanju" nakon 24h iako još nikad nije pregledana.
+ * `end_at`) prošao prije više od 24h se ne prikazuju NIGDJE u admin
+ * sučelju — ni na popisu, ni u brojčanim oznakama (korisnikov zahtjev,
+ * 2026-09-23: "istekle događaje mi uopće nigdje nemoj prikazivati jer
+ * zbunjuju i rade nepotreban šum" — izričito uključuje i `pending_review`/
+ * `rejected`, ranija iznimka za te statuse UKLONJENA istog dana na
+ * korisnikov zahtjev). Čisto prikazni filter, ne dira arhiviranje —
+ * događaji ostaju u bazi (3-dnevni arhivski cron, `archive_expired_events`,
+ * 0030, i dalje radi neovisno). Supabase JS builder nema `coalesce` —
+ * emulirano preko `.or` (prihvati red ako mu je `end_at` iza granice, ILI
+ * `end_at` uopće ne postoji i `start_at` je iza granice). Dijeli je
+ * `listEventsForAdmin` i `getAdminStatusCounts` — oznaka na tab-pilulama
+ * mora točno odgovarati broju redaka koje popis stvarno prikaže.
  */
 const ADMIN_HIDE_EXPIRED_AFTER_MS = 24 * 60 * 60 * 1000;
-const ALWAYS_VISIBLE_STATUSES = ["pending_review", "rejected"];
+
+function notExpiredFilter(): string {
+  const cutoffIso = new Date(
+    Date.now() - ADMIN_HIDE_EXPIRED_AFTER_MS,
+  ).toISOString();
+  return `end_at.gte.${cutoffIso},and(end_at.is.null,start_at.gte.${cutoffIso})`;
+}
 
 /**
  * Svi događaji (admin — RLS "events_admin_full_access"), zadano najbliži
@@ -110,9 +113,6 @@ export async function listEventsForAdmin(
   sort: AdminEventSort = "start_at",
 ): Promise<AdminEventListItem[]> {
   const supabase = await createClient();
-  const cutoffIso = new Date(
-    Date.now() - ADMIN_HIDE_EXPIRED_AFTER_MS,
-  ).toISOString();
   let query = supabase
     .from("events")
     .select(
@@ -123,9 +123,7 @@ export async function listEventsForAdmin(
       location:locations ( name )
     `,
     )
-    .or(
-      `status.in.(${ALWAYS_VISIBLE_STATUSES.join(",")}),end_at.gte.${cutoffIso},and(end_at.is.null,start_at.gte.${cutoffIso})`,
-    )
+    .or(notExpiredFilter())
     .order(sort, { ascending: true });
 
   if (status) {
@@ -165,6 +163,59 @@ export async function listEventsForAdmin(
   }));
 }
 
+/**
+ * Događaji unešeni preko JAVNE forme (`/prijavi-dogadaj`, ADR-016) —
+ * prepoznaju se po `submitter_email`/`submitter_phone` (isti izvor istine
+ * kao `groupPendingEventsBySource`), na čekanju odobrenja. Korisnikov
+ * zahtjev (2026-09-23): prikazati ih i na tabu "Prijave linkom", uz
+ * postojeće `event_link_submissions` retke, da admin na jednom mjestu vidi
+ * SVE vanjske (javne) prijave — obje ostaju i u "Na čekanju" (ovo je
+ * dodatan, informativan prikaz, ne premještanje; normalan odobri/odbaci
+ * tok i dalje radi samo kroz "Na čekanju"). Isti not-expired filter kao
+ * `listEventsForAdmin` (istekli se ne prikazuju nigdje).
+ */
+export async function listPublicFormSubmissions(): Promise<
+  AdminEventListItem[]
+> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("events")
+    .select(
+      `
+      id, display_id, title, slug, start_at, status, source_name, source_url,
+      submitter_email, submitter_phone, is_archived, image_url,
+      category:categories ( name ),
+      location:locations ( name )
+    `,
+    )
+    .eq("status", "pending_review")
+    .or("submitter_email.not.is.null,submitter_phone.not.is.null")
+    .or(notExpiredFilter())
+    .order("start_at", { ascending: true });
+
+  if (error) {
+    console.error("listPublicFormSubmissions:", error.message);
+    return [];
+  }
+
+  return ((data ?? []) as unknown as AdminEventListRow[]).map((row) => ({
+    id: row.id,
+    display_id: row.display_id,
+    title: row.title,
+    slug: row.slug,
+    start_at: row.start_at,
+    status: row.status,
+    source_name: row.source_name,
+    source_url: row.source_url,
+    submitter_email: row.submitter_email,
+    submitter_phone: row.submitter_phone,
+    is_archived: row.is_archived,
+    image_url: row.image_url,
+    category_name: row.category?.name ?? "—",
+    location_name: row.location?.name ?? "—",
+  }));
+}
+
 export type AdminStatusCounts = {
   pending_review: number;
   published: number;
@@ -175,45 +226,55 @@ export type AdminStatusCounts = {
 /**
  * Brojevi po statusu (korisnikov zahtjev — oznake na tab-pilulama
  * `/admin/dogadjaji` i treptajuća obavijest za prijave linkom na
- * `/admin`). NAMJERNO bez 24h-sakrivanje-isteklih filtera koji koristi
- * `listEventsForAdmin` — otkriveno uživo (korisnikova prijava, 2026-09-23)
- * da bi s tim filterom "Na čekanju"/"Odbijeno" oznake stalno pokazivale 0
- * čim su svi trenutni retci tog statusa već prošli datum (stvaran slučaj:
- * 7 na čekanju + 24 odbijenih, SVI stariji od 24h, filter ih je sve
- * izbrisao na 0). Obavijest "koliko čeka moju pažnju" mora pokazati
- * stvaran broj neovisno o tome je li datum događaja već prošao — to su
- * i dalje neriješeni retci. Posljedica: broj na pilulama može biti VEĆI
- * od broja redaka koje popis stvarno prikaže (popis i dalje skriva
- * davno prošle), poznato i namjerno, ne bug. Namjerno bez kategorija/
- * lokacija filtera (uvijek ukupan broj, neovisno o trenutno aktivnom
- * filteru na stranici).
+ * `/admin`). Koristi ISTI 24h-sakrivanje-isteklih filter kao
+ * `listEventsForAdmin` (`notExpiredFilter()`) — korisnikov izričit zahtjev
+ * (2026-09-23): istekli događaji se ne smiju prikazivati NIGDJE, uključujući
+ * brojčane oznake, jer "zbunjuju i rade nepotreban šum". Oznaka na pilulama
+ * time uvijek točno odgovara broju redaka koje popis stvarno prikaže nakon
+ * klika. Namjerno bez kategorija/lokacija filtera (uvijek ukupan broj,
+ * neovisno o trenutno aktivnom filteru na stranici).
  */
 export async function getAdminStatusCounts(): Promise<AdminStatusCounts> {
   const supabase = await createClient();
+  const filter = notExpiredFilter();
 
-  const [pending, published, rejected, linkSubmissions] = await Promise.all([
-    supabase
-      .from("events")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "pending_review"),
-    supabase
-      .from("events")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "published"),
-    supabase
-      .from("events")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "rejected"),
-    supabase
-      .from("event_link_submissions")
-      .select("id", { count: "exact", head: true }),
-  ]);
+  const [pending, published, rejected, linkSubmissions, publicFormSubmissions] =
+    await Promise.all([
+      supabase
+        .from("events")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending_review")
+        .or(filter),
+      supabase
+        .from("events")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "published")
+        .or(filter),
+      supabase
+        .from("events")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "rejected")
+        .or(filter),
+      supabase
+        .from("event_link_submissions")
+        .select("id", { count: "exact", head: true }),
+      // Puna javna prijava (/prijavi-dogadaj) broji se ZAJEDNO s prijavama
+      // linkom (korisnikov zahtjev — oboje su "vanjske" prijave, oznaka na
+      // tabu "Prijave linkom" mora odražavati oboje).
+      supabase
+        .from("events")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending_review")
+        .or("submitter_email.not.is.null,submitter_phone.not.is.null")
+        .or(filter),
+    ]);
 
   return {
     pending_review: pending.count ?? 0,
     published: published.count ?? 0,
     rejected: rejected.count ?? 0,
-    link_submissions: linkSubmissions.count ?? 0,
+    link_submissions:
+      (linkSubmissions.count ?? 0) + (publicFormSubmissions.count ?? 0),
   };
 }
 
@@ -327,7 +388,11 @@ export function groupPendingEventsBySource(
   }
 
   return (["cron", "korisnici", "rucno"] as const)
-    .map((key) => ({ key, label: PENDING_GROUP_LABELS[key], events: buckets[key] }))
+    .map((key) => ({
+      key,
+      label: PENDING_GROUP_LABELS[key],
+      events: buckets[key],
+    }))
     .filter((group) => group.events.length > 0);
 }
 
