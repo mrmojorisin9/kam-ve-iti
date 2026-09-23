@@ -81,8 +81,17 @@ export type AdminEventSort = "start_at" | "display_id";
  * arhiviranje. Supabase JS builder nema `coalesce` — emulirano preko `.or`
  * (prihvati red ako mu je `end_at` iza granice, ILI `end_at` uopće ne
  * postoji i `start_at` je iza granice).
+ *
+ * IZNIMKA (korisnikov zahtjev, 2026-09-23, otkriveno preko neslaganja
+ * brojčanih oznaka na tab-pilulama i stvarnog popisa): `pending_review`/
+ * `rejected` retci NIKAD se ne skrivaju ovim filterom, bez obzira koliko
+ * je datum događaja prošao — to su neriješeni zadaci (čekaju
+ * odobrenje/su već razmotreni), ne informativni "prošli događaji" poput
+ * `published`. Bez ove iznimke, stara neobrađena prijava bi tiho
+ * nestala iz "Na čekanju" nakon 24h iako još nikad nije pregledana.
  */
 const ADMIN_HIDE_EXPIRED_AFTER_MS = 24 * 60 * 60 * 1000;
+const ALWAYS_VISIBLE_STATUSES = ["pending_review", "rejected"];
 
 /**
  * Svi događaji (admin — RLS "events_admin_full_access"), zadano najbliži
@@ -114,7 +123,9 @@ export async function listEventsForAdmin(
       location:locations ( name )
     `,
     )
-    .or(`end_at.gte.${cutoffIso},and(end_at.is.null,start_at.gte.${cutoffIso})`)
+    .or(
+      `status.in.(${ALWAYS_VISIBLE_STATUSES.join(",")}),end_at.gte.${cutoffIso},and(end_at.is.null,start_at.gte.${cutoffIso})`,
+    )
     .order(sort, { ascending: true });
 
   if (status) {
