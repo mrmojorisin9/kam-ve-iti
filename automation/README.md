@@ -78,6 +78,39 @@ nastaje bez ikakvog upisa u bazu). Za točnu putanju:
 HTTP endpointu (`?export_csv`) — napomena o Docker volumenu u
 `server.py` komentaru ako se koristi preko n8n-a.
 
+### Lokalna JSONL datoteka umjesto web izvora (ručni povremeni uvoz)
+
+Za povremeno "ubaci ovu datoteku" korištenje (korisnikov zahtjev,
+2026-09-23) — ne za redovit/automatski unos preko n8n crona, samo CLI.
+Jedan JSON objekt po retku, isti podaci koje bi inače pružio web adapter
+(slobodan tekst — datum/lokacija se i dalje normaliziraju preko Claude
+ekstrakcije, isti trošak/pravila kao svaki drugi izvor):
+
+```jsonl
+{"title": "Vinska cesta - degustacija", "date_text": "12. lipnja u 20:00", "location_text": "Štrigova", "excerpt": "Degustacija vina uz glazbu.", "image_url": "https://primjer.hr/slika.jpg"}
+{"title": "Drugi događaj", "date_text": "13. lipnja", "location_text": "Čakovec", "source_url": "https://izvor.hr/dogadaj-2"}
+```
+
+| Polje | Obavezno | Opis |
+| --- | --- | --- |
+| `title` | da | Naslov |
+| `date_text` | da | Datum/vrijeme kao slobodan tekst — Claude ga normalizira |
+| `location_text` | da | Lokacija kao slobodan tekst |
+| `excerpt` | ne | Opis/sažetak, pomaže ekstrakciji |
+| `image_url` | ne | URL fotografije |
+| `source_url` | ne | Ako izostane, generira se `jsonl://<naziv_datoteke>#<redak>` — dovoljno za idempotentno ponovno pokretanje ISTE nepromijenjene datoteke, ali ne prati pouzdano isti događaj ako redke kasnije mijenjaš/premještaš. Za pouzdaniju idempotenciju kod planiranog ponovnog pokretanja, postavi vlastiti jedinstven `source_url` po retku. |
+| `source_name` | ne | Zadano `"jsonl"` — oznaka izvora u adminu |
+| `start_date_hint` | ne | ISO datum kao "sidro" za godinu, isto značenje kao kod web adaptera |
+
+```bash
+python -m automation.pipeline --file putanja/do/dogadaji.jsonl --dry-run
+python -m automation.pipeline --file putanja/do/dogadaji.jsonl --export-csv
+```
+
+`--source` i `--file` se međusobno isključuju. Nema podrške preko `/run`
+HTTP endpointa niti preko `pokreni-scraper.bat` izbornika (samo CLI) —
+namjerno, jer je ovo povremena/ručna operacija, ne redovit izvor.
+
 ## n8n hosting (ADR-020, Korak 5)
 
 Docker Compose setup — n8n self-hosted **lokalno preko Docker Desktopa**

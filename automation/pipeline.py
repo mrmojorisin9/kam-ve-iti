@@ -25,7 +25,8 @@ from dotenv import load_dotenv
 
 from . import db
 from .adapters import ADAPTERS
-from .adapters.base import RawEvent
+from .adapters.base import RawEvent, SourceAdapter
+from .adapters.local_jsonl import LocalJsonlAdapter
 from .dedup import find_fuzzy_duplicate
 from .extract import normalize
 
@@ -138,15 +139,33 @@ def unique_slug(client, base_slug: str) -> str:
     return f"{base_slug}-{suffix}"
 
 
-def run(source: str, dry_run: bool, export_csv: str | None = None) -> dict:
+def run(
+    source: str | None,
+    dry_run: bool,
+    export_csv: str | None = None,
+    file_path: str | None = None,
+) -> dict:
     """`export_csv`: None = bez izvoza (zadano). Prazan string = izvezi na
     automatski generiranu putanju u `automation/exports/`. Bilo koja druga
     vrijednost = izvezi na tu tocnu putanju. Ne utjece na dry_run/upis u
-    Supabase — oba se mogu kombinirati neovisno."""
-    if source not in ADAPTERS:
-        raise SystemExit(
-            f"Nepoznat izvor '{source}'. Dostupno: {', '.join(ADAPTERS)}"
-        )
+    Supabase — oba se mogu kombinirati neovisno.
+
+    `file_path`: kad je zadan, `source` se ignorira — koristi se
+    `LocalJsonlAdapter` (rucni povremeni uvoz iz lokalne JSONL datoteke,
+    korisnikov zahtjev 2026-09-23) umjesto web izvora iz `ADAPTERS`. Ostatak
+    funkcije (ekstrakcija, dedup, upis, CSV izvoz) identican je za oba puta —
+    razlikuju se samo u tome odakle dolaze sirovi `RawEvent` zapisi.
+    """
+    adapter: SourceAdapter
+    if file_path:
+        adapter = LocalJsonlAdapter(file_path)
+    else:
+        if not source or source not in ADAPTERS:
+            raise SystemExit(
+                f"Nepoznat izvor '{source}'. Dostupno: {', '.join(ADAPTERS)}"
+            )
+        adapter = ADAPTERS[source]()
+    source = adapter.source_name
 
     client = db.get_client()
     scraper_user_id = db.get_scraper_user_id()
@@ -158,7 +177,6 @@ def run(source: str, dry_run: bool, export_csv: str | None = None) -> dict:
     location_name_by_id = {l["id"]: l["name"] for l in locations}
     export_rows: list[dict] = []
 
-    adapter = ADAPTERS[source]()
     raw_events: list[RawEvent] = adapter.fetch_raw_events()
     print(f"[{source}] dohvaceno {len(raw_events)} sirovih zapisa")
 
@@ -363,7 +381,23 @@ def main() -> None:
 
     load_dotenv()
     parser = argparse.ArgumentParser(description="Kam denes scraper pipeline")
-    parser.add_argument("--source", required=True, choices=list(ADAPTERS))
+    parser.add_argument(
+        "--source",
+        choices=list(ADAPTERS),
+        help="Web izvor iz automation/adapters/__init__.py ADAPTERS. Iskljucivo s --file.",
+    )
+    parser.add_argument(
+        "--file",
+        metavar="PUTANJA",
+        help=(
+            "Lokalna JSONL datoteka umjesto web izvora — rucni povremeni "
+            "uvoz (korisnikov zahtjev, 2026-09-23). Jedan JSON objekt po "
+            "retku: title/date_text/location_text obavezni, "
+            "excerpt/image_url/source_url/start_date_hint/source_name "
+            "opcionalni. Prolazi kroz identicnu Claude ekstrakciju/dedup "
+            "kao web izvori (isti trosak/pravila). Iskljucivo s --source."
+        ),
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -383,7 +417,11 @@ def main() -> None:
         ),
     )
     args = parser.parse_args()
-    run(args.source, args.dry_run, export_csv=args.export_csv)
+    if not args.source and not args.file:
+        parser.error("potreban je --source ili --file")
+    if args.source and args.file:
+        parser.error("--source i --file se medusobno iskljucuju — odaberi jedno")
+    run(args.source, args.dry_run, export_csv=args.export_csv, file_path=args.file)
 
 
 if __name__ == "__main__":
