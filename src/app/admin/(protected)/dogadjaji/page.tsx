@@ -3,8 +3,10 @@ import Link from "next/link";
 import {
   listEventsForAdmin,
   groupPendingEventsBySource,
+  getAdminStatusCounts,
   type AdminEventListItem,
   type AdminEventSort,
+  type AdminStatusCounts,
 } from "@/lib/admin-events";
 import { formatEventDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
@@ -36,6 +38,15 @@ const STATUS_TABS: { value?: string; label: string }[] = [
   { value: "rejected", label: "Odbijeno" },
   { value: LINK_SUBMISSIONS_TAB, label: "Prijave linkom" },
 ];
+
+// Koji AdminStatusCounts stupac ide uz koji tab — "Svi" namjerno bez
+// oznake (korisnikov zahtjev spominje samo ova četiri taba).
+const TAB_COUNT_FIELD: Record<string, keyof AdminStatusCounts> = {
+  pending_review: "pending_review",
+  published: "published",
+  rejected: "rejected",
+  [LINK_SUBMISSIONS_TAB]: "link_submissions",
+};
 
 type LinkSubmission = {
   id: string;
@@ -79,7 +90,7 @@ export default async function AdminEventsPage({
     sort === "display_id" ? "display_id" : "start_at";
   const supabase = await createClient();
 
-  const [events, { data: categories }, { data: locations }, linkSubmissions] =
+  const [events, { data: categories }, { data: locations }, linkSubmissions, counts] =
     await Promise.all([
       isLinkSubmissionsTab
         ? Promise.resolve([])
@@ -96,6 +107,7 @@ export default async function AdminEventsPage({
             .order("created_at", { ascending: true })
             .then(({ data }) => (data ?? []) as LinkSubmission[])
         : Promise.resolve([] as LinkSubmission[]),
+      getAdminStatusCounts(),
     ]);
   // Odobri/odbaci ima smisla samo na "Na čekanju" (jedini status iz kojeg se
   // prirodno prelazi u published/rejected); brisanje ima smisla na svakom
@@ -160,18 +172,32 @@ export default async function AdminEventsPage({
       <nav className="mt-6 flex flex-wrap gap-2">
         {STATUS_TABS.map((tab) => {
           const isActive = (status ?? undefined) === tab.value;
+          const countField = tab.value ? TAB_COUNT_FIELD[tab.value] : undefined;
+          const count = countField ? counts[countField] : 0;
           return (
             <Link
               key={tab.label}
               href={tabHref(tab.value)}
               aria-current={isActive ? "true" : undefined}
               className={
-                isActive
+                (isActive
                   ? "bg-gold text-night rounded-full px-3 py-1 text-sm font-medium"
-                  : "border-line text-parchment-muted hover:text-parchment rounded-full border px-3 py-1 text-sm"
+                  : "border-line text-parchment-muted hover:text-parchment rounded-full border px-3 py-1 text-sm") +
+                " relative"
               }
             >
               {tab.label}
+              {count > 0 && (
+                <span
+                  className={
+                    isActive
+                      ? "bg-night text-gold border-gold absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full border px-1 text-[10px] leading-none font-bold"
+                      : "bg-gold text-night absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] leading-none font-bold"
+                  }
+                >
+                  {count}
+                </span>
+              )}
             </Link>
           );
         })}

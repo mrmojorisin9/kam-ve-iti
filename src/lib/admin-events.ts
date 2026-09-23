@@ -154,6 +154,58 @@ export async function listEventsForAdmin(
   }));
 }
 
+export type AdminStatusCounts = {
+  pending_review: number;
+  published: number;
+  rejected: number;
+  link_submissions: number;
+};
+
+/**
+ * Brojevi po statusu (korisnikov zahtjev — oznake na tab-pilulama
+ * `/admin/dogadjaji` i treptajuća obavijest za prijave linkom na
+ * `/admin`). NAMJERNO bez 24h-sakrivanje-isteklih filtera koji koristi
+ * `listEventsForAdmin` — otkriveno uživo (korisnikova prijava, 2026-09-23)
+ * da bi s tim filterom "Na čekanju"/"Odbijeno" oznake stalno pokazivale 0
+ * čim su svi trenutni retci tog statusa već prošli datum (stvaran slučaj:
+ * 7 na čekanju + 24 odbijenih, SVI stariji od 24h, filter ih je sve
+ * izbrisao na 0). Obavijest "koliko čeka moju pažnju" mora pokazati
+ * stvaran broj neovisno o tome je li datum događaja već prošao — to su
+ * i dalje neriješeni retci. Posljedica: broj na pilulama može biti VEĆI
+ * od broja redaka koje popis stvarno prikaže (popis i dalje skriva
+ * davno prošle), poznato i namjerno, ne bug. Namjerno bez kategorija/
+ * lokacija filtera (uvijek ukupan broj, neovisno o trenutno aktivnom
+ * filteru na stranici).
+ */
+export async function getAdminStatusCounts(): Promise<AdminStatusCounts> {
+  const supabase = await createClient();
+
+  const [pending, published, rejected, linkSubmissions] = await Promise.all([
+    supabase
+      .from("events")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending_review"),
+    supabase
+      .from("events")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "published"),
+    supabase
+      .from("events")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "rejected"),
+    supabase
+      .from("event_link_submissions")
+      .select("id", { count: "exact", head: true }),
+  ]);
+
+  return {
+    pending_review: pending.count ?? 0,
+    published: published.count ?? 0,
+    rejected: rejected.count ?? 0,
+    link_submissions: linkSubmissions.count ?? 0,
+  };
+}
+
 export type EventExportRow = {
   display_id: number;
   title: string;

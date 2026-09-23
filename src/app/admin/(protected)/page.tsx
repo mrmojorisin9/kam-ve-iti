@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LiveStatsPanel } from "@/components/admin/LiveStatsPanel";
+import { getAdminStatusCounts } from "@/lib/admin-events";
 
 export default async function AdminDashboardPage({
   searchParams,
@@ -7,6 +8,8 @@ export default async function AdminDashboardPage({
   searchParams: Promise<{ created?: string }>;
 }) {
   const { created } = await searchParams;
+  const counts = await getAdminStatusCounts();
+  const hasLinkSubmissions = counts.link_submissions > 0;
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12">
@@ -54,9 +57,26 @@ export default async function AdminDashboardPage({
         </Link>
         <Link
           href="/admin/dogadjaji?status=prijave-linkom"
-          className="border-line text-parchment-muted hover:text-parchment self-start rounded-md border px-4 py-2 text-sm font-medium"
+          className={
+            hasLinkSubmissions
+              ? "border-gold text-gold hover:bg-gold hover:text-night relative self-start rounded-md border px-4 py-2 text-sm font-medium"
+              : "border-line text-parchment-muted hover:text-parchment relative self-start rounded-md border px-4 py-2 text-sm font-medium"
+          }
         >
           Prijave linkom
+          {hasLinkSubmissions && (
+            <>
+              <span
+                className="absolute -top-1.5 -right-1.5 flex h-4 w-4"
+                title={`${counts.link_submissions} nova prijava linkom čeka`}
+              >
+                <span className="bg-gold absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" />
+                <span className="bg-gold border-oak text-night relative inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] leading-none font-bold">
+                  {counts.link_submissions}
+                </span>
+              </span>
+            </>
+          )}
         </Link>
       </div>
     </main>
