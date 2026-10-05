@@ -12,6 +12,14 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [{ source: "/tjedan", destination: "/", permanent: true }];
   },
+  // /pdf je samostalan klijentski PDF uređivač (jedna HTML datoteka sa svim
+  // bibliotekama/fontovima ugrađenim, bez poziva prema serveru) — nije dio
+  // App Routera, poslužuje se kao statična datoteka iz public/. Rewrite (ne
+  // redirect) da URL u pregledniku ostane čist /pdf; array oblik = afterFiles,
+  // pa ne može zasjeniti nijednu postojeću stranicu.
+  async rewrites() {
+    return [{ source: "/pdf", destination: "/pdf.html" }];
+  },
   // Sigurnosni audit 2026-07-21, nalaz #1: next.config.ts prije nije imao
   // headers() uopće, pa produkcija nije slala CSP/X-Frame-Options/itd.
   // (potvrđeno uživo curl-om). Namjerno BEZ script-src/default-src
