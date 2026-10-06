@@ -14,7 +14,9 @@ Pokretanje: `flask --app automation.server run --host=0.0.0.0 --port=8000`
 from flask import Flask, jsonify, request
 
 from .adapters import ADAPTERS
-from .pipeline import run
+from .pipeline import run, run_import_dir
+
+IMPORT_SOURCE = "uvoz"
 
 app = Flask(__name__)
 
@@ -37,9 +39,18 @@ def run_endpoint():
     # --export-csv` lokalno.
     export_csv = request.args.get("export_csv")
 
+    # Pseudo-izvor "uvoz": sve .jsonl datoteke iz automation/uvoz/ (bind-mount
+    # host mape, docker-compose.yml) — vidi pipeline.run_import_dir().
+    if source == IMPORT_SOURCE:
+        result = run_import_dir(dry_run, export_csv=export_csv)
+        return jsonify({"source": source, "dry_run": dry_run, **result})
+
     if source not in ADAPTERS:
         return jsonify(
-            {"error": f"nepoznat izvor '{source}'. dostupno: {list(ADAPTERS)}"}
+            {
+                "error": f"nepoznat izvor '{source}'. dostupno: "
+                f"{[*ADAPTERS, IMPORT_SOURCE]}"
+            }
         ), 400
 
     stats = run(source, dry_run, export_csv=export_csv)

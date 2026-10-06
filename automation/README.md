@@ -110,8 +110,16 @@ python -m automation.pipeline --file putanja/do/dogadaji.jsonl --export-csv
 `--source` i `--file` se međusobno isključuju. Isto je dostupno i kroz
 `pokreni-scraper.bat` izbornik (opcija **6. Lokalna datoteka** — upiši
 putanju ili povuci datoteku mišem u prozor, zatim odaberi upis u bazu ili
-CSV pregled). Nema podrške preko `/run` HTTP endpointa (n8n/Docker) —
-namjerno, jer je ovo povremena/ručna operacija, ne redovit izvor.
+CSV pregled).
+
+**Preko n8n-a (dnevni cron) — mapa `automation\uvoz\`:** ubaci `.jsonl` u
+tu mapu i čvor "Pokreni scraper (uvoz)" (`/run?source=uvoz`) je obradi uz
+web izvore; nakon uspješne obrade datoteka se premjesti u
+`uvoz\obradjeno\` i više se ne čita (sprječava da se admin-obrisan
+događaj sutra vrati i da se odbačeni redci svaki dan ponovno šalju
+Claudeu). Neispravna ili stropom prekinuta datoteka ostaje u mapi. Lokalno
+isto: `python -m automation.pipeline --uvoz [--dry-run] [--export-csv]`.
+Detalji u `automation/uvoz/README.md`.
 
 ## n8n hosting (ADR-020, Korak 5)
 

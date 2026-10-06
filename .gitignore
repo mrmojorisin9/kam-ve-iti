@@ -42,6 +42,10 @@ automation/__pycache__/
 automation/**/__pycache__/
 automation/.venv/
 automation/exports/
+# Sadrzaj sanducica za JSONL uvoz su korisnikovi podaci, ne kod — u repou
+# samo README.md (da mapa postoji i nakon git clone).
+automation/uvoz/*
+!automation/uvoz/README.md
 
 # typescript
 *.tsbuildinfo

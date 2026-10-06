@@ -89,6 +89,21 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [520, 860]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://automation:8000/run",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [{ "name": "source", "value": "uvoz" }]
+        },
+        "options": {}
+      },
+      "name": "Pokreni scraper (uvoz)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 1020]
     }
   ],
   "connections": {
@@ -99,7 +114,8 @@
           { "node": "Pokreni scraper (mnovine)", "type": "main", "index": 0 },
           { "node": "Pokreni scraper (prelog)", "type": "main", "index": 0 },
           { "node": "Pokreni scraper (evento)", "type": "main", "index": 0 },
-          { "node": "Pokreni scraper (eventinfo)", "type": "main", "index": 0 }
+          { "node": "Pokreni scraper (eventinfo)", "type": "main", "index": 0 },
+          { "node": "Pokreni scraper (uvoz)", "type": "main", "index": 0 }
         ]
       ]
     }

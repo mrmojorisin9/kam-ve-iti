@@ -39,6 +39,11 @@ services:
       # pipeline.py EXPORTS_DIR), pa je izvoz preko n8n-a i preko CLI-ja
       # dostupan na istom mjestu na disku bez obzira odakle je pokrenut.
       - ../exports:/repo/automation/exports
+      # Lokalne JSONL datoteke za dnevni cron (?source=uvoz, vidi
+      # pipeline.run_import_dir) — ubaci .jsonl u automation\uvoz\ na
+      # Windowsu, kontejner je vidi i nakon obrade premjesti u
+      # uvoz\obradjeno\ (zato bez :ro).
+      - ../uvoz:/repo/automation/uvoz
 
 volumes:
   n8n_data:

@@ -48,6 +48,13 @@ MAX_EXTRACTIONS_PER_RUN = 100
 # zapisa iz ovog pokretanja (ne samo novih), bez obzira na ishod, da se
 # jednim pogledom u Excelu vidi sto je scraper tog dana zatekao.
 EXPORTS_DIR = Path(__file__).resolve().parent / "exports"
+
+# Mapa "sanducic" za lokalne JSONL datoteke koje obraduje dnevni n8n cron
+# (korisnikov zahtjev, 2026-10-06) — vidi run_import_dir(). Docker bind-mounta
+# istu host mapu (docker-compose.yml), pa datoteka ubacena u
+# automation\uvoz\ na Windowsu postaje vidljiva kontejneru.
+IMPORT_DIR = Path(__file__).resolve().parent / "uvoz"
+PROCESSED_DIR = IMPORT_DIR / "obradjeno"
 CSV_FIELDNAMES = [
     "status",
     "naslov",
@@ -370,6 +377,57 @@ def run(
     return stats
 
 
+def run_import_dir(dry_run: bool = False, export_csv: str | None = None) -> dict:
+    """Obradi sve `*.jsonl` datoteke iz `automation/uvoz/` (n8n `/run?source=uvoz`).
+
+    Sanducic, ne trajni izvor: nakon uspjesne obrade (ne dry-run, bez
+    dosegnutog sigurnosnog stropa) datoteka se premjesta u
+    `uvoz/obradjeno/`. Da ostaje u mapi, svaki dnevni run bi je ponovno
+    citao — admin-obrisan dogadaj iz nje bi se sutradan ponovno pojavio
+    (nema vise retka s istim source_url-om), a redci odbaceni kao duplikat
+    ili s neuspjelom ekstrakcijom (nemaju content_hash u bazi) dobili bi
+    Claude poziv svaki dan. Ako je run prekinut stropom, datoteka ostaje —
+    sutra se nastavlja, vec upisani redci preskacu se preko content_hash.
+
+    Neispravna datoteka (los JSON, nedostaje obavezno polje) se preskace s
+    porukom i ostaje u mapi za ispravak; ne rusi obradu ostalih datoteka.
+    `export_csv`: bilo koja ne-None vrijednost = po jedan CSV po datoteci na
+    automatskoj putanji (`exports/uvoz_<datoteka>_<vrijeme>.csv`).
+    """
+    files = sorted(IMPORT_DIR.glob("*.jsonl"))
+    print(f"[uvoz] {len(files)} datoteka u {IMPORT_DIR}")
+    results = []
+
+    for path in files:
+        per_file_csv = None
+        if export_csv is not None:
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            per_file_csv = str(EXPORTS_DIR / f"uvoz_{path.stem}_{stamp}.csv")
+
+        try:
+            stats = run(None, dry_run, export_csv=per_file_csv, file_path=str(path))
+        except SystemExit as exc:
+            # LocalJsonlAdapter javlja neispravan sadrzaj preko SystemExit
+            # (CLI poruka) — ovdje se mora uhvatiti, inace bi srusio
+            # cijeli HTTP zahtjev i preskocio preostale datoteke.
+            print(f"[uvoz] {path.name}: GRESKA, datoteka preskocena - {exc}")
+            results.append({"file": path.name, "error": str(exc)})
+            continue
+
+        moved_to = None
+        if not dry_run and not stats["stopped_at_cap"]:
+            PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            target = PROCESSED_DIR / f"{stamp}_{path.name}"
+            path.rename(target)
+            moved_to = str(target)
+            print(f"[uvoz] {path.name} obradena, premjestena u {target}")
+
+        results.append({"file": path.name, "stats": stats, "moved_to": moved_to})
+
+    return {"files": len(files), "results": results}
+
+
 def main() -> None:
     # Windows konzola defaultira na lokalnu OS kodnu stranicu (npr. cp1250),
     # ne UTF-8 — otkriveno uzivo (2026-08-11): evento.sh naslov s emoji-jem
@@ -399,6 +457,15 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--uvoz",
+        action="store_true",
+        help=(
+            "Obradi sve .jsonl datoteke iz automation/uvoz/ (isto sto radi "
+            "n8n /run?source=uvoz); uspjesno obradene premjesta u "
+            "uvoz/obradjeno/. Iskljucivo s --source/--file."
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Ispisuje sto bi se dogodilo, bez upisa u bazu.",
@@ -417,10 +484,14 @@ def main() -> None:
         ),
     )
     args = parser.parse_args()
-    if not args.source and not args.file:
-        parser.error("potreban je --source ili --file")
-    if args.source and args.file:
-        parser.error("--source i --file se medusobno iskljucuju — odaberi jedno")
+    chosen = [bool(args.source), bool(args.file), args.uvoz].count(True)
+    if chosen == 0:
+        parser.error("potreban je --source, --file ili --uvoz")
+    if chosen > 1:
+        parser.error("--source, --file i --uvoz se medusobno iskljucuju — odaberi jedno")
+    if args.uvoz:
+        run_import_dir(args.dry_run, export_csv=args.export_csv)
+        return
     run(args.source, args.dry_run, export_csv=args.export_csv, file_path=args.file)
 
 

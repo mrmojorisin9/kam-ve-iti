@@ -6,6 +6,9 @@
 node_modules
 automation/.venv
 automation/__pycache__
+# Bind-mountane mape (docker-compose.yml) — ne peku se u image.
+automation/exports
+automation/uvoz
 **/__pycache__
 .env*
 !.env.example
