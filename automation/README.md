@@ -107,8 +107,10 @@ python -m automation.pipeline --file putanja/do/dogadaji.jsonl --dry-run
 python -m automation.pipeline --file putanja/do/dogadaji.jsonl --export-csv
 ```
 
-`--source` i `--file` se međusobno isključuju. Nema podrške preko `/run`
-HTTP endpointa niti preko `pokreni-scraper.bat` izbornika (samo CLI) —
+`--source` i `--file` se međusobno isključuju. Isto je dostupno i kroz
+`pokreni-scraper.bat` izbornik (opcija **6. Lokalna datoteka** — upiši
+putanju ili povuci datoteku mišem u prozor, zatim odaberi upis u bazu ili
+CSV pregled). Nema podrške preko `/run` HTTP endpointa (n8n/Docker) —
 namjerno, jer je ovo povremena/ručna operacija, ne redovit izvor.
 
 ## n8n hosting (ADR-020, Korak 5)
