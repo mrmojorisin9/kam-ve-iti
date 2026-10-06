@@ -240,7 +240,9 @@ vlasnikovom Windows računalu:
 
 Ovo je da novi developer ne "popravlja" namjerne odluke bez pitanja:
 
-- **"Test Sponzor d.o.o." može biti vidljiv na produkciji** (splash/widget/
+- *(Zastarjelo — od najkasnije 2026-10-06 aktivan je stvaran sponzor, RTK
+  inženjering d.o.o.; sponzor se prikazuje i na `/pdf` preko
+  `public/pdf-addons.js`.)* **"Test Sponzor d.o.o." može biti vidljiv na produkciji** (splash/widget/
   modal generalnog sponzora) — placeholder test podatak koji je vlasnik
   eksplicitno zatražio da ostane vidljiv umjesto gašenja, dok se ne nađe
   stvarni sponzor. Provjeriti `/admin/sponzor` za trenutno stanje, ne

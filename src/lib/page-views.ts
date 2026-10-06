@@ -69,3 +69,31 @@ export async function getTodayPageStats(): Promise<TodayPageStats> {
     visitors: Number((data as { visitors: number }).visitors),
   };
 }
+
+/**
+ * Admin-only — isto kao getTodayPageStats, ali za jednu rutu (npr. /pdf).
+ * Bez nove SQL funkcije: pregledi kroz exact count, posjetitelji kao broj
+ * jedinstvenih hasheva iz dohvaćenih redaka. Hashevi su ograničeni na
+ * PostgREST max-rows (1000) — dovoljno za jednu rutu dnevno; pregledi
+ * (count) nisu ograničeni.
+ */
+export async function getTodayPathStats(path: string): Promise<TodayPageStats> {
+  const supabase = await createClient();
+  const dayStart = zagrebLocalToUtcIso(`${todayInZagreb()}T00:00`);
+
+  const { data, count, error } = await supabase
+    .from("page_views")
+    .select("visitor_hash", { count: "exact" })
+    .eq("path", path)
+    .gte("created_at", dayStart);
+
+  if (error) {
+    console.error("getTodayPathStats:", error.message);
+    return { views: 0, visitors: 0 };
+  }
+
+  return {
+    views: count ?? 0,
+    visitors: new Set((data ?? []).map((row) => row.visitor_hash)).size,
+  };
+}

@@ -14,6 +14,8 @@ export function isListingPath(pathname: string): boolean {
   return LISTING_PATHS.includes(pathname);
 }
 
+// Isti ključevi (i ista logika) duplicirani su u public/pdf-addons.js za
+// samostalnu /pdf stranicu — mijenjati oboje zajedno.
 const STORAGE_KEY = "kd_sponsor_splash_shown_at";
 const SESSION_KEY = "kd_sponsor_splash_shown_session";
 const DAY_MS = 24 * 60 * 60 * 1000;

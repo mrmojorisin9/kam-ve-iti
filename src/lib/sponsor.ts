@@ -59,3 +59,36 @@ export async function getGeneralSponsor(): Promise<GeneralSponsor | null> {
 
   return mapRow(data as GeneralSponsorRow);
 }
+
+export type ReadySponsor = {
+  sponsorName: string;
+  logoUrl: string;
+  promoText: string | null;
+  linkUrl: string;
+  displayFrequency: DisplayFrequency;
+};
+
+/**
+ * Sponzor spreman za javni prikaz (aktivan + naziv/logo/link popunjeni) ili
+ * null. Jedno mjesto za tu provjeru — koriste je root layout (SponsorWidget)
+ * i `/api/sponsor` (samostalna /pdf stranica izvan App Routera).
+ */
+export async function getReadySponsor(): Promise<ReadySponsor | null> {
+  const sponsor = await getGeneralSponsor();
+  if (
+    !sponsor?.isActive ||
+    !sponsor.sponsorName ||
+    !sponsor.logoUrl ||
+    !sponsor.linkUrl
+  ) {
+    return null;
+  }
+
+  return {
+    sponsorName: sponsor.sponsorName,
+    logoUrl: sponsor.logoUrl,
+    promoText: sponsor.promoText,
+    linkUrl: sponsor.linkUrl,
+    displayFrequency: sponsor.displayFrequency,
+  };
+}

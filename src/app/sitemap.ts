@@ -11,6 +11,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/danas`, changeFrequency: "hourly", priority: 0.8 },
     { url: `${SITE_URL}/sutra`, changeFrequency: "hourly", priority: 0.8 },
     { url: `${SITE_URL}/vikend`, changeFrequency: "hourly", priority: 0.8 },
+    // Samostalni PDF uređivač (public/pdf.html) — korisnik želi da se indeksira.
+    { url: `${SITE_URL}/pdf`, changeFrequency: "monthly", priority: 0.5 },
   ];
 
   const eventPages: MetadataRoute.Sitemap = events.map((event) => ({
