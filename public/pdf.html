@@ -268,6 +268,41 @@ dialog li { margin: 5px 0; }
 
 [hidden] { display: none !important; }
 
+/* ---- "Paket" tab: short how-to + results preview in the main workspace */
+.howto { background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.45; margin: 0 0 6px; }
+.howto ol { margin: 6px 0 6px 18px; padding: 0; }
+.howto li { margin: 2px 0; }
+.bfiles { list-style: none; margin: 4px 0 6px; padding: 0; font-size: 12.5px; max-height: 120px; overflow: auto; }
+.bfiles li { padding: 2px 0; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.bfiles li span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bfile-x { border: none; background: none; color: var(--muted); cursor: pointer; padding: 0 4px; font-size: 13px; line-height: 1; }
+.bfile-x:hover { color: var(--danger); }
+.bfile-rm { flex: none; }
+#batchWorkspace { flex: 1; display: flex; flex-direction: column; min-height: 0; background: var(--canvas-bg); }
+#batchWorkspace[hidden] { display: none; }
+.batch-ws-scroll { flex: 1; overflow: auto; padding: 16px 18px; }
+.empty-inline { max-width: 560px; margin: 40px auto; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px; color: var(--muted); }
+.empty-inline h3 { margin: 0 0 6px; color: var(--ink); }
+.bfile { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; margin: 0 0 16px; overflow: hidden; }
+.bfile-h { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.bfile-h b { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bfile-h input { width: 18px; height: 18px; margin: 0; }
+.bfile-st { font-size: 12.5px; color: var(--muted); }
+.bfile-st.ok { color: var(--ok); } .bfile-st.bad { color: var(--danger); }
+.bhits { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; padding: 12px; }
+.bhit { border: 2px solid var(--border); border-radius: 10px; padding: 8px; cursor: pointer; background: var(--panel); display: flex; flex-direction: column; gap: 6px; }
+.bhit.on { border-color: #f57c00; }
+.bhit.off { opacity: .55; }
+.bhit .bhit-top { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+.bhit .bhit-top input { width: 18px; height: 18px; margin: 0; accent-color: #f57c00; }
+.bhit .bhit-pg { color: var(--muted); }
+.bhit .bhit-crop { height: 96px; background: #fff; border: 1px solid var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.bhit .bhit-crop canvas { max-width: 100%; max-height: 100%; display: block; }
+.bhit .bhit-ctx { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bhit .bhit-new { font-size: 12.5px; color: var(--muted); }
+.bhit .bhit-new b { color: var(--ok); }
+.bhit.off .bhit-new { text-decoration: line-through; }
+
 </style>
 </head>
 <body>
@@ -720,23 +755,38 @@ dialog li { margin: 5px 0; }
 
     <!-- ============ PAKET ============ -->
     <section class="tabpane" id="paneBatch" role="tabpanel" hidden>
-      <div class="btnrow" style="margin:0 0 12px"><button class="btn small" id="btnUndoBatch" type="button" disabled title="Ctrl+Z">↶ Poništi zadnju promjenu (otvoreni dokument)</button></div>
-      <p class="hint" style="margin-top:0">Ista zamjena teksta na više PDF-ova odjednom (npr. 68A → 98A u cijelom paketu planova). Originali ostaju netaknuti – rezultati se spremaju kao nove datoteke s dodatkom nazivu iz zaglavlja.</p>
+      <div class="howto">
+        <b>Ista zamjena teksta u više PDF-ova odjednom</b>
+        <ol>
+          <li>Odaberite PDF-ove (kasnije možete dodati još ili pojedine ukloniti s ✕).</li>
+          <li>Upišite što tražite i čime to zamijeniti.</li>
+          <li>Kliknite <b>Pronađi</b> – svi nalazi prikažu se u sredini, svaki s isječkom plana.</li>
+          <li>Maknite kvačicu s nalaza koje <b>ne</b> želite mijenjati.</li>
+          <li>Kliknite <b>Zamijeni označeno i spremi</b>.</li>
+        </ol>
+        Izmijenjene datoteke spremaju se kao nove (naziv + „Dodatak nazivu” iz zaglavlja). Originali ostaju netaknuti.
+      </div>
+      <div class="sect">1 · Datoteke</div>
       <div class="btnrow" style="margin-top:0">
         <button class="btn" id="btnBFiles" type="button">Odaberi PDF-ove…</button>
         <input type="file" id="bFiles" accept="application/pdf,.pdf" multiple hidden>
         <span class="muted" id="bFileCount" style="align-self:center">Nije odabrano</span>
+        <button class="btn small" id="bClearFiles" type="button" hidden>Ukloni sve</button>
       </div>
-      <div class="field" style="margin-top:12px"><label for="bQ">Traži tekst</label><input type="text" id="bQ" autocomplete="off" spellcheck="false"></div>
-      <div class="field"><label for="bR">Zamijeni s (prazno = obriši)</label><input type="text" id="bR" autocomplete="off" spellcheck="false"></div>
-      <label class="check"><input type="checkbox" id="bCase" checked> Razlikuj velika i mala slova</label>
-      <label class="check"><input type="checkbox" id="bDia"> Zanemari kvačice</label>
+      <ul class="bfiles" id="bFileList" hidden></ul>
+      <div class="sect">2 · Tekst</div>
+      <div class="field"><label for="bQ">Traži</label><input type="text" id="bQ" autocomplete="off" spellcheck="false" placeholder="npr. 68A"></div>
+      <div class="field"><label for="bR">Zamijeni s <span style="font-weight:400">(prazno = obriši)</span></label><input type="text" id="bR" autocomplete="off" spellcheck="false" placeholder="npr. 98A"></div>
+      <label class="check"><input type="checkbox" id="bCase"> Razlikuj velika i mala slova</label>
+      <p class="hint sub" style="margin:-2px 0 6px 26px">Isključeno: „gradiščak” nalazi i „Gradiščak” i „GRADIŠČAK”, a zamjena preuzima njihova velika/mala slova.</p>
+      <label class="check"><input type="checkbox" id="bDia"> Zanemari kvačice (č = c)</label>
       <label class="check"><input type="checkbox" id="bWhole"> Samo cijeli natpis</label>
-      <div class="btnrow">
-        <button class="btn" id="bCount" type="button" disabled>Samo prebroji</button>
-        <button class="btn primary" id="bRun" type="button" disabled>Zamijeni i spremi</button>
+      <div class="sect">3 · Pronađi i zamijeni</div>
+      <div class="btnrow" style="margin-top:0">
+        <button class="btn" id="bFind" type="button" disabled>Pronađi</button>
+        <button class="btn primary" id="bRun" type="button" disabled>Zamijeni označeno i spremi</button>
       </div>
-      <ul class="matches blist" id="bOut" hidden></ul>
+      <p class="hint" id="bHint">Najprije odaberite datoteke i upišite tekst.</p>
     </section>
 
     <div class="history">
@@ -801,6 +851,23 @@ dialog li { margin: 5px 0; }
       </div>
     </div>
 
+    <div id="batchWorkspace" hidden>
+      <div class="vbar" id="batchWsBar">
+        <span id="batchWsSummary">Nalazi će se prikazati ovdje.</span>
+        <span class="spacer"></span>
+        <span class="muted" id="batchWsSel"></span>
+        <button class="btn small" id="batchWsAll" type="button" disabled>Označi sve</button>
+        <button class="btn small" id="batchWsNone" type="button" disabled>Odznači sve</button>
+      </div>
+      <div class="batch-ws-scroll" id="batchWsScroll">
+        <div class="empty-inline" id="batchWsEmpty">
+          <h3>Pregled nalaza</h3>
+          <p>Odaberite PDF-ove lijevo, upišite što tražite i kliknite <b>Pronađi</b>. Ovdje će se pojaviti svaki nalaz s isječkom plana na kojem se nalazi – maknite kvačicu s onih koje ne želite mijenjati.</p>
+        </div>
+        <div id="batchResults"></div>
+      </div>
+    </div>
+
     <div class="empty" id="empty">
       <div class="card">
         <h2>Otvorite PDF dokument</h2>
@@ -836,7 +903,7 @@ dialog li { margin: 5px 0; }
     <li><b>Slika</b> – uvezite sliku potpisa/pečata/loga (ili isijecite dio izravno s trenutačno otvorene PDF stranice povlačenjem pravokutnika) i obradite je jednim od dva podalata: <b>Ručno brisanje</b> (gumica – prijeđite mišem preko dijela koji želite ukloniti, bez obzira na boju) ili <b>Pametno brisanje</b> (izdvaja stvarne piksele plave tinte – kemijska olovka, pečat – s fotografije i zadržava im izvornu boju, uz podesive RGB/HSV pragove, mekoću ruba, uklanjanje šuma i predloške); zatim po želji preboji preostalo i obreži prazan rub. Pregled i mala usporedba original/maska prikazuju se uživo. Kad završite, spremite je za karticu „Potpis”.</li>
     <li><b>Potpis</b> – pripremljenu sliku samo pozicionirate na dokument: veličina, kut, prozirnost; povuci mišem.</li>
     <li><b>Stranice</b> – sličice, okretanje, premještanje, dupliciranje, umetanje prazne, brisanje (pojedinačno ili više odjednom), dodavanje iz jednog ili više drugih PDF-ova, izdvajanje raspona.</li>
-    <li><b>Paket</b> – ista zamjena na više PDF-ova odjednom.</li>
+    <li><b>Paket</b> – ista zamjena teksta u više PDF-ova odjednom: odaberite datoteke, upišite što tražite i čime zamijeniti, kliknite „Pronađi”. Svaki nalaz vidi se u sredini s isječkom plana – maknite kvačicu s onih koje ne želite mijenjati, pa „Zamijeni označeno i spremi”. Originali ostaju netaknuti.</li>
   </ul>
   <p><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd> poništi / ponovi · <kbd>Ctrl</kbd>+<kbd>S</kbd> spremi · <kbd>Del</kbd> briše odabrani tekst · strelice pomiču natpis · <kbd>Esc</kbd> izlaz iz aktivnog alata (ako postoji nešto nespremljeno, pita želite li to spremiti)</p>
   <p class="muted">Ograničenja: ne radi na skeniranim PDF-ovima (slika bez teksta), PDF-ovima zaštićenim lozinkom i tekstu pretvorenom u linije. Ako natpis koristi znakove kojih nema u ugrađenom fontu, za te se znakove koristi Arial-kompatibilan font.</p>
@@ -2606,7 +2673,10 @@ async function doEdit(desc, fn, opt) {
     if (res && res.changed === 0) { toast('Ništa nije promijenjeno.'); await loadCurrent(S.hist[S.hi].bytes); return false; }
     const out = await S.doc.save({ updateFieldAppearances: false });
     S.hist = S.hist.slice(0, S.hi + 1); S.hist.push({ bytes: out, desc }); S.dirty = true;
-    while (S.hist.length > 30) S.hist.splice(1, 1);
+    // keep at most 30 steps AND at most ~400 MB of saved versions (each step is a full copy of the PDF,
+    // so with big plans memory would otherwise grow with every edit); the original always stays
+    const histBytes = () => S.hist.reduce((t, h) => t + (h.bytes ? h.bytes.length : 0), 0);
+    while (S.hist.length > 30 || (S.hist.length > 3 && histBytes() > 400 * 1024 * 1024)) S.hist.splice(1, 1);
     S.hi = S.hist.length - 1;
     S.page = opt.page || keepPage; S.fit = keepFit; S.scale = keepScale;
     await loadCurrent(out);
@@ -2884,7 +2954,9 @@ const PANES = { sel: 'paneSel', add: 'paneAdd', img: 'paneImg', imgfix: 'paneImg
 function updateWsVisibility() {
   const showImg = S.tab === 'imgfix' && !S.snipMode;
   const showPages = S.tab === 'pages';
-  const showPdf = !showImg && !showPages;
+  const showBatch = S.tab === 'batch';
+  const showPdf = !showImg && !showPages && !showBatch;
+  $('#batchWorkspace').hidden = !showBatch;
   $('#pdfView').hidden = !showPdf;
   $('#imgWorkspace').hidden = !showImg;
   $('#pagesWorkspace').hidden = !showPages;
@@ -2897,7 +2969,7 @@ function updateWsVisibility() {
 }
 function setTab(t) {
   const wasImgfix = S.tab === 'imgfix'; // was on "Slika", possibly coming back to a PDF-based tab
-  const wasPages = S.tab === 'pages'; // the PDF view was hidden there too (a PDF may have been opened meanwhile)
+  const wasPages = S.tab === 'pages' || S.tab === 'batch'; // the PDF view was hidden there too (a PDF may have been opened meanwhile)
   if (S.snipMode && t !== 'imgfix') exitSnipMode(true);
   if (addPickStyle && t !== 'add') setAddPickStyle(false);
   S.tab = t;
@@ -2909,7 +2981,7 @@ function setTab(t) {
   if (t === 'img' && S.img && !S.img.pos && S.viewport) placeImgDefault();
   if (t === 'imgfix') updateEraseUi();
   // the PDF canvas may have (re)rendered at a wrong fit-to-window size while hidden (e.g. via undo/redo)
-  const leavingImgWs = (wasImgfix && t !== 'imgfix') || (wasPages && t !== 'pages' && t !== 'imgfix');
+  const leavingImgWs = (wasImgfix && t !== 'imgfix') || (wasPages && t !== 'pages' && t !== 'batch' && t !== 'imgfix');
   if (leavingImgWs && S.pdfjs) renderPage(); else if (t !== 'pages') { drawOverlay(); updateStatus(); }
   updateButtons();
 }
@@ -5901,66 +5973,337 @@ $('#pgExtract').onclick = async () => {
   } catch (err) { console.error(err); toast('Greška: ' + err.message, 'err'); } finally { setBusy(false); }
 };
 
-// ============================================================ batch tab
-const B = { files: [], busy: false };
+// ============================================================ "Paket": the same replacement in many PDFs
+// Flow: pick PDFs -> "Pronađi" analyses every file and shows EVERY hit in the main workspace (a crop
+// of the plan around it + the line of text it is in), each with its own tick -> "Zamijeni označeno i
+// spremi" re-opens each file, applies only the ticked hits and saves a new copy (originals untouched).
+// The hits are identified by their order: analysis is deterministic, so re-finding with the same
+// search settings in the same file yields the same list (checked, to be safe).
+// B.files: [{id, file}] -- the list can grow (add more PDFs) and shrink (remove one) at any time;
+// every result / preview / DOM section is keyed by that stable id, so the others are kept.
+const B = { files: [], nextId: 1, busy: false, results: null, params: null, pdfs: new Map(), queue: [], rendering: 0, obs: null };
+const bRes = (id) => (B.results || []).find((r) => r.id === id);
+const bSec = (id) => document.querySelector(`.bfile[data-f="${id}"]`);
+
+function bSearchParams() {
+  return { q: $('#bQ').value, opts: { caseSensitive: $('#bCase').checked, ignoreDiacritics: $('#bDia').checked, wholeRun: $('#bWhole').checked } };
+}
+function bTotals() {
+  let hits = 0; let on = 0; let files = 0;
+  for (const r of B.results || []) { if (r.hits.length) files++; hits += r.hits.length; on += r.hits.filter((h) => h.on).length; }
+  return { hits, on, files };
+}
 function bUpdate() {
   $('#bFileCount').textContent = B.files.length ? `Odabrano: ${B.files.length}` : 'Nije odabrano';
-  const ok = B.files.length && $('#bQ').value !== '' && !B.busy;
-  $('#bCount').disabled = !ok; $('#bRun').disabled = !ok;
+  $('#btnBFiles').textContent = B.files.length ? 'Dodaj još PDF-ova…' : 'Odaberi PDF-ove…';
+  $('#bClearFiles').hidden = !B.files.length;
+  const list = $('#bFileList');
+  list.hidden = !B.files.length;
+  list.innerHTML = B.files.map((e) => `<li title="${esc(e.file.name)}"><span>${esc(e.file.name)}</span><button class="bfile-x" type="button" data-rm="${e.id}" title="Ukloni ovu datoteku s popisa" aria-label="Ukloni ${esc(e.file.name)}"${B.busy ? ' disabled' : ''}>✕</button></li>`).join('');
+  for (const b of list.querySelectorAll('[data-rm]')) b.onclick = () => bRemoveFile(+b.dataset.rm);
+  const canFind = B.files.length && $('#bQ').value !== '' && !B.busy;
+  $('#bFind').disabled = !canFind;
+  const t = bTotals();
+  $('#bRun').disabled = !B.results || !t.on || B.busy;
+  $('#bRun').textContent = B.results && t.on ? `Zamijeni označeno (${t.on}) i spremi` : 'Zamijeni označeno i spremi';
+  let hint;
+  if (B.busy) hint = 'Radim… pričekajte.';
+  else if (!B.files.length || $('#bQ').value === '') hint = 'Najprije odaberite datoteke i upišite tekst.';
+  else if (!B.results) hint = 'Kliknite „Pronađi” – nalazi će se prikazati u sredini.';
+  else if (!t.hits) hint = 'Ništa nije pronađeno. Provjerite tekst i opcije (vidi napomenu u sredini).';
+  else hint = `Označeno ${t.on} od ${t.hits}. Maknite kvačicu s nalaza koje ne želite mijenjati, zatim „Zamijeni označeno i spremi”.`;
+  $('#bHint').textContent = hint;
+  bUpdateWsBar();
 }
-$('#btnBFiles').onclick = () => $('#bFiles').click();
-$('#bFiles').onchange = (e) => { B.files = [...e.target.files]; e.target.value = ''; $('#bOut').hidden = true; bUpdate(); };
-$('#bQ').oninput = bUpdate;
+function bUpdateWsBar() {
+  const t = bTotals(); const has = !!(B.results && t.hits);
+  $('#batchWsAll').disabled = !has || B.busy; $('#batchWsNone').disabled = !has || B.busy;
+  $('#batchWsSel').textContent = has ? `Označeno: ${t.on} / ${t.hits}` : '';
+  if (B.results && !B.busy) {
+    const p = B.params;
+    $('#batchWsSummary').innerHTML = t.hits
+      ? `„<b>${esc(p.q)}</b>” pronađeno <b>${t.hits}</b>× u ${t.files} od ${B.results.length} datoteka`
+      : `„<b>${esc(p.q)}</b>” nije pronađeno ni u jednoj datoteci${bLooserHint()}`;
+  }
+}
+function bLooserHint() {
+  const rs = B.results || []; const c = rs.reduce((t, r) => t + (r.altCase || 0), 0); const l = rs.reduce((t, r) => t + (r.altLoose || 0), 0);
+  if (c && B.params.opts.caseSensitive) return ` – ali ima <b>${c}</b> nalaza ako isključite „Razlikuj velika i mala slova”`;
+  if (l) return ` – ali ima <b>${l}</b> nalaza ako uključite „Zanemari kvačice”${B.params.opts.wholeRun ? ' i isključite „Samo cijeli natpis”' : ''}`;
+  return '';
+}
+/** Results no longer match what is on screen (other files / search text / options): drop them. */
+function bInvalidate() {
+  if (!B.results) { bUpdate(); return; }
+  bClearResults();
+  $('#batchWsSummary').textContent = 'Uvjeti su promijenjeni – kliknite „Pronađi” ponovno.';
+  bUpdate();
+}
+function bClearResults() {
+  B.results = null; B.params = null; B.queue = [];
+  for (const p of B.pdfs.values()) { Promise.resolve(p).then((d) => { try { d.destroy(); } catch (e) { /* ignore */ } }).catch(() => {}); }
+  B.pdfs.clear();
+  if (B.obs) { B.obs.disconnect(); B.obs = null; }
+  $('#batchResults').innerHTML = '';
+  $('#batchWsEmpty').hidden = false;
+}
 
-async function bProcess(file, save) {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const doc = await PDFDocument.load(bytes, { updateMetadata: false });
+$('#btnBFiles').onclick = () => $('#bFiles').click();
+$('#bFiles').onchange = (e) => { const fs = [...e.target.files]; e.target.value = ''; bAddFiles(fs); };
+$('#bClearFiles').onclick = () => { if (B.busy) return; B.files = []; bInvalidate(); bClearResults(); $('#batchWsSummary').textContent = 'Nalazi će se prikazati ovdje.'; bUpdate(); };
+/** Adds files to the list (same file twice is skipped). If a search is already on screen, only the
+ * new files are searched -- with the same settings -- and appended; existing results stay as they are. */
+async function bAddFiles(fs) {
+  if (B.busy) return;
+  const key = (f) => `${f.name}|${f.size}|${f.lastModified}`;
+  const have = new Set(B.files.map((e) => key(e.file)));
+  const added = [];
+  let skipped = 0;
+  for (const f of fs) {
+    if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') { skipped++; continue; }
+    if (have.has(key(f))) { skipped++; continue; }
+    have.add(key(f)); const ent = { id: B.nextId++, file: f }; B.files.push(ent); added.push(ent);
+  }
+  if (skipped) toast(`${skipped} ${skipped === 1 ? 'datoteka je preskočena' : 'datoteka je preskočeno'} (već na popisu ili nije PDF).`, '', 5000);
+  bUpdate();
+  if (added.length && B.results) await bFindFiles(added, true);
+}
+/** Removes one file from the list together with its results (the rest stays). */
+function bRemoveFile(id) {
+  if (B.busy) return;
+  B.files = B.files.filter((e) => e.id !== id);
+  if (B.results) {
+    B.results = B.results.filter((r) => r.id !== id);
+    const sec = bSec(id); if (sec) sec.remove();
+    const p = B.pdfs.get(id); if (p) { Promise.resolve(p).then((d) => { try { d.destroy(); } catch (e) { /* ignore */ } }).catch(() => {}); B.pdfs.delete(id); }
+    B.queue = B.queue.filter((el) => +el.dataset.f !== id);
+    if (!B.files.length) { bClearResults(); $('#batchWsSummary').textContent = 'Nalazi će se prikazati ovdje.'; }
+  }
+  bUpdate();
+}
+$('#bQ').oninput = bInvalidate;
+for (const id of ['bCase', 'bDia', 'bWhole']) $('#' + id).onchange = bInvalidate;
+$('#bR').oninput = () => {
+  for (const el of document.querySelectorAll('.bhit')) {
+    const r = bRes(+el.dataset.f); const h = r && r.hits[+el.dataset.h];
+    el.querySelector('.bhit-new').innerHTML = bNewLabel(h);
+  }
+};
+$('#bQ').onkeydown = (e) => { if (e.key === 'Enter' && !$('#bFind').disabled) $('#bFind').click(); };
+/** When upper/lower case is not distinguished, the replacement follows the case of what it replaces:
+ * GRADIŠČAK -> NOVAK, Gradiščak -> Novak, gradiščak -> novak (what you type is used for mixed case). */
+function bAdaptCase(found, rep) {
+  if (!rep || !B.params || B.params.opts.caseSensitive) return rep;
+  const letters = found.replace(/[^\p{L}]/gu, '');
+  if (letters.length < 2) return rep; // codes like "68A": too little to judge -> exactly as typed
+  if (letters === letters.toUpperCase() && letters !== letters.toLowerCase()) return rep.toUpperCase();
+  if (letters === letters.toLowerCase()) return rep.toLowerCase();
+  const f = letters[0];
+  if (f === f.toUpperCase() && letters.slice(1) === letters.slice(1).toLowerCase()) return rep.charAt(0).toUpperCase() + rep.slice(1).toLowerCase();
+  return rep;
+}
+function bHitFound(h) { return h.ctx.text.slice(h.ctx.from, h.ctx.to); }
+function bNewLabel(h) {
+  const r = $('#bR').value;
+  return r === '' ? '→ <b>briše se</b>' : `→ <b>${esc(h ? bAdaptCase(bHitFound(h), r) : r)}</b>`;
+}
+
+async function bAnalyze(doc) {
   const n = doc.getPageCount(); const analyses = []; const runs = [];
   for (let i = 0; i < n; i++) { const a = E.analyzePage(doc, i); analyses.push(a); runs.push(...a.runs); if (i % 3 === 2) await sleep(0); }
-  const q = $('#bQ').value; const r = $('#bR').value;
-  const ms = E.findMatches(runs, q, { caseSensitive: $('#bCase').checked, ignoreDiacritics: $('#bDia').checked, wholeRun: $('#bWhole').checked });
-  if (!save || !ms.length) return { count: ms.length, pages: n, out: null };
-  const edits = ms.flatMap((m) => E.matchEdits(m, r));
-  const res = await E.applyEdits(doc, analyses, edits);
-  const out = await doc.save({ updateFieldAppearances: false });
-  return { count: ms.length, pages: n, out, fallback: res.fallbackUsed, unsupported: res.unsupported };
+  return { n, analyses, runs };
 }
+
+// ------------------------------------------------------------ find
+async function bFind() {
+  if (B.busy || !B.files.length || $('#bQ').value === '') return;
+  bClearResults();
+  B.params = bSearchParams(); B.results = [];
+  await bFindFiles(B.files.slice(), false);
+}
+async function bFindFiles(entries, append) {
+  B.busy = true;
+  $('#batchWsEmpty').hidden = true;
+  bUpdate();
+  if (S.tab !== 'batch') setTab('batch');
+  if (!B.obs) {
+    B.obs = new IntersectionObserver((ents) => {
+      for (const en of ents) if (en.isIntersecting && !en.target._queued) { en.target._queued = true; B.queue.push(en.target); }
+      bPump();
+    }, { root: $('#batchWsScroll'), rootMargin: '200px' });
+  }
+  let found = 0;
+  for (let k = 0; k < entries.length; k++) {
+    const ent = entries[k]; const f = ent.file;
+    if (!B.files.includes(ent)) continue; // removed meanwhile
+    $('#batchWsSummary').textContent = `Pretražujem ${k + 1}/${entries.length}: ${f.name}…`;
+    const res = { id: ent.id, file: f, name: f.name, bytes: null, hits: [], error: null, status: '' };
+    try {
+      res.bytes = new Uint8Array(await f.arrayBuffer());
+      const doc = await PDFDocument.load(res.bytes, { updateMetadata: false });
+      const { runs } = await bAnalyze(doc);
+      const ms = E.findMatches(runs, B.params.q, B.params.opts);
+      // nothing found? count what a looser search would find, to tell the user which option to change
+      if (!ms.length) {
+        res.altCase = E.findMatches(runs, B.params.q, Object.assign({}, B.params.opts, { caseSensitive: false })).length;
+        res.altLoose = E.findMatches(runs, B.params.q, Object.assign({}, B.params.opts, { caseSensitive: false, ignoreDiacritics: true, wholeRun: false })).length;
+      }
+      res.hits = ms.map((m, i) => ({
+        i, page: m.run.pageIndex, on: true, ctx: m.ctx, h: m.run.effSize || 10,
+        quads: m.pieces.map((p) => E.subQuad(p.run, p.from, p.to)),
+      }));
+    } catch (err) {
+      console.error(err);
+      res.error = /encrypt/i.test(String(err && err.message)) ? 'zaštićen lozinkom – preskočeno' : 'greška: ' + (err && err.message);
+    }
+    if (!B.results || !B.files.includes(ent)) continue;
+    B.results.push(res); found += res.hits.length;
+    bRenderFile(res);
+    await sleep(0);
+  }
+  B.busy = false;
+  bUpdate();
+  const t = bTotals();
+  if (append) toast(`Dodano ${entries.length} ${entries.length === 1 ? 'datoteka' : 'datoteka'}: ${found} novih nalaza. Ukupno ${t.hits}.`, found ? 'ok' : '', 6000);
+  else toast(t.hits ? `Pronađeno ${t.hits}× u ${t.files} datoteka. Pregledajte nalaze u sredini.` : 'Ništa nije pronađeno.', t.hits ? 'ok' : '', 6000);
+}
+$('#bFind').onclick = bFind;
+
+function bRenderFile(res) {
+  const fi = res.id;
+  const sec = document.createElement('div'); sec.className = 'bfile'; sec.dataset.f = fi;
+  const n = res.hits.length;
+  sec.innerHTML = `<div class="bfile-h">${n ? '<input type="checkbox" checked aria-label="Sve u ovoj datoteci">' : ''}<b title="${esc(res.name)}">${esc(res.name)}</b>`
+    + `<span class="bfile-st${res.error ? ' bad' : ''}">${res.error ? esc(res.error) : n ? `${n} ${n === 1 ? 'nalaz' : 'nalaza'}` : 'nema nalaza'}</span>`
+    + `<button class="btn small bfile-rm" type="button" title="Ukloni ovu datoteku iz paketa">Ukloni</button></div>`;
+  if (n) {
+    const grid = document.createElement('div'); grid.className = 'bhits';
+    res.hits.forEach((h, hi) => {
+      const nl = bNewLabel(h);
+      const t = h.ctx.text;
+      const ctxHtml = esc(t.slice(0, h.ctx.from)) + '<mark>' + esc(t.slice(h.ctx.from, h.ctx.to)) + '</mark>' + esc(t.slice(h.ctx.to));
+      const el = document.createElement('div'); el.className = 'bhit on'; el.dataset.f = fi; el.dataset.h = hi;
+      el.innerHTML = `<div class="bhit-top"><input type="checkbox" checked aria-label="Zamijeni ovaj nalaz"><span class="bhit-pg">str. ${h.page + 1}</span></div>`
+        + `<div class="bhit-crop"><span class="muted">…</span></div><div class="bhit-ctx" title="${esc(t)}">${ctxHtml}</div><div class="bhit-new">${nl}</div>`;
+      const cb = el.querySelector('input');
+      const set = (on) => { h.on = on; cb.checked = on; el.classList.toggle('on', on); el.classList.toggle('off', !on); bSyncFileTick(sec, res); bUpdate(); };
+      cb.addEventListener('click', (e) => e.stopPropagation());
+      cb.onchange = () => set(cb.checked);
+      el.onclick = () => set(!h.on);
+      grid.appendChild(el);
+      B.obs.observe(el);
+    });
+    sec.appendChild(grid);
+    const fcb = sec.querySelector('.bfile-h input');
+    fcb.onchange = () => { bSetAll(res, sec, fcb.checked); };
+  }
+  sec.querySelector('.bfile-rm').onclick = () => bRemoveFile(fi);
+  $('#batchResults').appendChild(sec);
+}
+function bSyncFileTick(sec, res) {
+  const fcb = sec.querySelector('.bfile-h input'); if (!fcb) return;
+  const on = res.hits.filter((h) => h.on).length;
+  fcb.checked = on === res.hits.length; fcb.indeterminate = on > 0 && on < res.hits.length;
+}
+function bSetAll(res, sec, on) {
+  res.hits.forEach((h) => { h.on = on; });
+  for (const el of sec.querySelectorAll('.bhit')) { el.classList.toggle('on', on); el.classList.toggle('off', !on); el.querySelector('input').checked = on; }
+  bSyncFileTick(sec, res); bUpdate();
+}
+$('#batchWsAll').onclick = () => { (B.results || []).forEach((r) => { const sec = bSec(r.id); if (sec) bSetAll(r, sec, true); }); };
+$('#batchWsNone').onclick = () => { (B.results || []).forEach((r) => { const sec = bSec(r.id); if (sec) bSetAll(r, sec, false); }); };
+
+// ------------------------------------------------------------ crop previews (rendered lazily, one at a time)
+function bPdf(fi) {
+  if (!B.pdfs.has(fi)) {
+    const res = bRes(fi);
+    B.pdfs.set(fi, window.pdfjsLib.getDocument({ data: res.bytes.slice(0), verbosity: 0, isEvalSupported: false }).promise);
+  }
+  return B.pdfs.get(fi);
+}
+async function bPump() {
+  while (B.rendering < 2 && B.queue.length) {
+    const el = B.queue.shift();
+    B.rendering++;
+    bRenderCrop(el).catch((e) => console.warn('crop', e)).finally(() => { B.rendering--; bPump(); });
+  }
+}
+async function bRenderCrop(el) {
+  const results = B.results; if (!results) return;
+  const fi = +el.dataset.f; const res = bRes(fi); if (!res || !res.bytes) return;
+  const h = res.hits[+el.dataset.h];
+  const pdf = await bPdf(fi);
+  if (B.results !== results) return;
+  const page = await pdf.getPage(h.page + 1);
+  const MAXW = 560; const MAXH = 150;
+  let s = clamp(22 / h.h, 0.25, 12);
+  const box = (vp) => {
+    const pts = h.quads.flat().map((p) => vp.convertToViewportPoint(p[0], p[1]));
+    return [Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))];
+  };
+  let vp = page.getViewport({ scale: s }); let bb = box(vp);
+  const padX = 120; const padY = 40;
+  if (bb[2] - bb[0] + 2 * padX > MAXW) { s *= MAXW / (bb[2] - bb[0] + 2 * padX); vp = page.getViewport({ scale: s }); bb = box(vp); }
+  const W = Math.round(Math.min(MAXW, bb[2] - bb[0] + 2 * padX)); const H = Math.round(Math.min(MAXH, bb[3] - bb[1] + 2 * padY));
+  const left = (bb[0] + bb[2]) / 2 - W / 2; const top = (bb[1] + bb[3]) / 2 - H / 2;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  await page.render({ canvasContext: ctx, viewport: vp, transform: [1, 0, 0, 1, -left, -top] }).promise;
+  try { page.cleanup(); } catch (e) { /* ignore */ }
+  ctx.fillStyle = 'rgba(255,152,0,.30)'; ctx.strokeStyle = '#f57c00'; ctx.lineWidth = 2;
+  for (const q of h.quads) {
+    const pts = q.map((p) => vp.convertToViewportPoint(p[0], p[1]));
+    ctx.beginPath(); pts.forEach((p, k) => (k ? ctx.lineTo(p[0] - left, p[1] - top) : ctx.moveTo(p[0] - left, p[1] - top))); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+  }
+  if (B.results !== results) return;
+  const holder = el.querySelector('.bhit-crop'); holder.innerHTML = ''; holder.appendChild(c);
+  el.dataset.done = '1';
+}
+
+// ------------------------------------------------------------ replace the ticked hits and save
 function bOutName(file) {
   let suf = $('#suffix').value; if (suf === '') suf = ' (izmijenjeno)';
   return (file.name.replace(/\.pdf$/i, '') + suf + '.pdf').replace(/[\\/:*?"<>|]/g, '_');
 }
-async function bRun(save) {
-  if (B.busy || !B.files.length) return;
+async function bRun() {
+  if (B.busy || !B.results) return;
+  const todo = B.results.map((r) => ({ r, fi: r.id })).filter(({ r }) => r.hits.some((h) => h.on));
+  if (!todo.length) return;
   B.busy = true; bUpdate();
-  const list = $('#bOut'); list.hidden = false; list.innerHTML = B.files.map((f, i) => `<li data-i="${i}"><span class="tx">${esc(f.name)}</span><span class="muted">čeka…</span></li>`).join('');
   let dir = null;
-  if (save && window.showDirectoryPicker) {
-    try { dir = await window.showDirectoryPicker({ mode: 'readwrite' }); } catch (e) { if (e && e.name === 'AbortError') { B.busy = false; bUpdate(); list.hidden = true; return; } dir = null; }
+  if (window.showDirectoryPicker) {
+    try { dir = await window.showDirectoryPicker({ mode: 'readwrite' }); } catch (e) { if (e && e.name === 'AbortError') { B.busy = false; bUpdate(); return; } dir = null; }
   }
-  let total = 0; let filesChanged = 0;
-  for (let i = 0; i < B.files.length; i++) {
-    const f = B.files[i]; const li = list.querySelector(`li[data-i="${i}"]`); const st = li.querySelector('.muted');
-    st.textContent = 'obrađujem…';
+  const rep = $('#bR').value; let total = 0; let filesChanged = 0;
+  for (const { r, fi } of todo) {
+    const st = document.querySelector(`.bfile[data-f="${fi}"] .bfile-st`);
+    const set = (txt, cls) => { if (st) { st.textContent = txt; st.className = 'bfile-st' + (cls ? ' ' + cls : ''); } };
+    set('mijenjam…');
     try {
-      const r = await bProcess(f, save);
-      total += r.count;
-      if (!r.count) { st.textContent = 'nema pronađenih natpisa'; continue; }
-      if (!save) { st.className = 'ok'; st.textContent = `${r.count} pronađeno`; continue; }
-      const name = bOutName(f);
-      if (dir) { const h = await dir.getFileHandle(name, { create: true }); const w = await h.createWritable(); await w.write(new Blob([r.out], { type: 'application/pdf' })); await w.close(); }
-      else { await downloadBlob(new Blob([r.out], { type: 'application/pdf' }), name); await sleep(350); }
-      filesChanged++;
-      st.className = 'ok'; st.textContent = `${r.count} zamijenjeno → ${name}`;
+      const doc = await PDFDocument.load(r.bytes, { updateMetadata: false });
+      const { analyses, runs } = await bAnalyze(doc);
+      const ms = E.findMatches(runs, B.params.q, B.params.opts);
+      if (ms.length !== r.hits.length) throw new Error('datoteka se razlikuje od pregledane – kliknite „Pronađi” ponovno');
+      const chosen = ms.filter((m, i) => r.hits[i].on);
+      const edits = chosen.flatMap((m) => E.matchEdits(m, bAdaptCase(m.ctx.text.slice(m.ctx.from, m.ctx.to), rep)));
+      await E.applyEdits(doc, analyses, edits);
+      const out = await doc.save({ updateFieldAppearances: false });
+      const name = bOutName(r.file);
+      if (dir) { const fh = await dir.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(new Blob([out], { type: 'application/pdf' })); await w.close(); }
+      else { downloadBlob(new Blob([out], { type: 'application/pdf' }), name); await sleep(350); }
+      total += chosen.length; filesChanged++;
+      set(`${chosen.length} zamijenjeno → ${name}`, 'ok');
     } catch (err) {
       console.error(err);
-      st.className = 'bad'; st.textContent = /encrypt/i.test(String(err && err.message)) ? 'zaštićen lozinkom' : 'greška: ' + (err && err.message);
+      set('greška: ' + (err && err.message), 'bad');
     }
   }
   B.busy = false; bUpdate();
-  toast(save ? `Gotovo: izmijenjeno ${filesChanged} od ${B.files.length} datoteka (${total} zamjena).${dir ? '' : ' Datoteke su u mapi za preuzimanja.'}` : `Ukupno pronađeno: ${total}.`, 'ok', 7000);
+  toast(`Gotovo: izmijenjeno ${filesChanged} od ${todo.length} datoteka (${total} zamjena).${dir ? '' : ' Datoteke su u mapi za preuzimanja.'}`, 'ok', 8000);
 }
-$('#bCount').onclick = () => bRun(false);
-$('#bRun').onclick = () => bRun(true);
+$('#bRun').onclick = bRun;
+bUpdate();
 
 // ============================================================ Esc: leave the active tool (every tab)
 // Esc always gets you out of whatever tool is active. When the tool holds work that is not in the
@@ -6074,7 +6417,7 @@ async function escapeActiveTool() {
 
 // ============================================================ buttons, open/save, shortcuts, init
 // local "Undo" convenience button repeated on every tab, alongside the header's Poništi/Ponovi
-const UNDO_BTN_IDS = ['btnUndoSel', 'btnUndoAdd', 'btnUndoImg', 'btnUndoImgFix', 'btnUndoPages', 'btnUndoBatch'];
+const UNDO_BTN_IDS = ['btnUndoSel', 'btnUndoAdd', 'btnUndoImg', 'btnUndoImgFix', 'btnUndoPages'];
 for (const id of UNDO_BTN_IDS) { const b = $('#' + id); if (b) b.onclick = () => goHist(S.hi - 1); }
 
 function updateButtons() {
