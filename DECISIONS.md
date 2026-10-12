@@ -621,6 +621,31 @@ umjesto string-sličnosti, sto je veci zahvat izvan opsega ove sesije —
 ADR-002 human-in-the-loop (admin queue review) ostaje sigurnosna mreza za
 ovaj rijedak rubni slucaj, isti duh kao ostatak dedup dizajna.
 
+**Dopuna (2026-10-13) — zatvoreno: Claude kao sudac za sumnjive parove.**
+Evaluacija na svih 341 dogadaja u bazi (parovi ista lokacija, ±1 dan)
+pokazala je tri stvari: (a) `token_sort_ratio` je bio osjetljiv na velika/
+mala slova ("NOTORIOUS" vs "Notorious") — sad `utils.default_process`;
+(b) sloj "ista minuta = duplikat" daje lazne pozitive jer je lokacija cijeli
+grad/opcina ("Kazaliste, Poco Loco" vs "Moto susret", "Dani svetog
+Jeronima" vs predavanje iz programa — svi u istoj minuti, razliciti zapisi);
+(c) tekstualna pravila (token_set, zajednicke rijeci, prag) ne mogu
+razluciti stvarne duplikate s pomakom dana od razlicitih dogadaja slicnog
+naslova (od 4 kandidata 2 duplikata, 2 razlicita — "Ljetna radionica …
+Moj vitraj/Origami", "susret zurnih sluzbi"/"Pesjanek run"). **Odluka:**
+`extract.is_same_event` (Haiku, tool-use s boolean odgovorom, "kad nisi
+siguran — false") odlucuje za (1) svaki par s istom minutom pocetka cije
+naslovi nisu gotovo isti i (2) parove ±1 dan s RAZLICITIH izvora koji
+dijele specificnu rijec naslova (opce rijeci vrste dogadaja/mjesta
+iskljucene). Parovi s ISTOG izvora (razlicit `source_url`) nikad nisu
+duplikati — izvor ih sam vodi zasebno (dvije projekcije filma "Grad osvete"
+uzastopnim danima). Claude je na svih 6 stvarnih spornih parova odlucio
+tocno. Trosak: na cijeloj bazi ~17 parova; u dnevnom radu samo novi zapisi
+→ nekoliko poziva. Greska API-ja = "nije duplikat" (radije propustiti
+duplikat koji admin vidi u "Mogući duplikati" nego tiho odbaciti pravi
+dogadaj). Razmotreno i odbaceno: samo strozi tekstualni prag (ne razlikuje
+gornje slucajeve u oba smjera); semanticki embeddingi (nova ovisnost/
+infrastruktura za nekoliko parova dnevno).
+
 **Posljedice:**
 Migracija `0024` dodaje `source_name`, unique index na `source_url`, i
 ažurira anon grant popis. `src/lib/admin-events.ts` i `/admin/dogadjaji`

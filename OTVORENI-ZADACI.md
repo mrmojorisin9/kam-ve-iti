@@ -52,9 +52,6 @@ a n8n sučelje dostupno je s bilo kojeg uređaja.
 
 ## Poznato, nižeg prioriteta
 
-- **Dedup — rubni slučaj:** isti višednevni događaj s dva izvora, datumi
-  pomaknuti 1 dan + vrlo različiti naslovi ne prepoznaje se kao duplikat
-  („Notorious Festival”, DECISIONS ADR-020 dopuna).
 - **Sigurnost (audit 2026-07-21, bez kritičnih nalaza):** CSP bez
   `script-src` (ADR-018, treba nonce infrastruktura).
 

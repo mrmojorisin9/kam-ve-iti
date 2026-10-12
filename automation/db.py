@@ -108,7 +108,7 @@ def find_fuzzy_candidates(
 
     res = (
         client.table("events")
-        .select("id, title, start_at")
+        .select("id, title, start_at, source_name, venue_name, description")
         .eq("location_id", location_id)
         .gte("start_at", window_start)
         .lte("start_at", window_end)

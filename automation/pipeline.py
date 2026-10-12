@@ -28,7 +28,7 @@ from .adapters import ADAPTERS
 from .adapters.base import RawEvent, SourceAdapter
 from .adapters.local_jsonl import LocalJsonlAdapter
 from .dedup import find_fuzzy_duplicate
-from .extract import normalize
+from .extract import is_same_event, normalize
 
 # Razmak izmedu uzastopnih Claude API poziva, da eventualni rate limit na
 # jednom zapisu ne poveca sanse za isto na sljedecem odmah zatim.
@@ -393,7 +393,15 @@ def run(
             client, location_id, normalized["start_at"]
         )
         duplicate = find_fuzzy_duplicate(
-            event["title"], normalized["start_at"], fuzzy_candidates
+            {
+                "title": event["title"],
+                "start_at": normalized["start_at"],
+                "source_name": raw.source_name,
+                "venue_name": event.get("venue_name"),
+                "description": event.get("description"),
+            },
+            fuzzy_candidates,
+            judge=is_same_event,
         )
         if duplicate:
             stats["skipped_duplicate"] += 1

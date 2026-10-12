@@ -114,6 +114,66 @@ tekst izricito navodi — inace null (nikad ne izmisljaj niti zakljucuj iz
 opceg znanja)."""
 
 
+SAME_EVENT_TOOL = {
+    "name": "same_event",
+    "description": "Odluka jesu li dva zapisa isti stvarni dogadaj.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "same": {
+                "type": "boolean",
+                "description": (
+                    "true SAMO ako je ocito isti dogadaj (isti festival/koncert/"
+                    "izlozba opisan razlicito ili s razlicito zabiljezenim danom "
+                    "pocetka). false za razlicite dogadaje istog organizatora/"
+                    "mjesta/serije (npr. dvije razlicite radionice, dvije "
+                    "projekcije filma) i kad nisi siguran."
+                ),
+            },
+        },
+        "required": ["same"],
+    },
+}
+
+
+def is_same_event(a: dict, b: dict) -> bool:
+    """Semanticka usporedba dva zapisa (Faza 6-7 dedup, 2026-10-13) — poziva
+    se SAMO za rijetke sumnjive parove koje dedup.py ne moze razlikovati
+    usporedbom teksta (ista lokacija, +/- 1 dan, razliciti izvori, dijele
+    specificnu rijec u naslovu). `a`/`b`: {title, start_at, venue_name?,
+    description?}. Greska API-ja = False (radije propustiti duplikat, koji
+    admin vidi u "Moguci duplikati", nego tiho odbaciti pravi dogadaj)."""
+    def fmt(e: dict) -> str:
+        desc = (e.get("description") or "")[:400]
+        return (
+            f"NASLOV: {e.get('title')}\nPOCETAK: {e.get('start_at')}\n"
+            f"MJESTO: {e.get('venue_name') or '-'}\nOPIS: {desc or '-'}"
+        )
+
+    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    try:
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=200,
+            tools=[SAME_EVENT_TOOL],
+            tool_choice={"type": "tool", "name": "same_event"},
+            messages=[{
+                "role": "user",
+                "content": (
+                    "Dva zapisa s hrvatskih portala, ista lokacija, pocetak "
+                    "unutar jednog dana. Jesu li to ISTI stvarni dogadaj?\n\n"
+                    f"ZAPIS A:\n{fmt(a)}\n\nZAPIS B:\n{fmt(b)}"
+                ),
+            }],
+        )
+    except anthropic.APIError as exc:
+        print(f"  [greska: Claude API, usporedba duplikata] {exc}")
+        return False
+
+    tool_use = next((b for b in response.content if b.type == "tool_use"), None)
+    return bool(tool_use and tool_use.input.get("same") is True)
+
+
 def normalize(
     raw: RawEvent, categories: list[dict], locations: list[dict]
 ) -> dict | None:
