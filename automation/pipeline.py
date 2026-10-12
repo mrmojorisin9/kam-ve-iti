@@ -18,7 +18,7 @@ import re
 import sys
 import time
 import unicodedata
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -67,6 +67,37 @@ CSV_FIELDNAMES = [
     "izvor_url",
     "napomena",
 ]
+
+
+# Koliko dugo se zapis bez vlastitog events retka ne salje ponovno Claudeu ako
+# mu se sadrzaj nije promijenio (0038_scraper_seen.sql). 'processed' (dogadaj
+# je postojao pa ga je admin obrisao) nema roka — brisanje vrijedi kao
+# ljudska odluka, isto kao 'rejected'.
+SEEN_RECHECK = {
+    "duplicate": timedelta(days=7),
+    "extraction_failed": timedelta(days=3),
+}
+SEEN_REASONS = {
+    "processed": "vec obraden, dogadaj je u medjuvremenu obrisan u adminu",
+    "duplicate": "isti sadrzaj nedavno odbacen kao duplikat drugog izvora",
+    "extraction_failed": "isti sadrzaj nedavno bez uspjesne ekstrakcije",
+}
+
+
+def seen_skip_reason(seen: dict | None, raw_hash: str) -> str | None:
+    """Razlog preskakanja Claude poziva za zapis bez events retka, ili None."""
+    if not seen or seen.get("content_hash") != raw_hash:
+        return None
+    outcome = seen.get("outcome")
+    if outcome == "processed":
+        return SEEN_REASONS["processed"]
+    recheck = SEEN_RECHECK.get(outcome)
+    if not recheck:
+        return None
+    seen_at = datetime.fromisoformat(seen["seen_at"])
+    if datetime.now(timezone.utc) - seen_at < recheck:
+        return SEEN_REASONS[outcome]
+    return None
 
 
 def default_export_path(source: str) -> Path:
@@ -201,9 +232,31 @@ def run(
         existing = db.find_by_source_url(client, raw.source_url)
         raw_hash = content_hash(raw)
 
+        skip_reason = None
+        if not existing:
+            skip_reason = seen_skip_reason(db.get_seen(client, raw.source_url), raw_hash)
+        if skip_reason:
+            stats["skipped_unchanged"] += 1
+            print(f"  [preskoceno: {skip_reason}, bez Claude poziva] {raw.title}")
+            if export_csv is not None:
+                export_rows.append(
+                    _csv_row(
+                        raw,
+                        "nepromijenjeno (preskoceno)",
+                        lokacija=raw.location_text,
+                        pocetak=raw.date_text,
+                        napomena=f"{skip_reason} — ekstrakcija preskocena radi troska",
+                    )
+                )
+            continue
+
         if existing and existing.get("source_content_hash") == raw_hash:
             stats["skipped_unchanged"] += 1
             print(f"  [preskoceno: nepromijenjeno od proslog pokretanja, bez Claude poziva] {raw.title}")
+            if not dry_run:
+                # Pamti i ovdje — ako admin kasnije obrise ovaj dogadaj, sljedeci
+                # run ga ne smije vratiti kao "novi" (0038).
+                db.mark_seen(client, raw.source_url, raw_hash, "processed")
             if export_csv is not None:
                 export_rows.append(
                     _csv_row(
@@ -242,6 +295,8 @@ def run(
         if not normalized:
             stats["skipped_extraction"] += 1
             print(f"  [preskoceno: ekstrakcija neizvjesna] {raw.title}")
+            if not dry_run and not existing:
+                db.mark_seen(client, raw.source_url, raw_hash, "extraction_failed")
             if export_csv is not None:
                 export_rows.append(
                     _csv_row(
@@ -259,6 +314,8 @@ def run(
         if not category_id or not location_id:
             stats["skipped_extraction"] += 1
             print(f"  [preskoceno: nepoznat slug] {raw.title}")
+            if not dry_run and not existing:
+                db.mark_seen(client, raw.source_url, raw_hash, "extraction_failed")
             if export_csv is not None:
                 export_rows.append(
                     _csv_row(
@@ -312,6 +369,7 @@ def run(
                 db.update_event_by_source_url(
                     client, raw.source_url, event, admin_edited_fields
                 )
+                db.mark_seen(client, raw.source_url, raw_hash, "processed")
             continue
 
         fuzzy_candidates = db.find_fuzzy_candidates(
@@ -325,6 +383,8 @@ def run(
             print(
                 f"  [preskoceno: vjerojatan duplikat postojeceg '{duplicate['title']}'] {event['title']}"
             )
+            if not dry_run:
+                db.mark_seen(client, raw.source_url, raw_hash, "duplicate")
             if export_csv is not None:
                 export_rows.append(
                     _csv_row(
@@ -362,6 +422,7 @@ def run(
             )
         if not dry_run:
             db.insert_event(client, event)
+            db.mark_seen(client, raw.source_url, raw_hash, "processed")
 
     if export_csv is not None:
         export_path = Path(export_csv) if export_csv else default_export_path(source)

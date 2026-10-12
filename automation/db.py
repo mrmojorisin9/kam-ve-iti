@@ -56,6 +56,42 @@ def find_by_source_url(client: Client, source_url: str) -> dict | None:
     return res.data if res else None
 
 
+def get_seen(client: Client, source_url: str) -> dict | None:
+    """Zadnji zapamceni ishod za source_url bez vlastitog events retka
+    (0038_scraper_seen.sql) — {content_hash, outcome, seen_at} ili None.
+    Greska (npr. migracija jos nije primijenjena) se ne smije srusiti run —
+    vraca None, pipeline se ponasa kao prije (bez preskakanja)."""
+    try:
+        res = (
+            client.table("scraper_seen")
+            .select("content_hash, outcome, seen_at")
+            .eq("source_url", source_url)
+            .maybe_single()
+            .execute()
+        )
+        return res.data if res else None
+    except Exception as exc:  # noqa: BLE001 — namjerno siroko, vidi docstring
+        print(f"  [upozorenje: scraper_seen nedostupan] {exc}")
+        return None
+
+
+def mark_seen(client: Client, source_url: str, content_hash: str, outcome: str) -> None:
+    """Upsert ishoda obrade (vidi get_seen). Isti 'ne rusi run' princip."""
+    from datetime import datetime, timezone
+
+    try:
+        client.table("scraper_seen").upsert(
+            {
+                "source_url": source_url,
+                "content_hash": content_hash,
+                "outcome": outcome,
+                "seen_at": datetime.now(timezone.utc).isoformat(),
+            }
+        ).execute()
+    except Exception as exc:  # noqa: BLE001
+        print(f"  [upozorenje: scraper_seen upis nije uspio] {exc}")
+
+
 def find_fuzzy_candidates(
     client: Client, location_id: str, start_date_iso: str
 ) -> list[dict]:
