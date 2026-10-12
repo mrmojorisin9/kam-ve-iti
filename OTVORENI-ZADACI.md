@@ -39,11 +39,11 @@ a n8n sučelje dostupno je s bilo kojeg uređaja.
 - **Rezervni plan** ako A1 kapacitet ne bude dostupan: mali plaćeni VPS
   (~4–6 €/mj.), iste Docker postavke.
 
-### Rebuild scraper kontejnera (novi kod 0038/0039)
-- [ ] Kad je Docker Desktop pokrenut: `cd automation/deploy` →
-  `docker compose up -d --build automation`. Do tada dnevni cron (ako
-  radi) koristi stari kod — bez pamćenja obrađenih zapisa i bez
-  cijene/izvođača.
+### Prvi dnevni run s novim scraper kodom
+- [ ] Nakon sljedećeg n8n runa pogledati izlaz čvorova: rade li
+  `scraper_seen` preskakanja ("preskoceno: …, bez Claude poziva"), stižu li
+  cijena/izvođač na nove događaje, i nema li grešaka (kontejner rebuildan
+  2026-10-13 s kodom 0038/0039/dedup).
 
 ### Prvi stvarni JSONL uvoz kroz n8n
 - [ ] Kod prve prave datoteke u `automation/uvoz/` provjeriti da je
