@@ -40,7 +40,10 @@ import { formatHeaderDate } from "@/lib/format";
 export function PageHeader() {
   return (
     <header className="relative w-full sm:mx-auto sm:max-w-2xl sm:px-6 sm:py-6 md:max-w-3xl lg:max-w-5xl">
-      <div className="border-line relative h-[42vh] max-h-[480px] min-h-[320px] w-full overflow-hidden sm:h-[439px] sm:max-h-none sm:min-h-0 sm:rounded-xl sm:border sm:shadow-lg sm:shadow-black/20">
+      {/* Mobitel 210px (bilo 42vh, min 320px) — korisnikov zahtjev
+          2026-10-12: prvi događaj mora biti vidljiv na početnom ekranu
+          mobitela bez skrolanja. */}
+      <div className="border-line relative h-[210px] w-full overflow-hidden sm:h-[439px] sm:rounded-xl sm:border sm:shadow-lg sm:shadow-black/20">
         {/* Omot koji stvarno pomiče sadržaj fotografije na mobitelu (Dan
             70) — `object-position` (Dan 68/69) je bio no-op: mobilni okvir
             (~1.10 omjer) je "uži" od fotografije (4640×3472, ~1.34 omjer),
@@ -84,7 +87,7 @@ export function PageHeader() {
             podešen na `50%` (korisnikov zahtjev). */}
         <div
           aria-hidden="true"
-          className="bg-night absolute inset-x-0 bottom-0 h-[55%] [clip-path:polygon(0_30%,100%_10%,100%_100%,0_100%)] sm:h-[50%]"
+          className="bg-night absolute inset-x-0 bottom-0 h-[62%] [clip-path:polygon(0_30%,100%_10%,100%_100%,0_100%)] sm:h-[50%]"
         />
 
         {/* CTA "pluta" izravno na fotografiji — staklen efekt. Prva verzija
@@ -100,17 +103,17 @@ export function PageHeader() {
             pouzdano čitljivo neovisno o tome što je ispod na fotografiji. */}
         <Link
           href="/prijavi-dogadaj"
-          className="bg-night/60 text-parchment hover:bg-night/75 hover:text-gold focus-visible:outline-gold absolute top-6 left-6 inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-xs font-semibold shadow-lg shadow-black/40 backdrop-blur-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 sm:top-10 sm:left-10"
+          className="bg-night/60 text-parchment hover:bg-night/75 hover:text-gold focus-visible:outline-gold absolute inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-xs font-semibold shadow-lg shadow-black/40 backdrop-blur-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 top-4 left-4 sm:top-10 sm:left-10"
         >
           + Prijavi događaj
         </Link>
 
-        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-4 p-6 sm:flex-row sm:items-end sm:justify-between sm:p-10">
+        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-4 px-6 pb-4 sm:flex-row sm:items-end sm:justify-between sm:p-10">
           <div>
-            <p className="text-parchment-muted font-mono text-xs tracking-[0.2em] uppercase">
+            <p className="text-parchment-muted hidden font-mono text-xs tracking-[0.2em] uppercase sm:block">
               Međimurska županija
             </p>
-            <h1 className="font-display text-parchment mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">
+            <h1 className="font-display text-parchment text-3xl font-semibold tracking-tight sm:mt-2 sm:text-5xl">
               <Link
                 href="/"
                 className="focus-visible:outline-gold rounded-sm transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-4"
@@ -118,7 +121,7 @@ export function PageHeader() {
                 <span className="text-gold">K</span>am denes
               </Link>
             </h1>
-            <p className="text-gold mt-3 font-mono text-sm capitalize">
+            <p className="text-gold mt-1 font-mono text-sm capitalize sm:mt-3">
               {formatHeaderDate(todayInZagreb())}
             </p>
           </div>

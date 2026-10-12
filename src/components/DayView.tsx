@@ -45,7 +45,7 @@ export async function DayView({
   return (
     <>
       <PageHeader />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20 md:max-w-3xl lg:max-w-5xl">
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 pt-5 pb-12 sm:py-20 md:max-w-3xl lg:max-w-5xl">
         <DateNav active={active} />
 
         {showCategoryStrip && (
@@ -64,6 +64,16 @@ export async function DayView({
           selectedRegion={filters.regionSlug}
           smartFilters={filters}
           showCategory={!showCategoryStrip}
+          mobileSort={
+            events.length > 1 && (
+              <SortToggle
+                basePath={path}
+                filters={filters}
+                sortBy={sortBy}
+                className="flex"
+              />
+            )
+          }
         />
 
         <ActiveFilters
@@ -74,7 +84,12 @@ export async function DayView({
         />
 
         {events.length > 1 && (
-          <SortToggle basePath={path} filters={filters} sortBy={sortBy} />
+          <SortToggle
+            basePath={path}
+            filters={filters}
+            sortBy={sortBy}
+            className="mb-6 hidden sm:flex"
+          />
         )}
 
         {events.length === 0 ? (

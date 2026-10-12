@@ -15,10 +15,6 @@ function fail(message: string): never {
   redirect(`/prijavi-dogadaj?error=${encodeURIComponent(message)}`);
 }
 
-function failLink(message: string): never {
-  redirect(`/prijavi-dogadaj?linkError=${encodeURIComponent(message)}`);
-}
-
 export async function submitEvent(formData: FormData) {
   const title = readText(formData, "title");
   const categoryId = readText(formData, "category_id");
@@ -50,6 +46,15 @@ export async function submitEvent(formData: FormData) {
     fail("Kraj događaja ne može biti prije početka.");
   }
 
+  // Link na događaj (FB event, stranica organizatora) — zamjena za ukinutu
+  // zasebnu "prijavu linkom" (korisnikov zahtjev, 2026-10-12). Sprema se u
+  // source_url, koji stranica događaja već prikazuje kao "Izvor / više
+  // informacija".
+  const eventUrl = readText(formData, "event_url");
+  if (eventUrl && !isAbsoluteUrl(eventUrl)) {
+    fail("Link na događaj mora biti puna adresa koja počinje s http:// ili https://.");
+  }
+
   // Bez prijave (anon) — koristi se isti klijent kao svugdje, ali ovaj upis
   // prolazi kroz "events_public_submit" RLS politiku (0014), ne
   // "events_admin_full_access". status/is_admin_featured/created_by se
@@ -71,7 +76,7 @@ export async function submitEvent(formData: FormData) {
   // ponovnim pokušajem s nasumičnim sufiksom.
   const slug = await uniqueSlug(supabase, baseSlug);
 
-  const row = {
+  let row = {
     title,
     description: readText(formData, "description"),
     category_id: categoryId,
@@ -80,62 +85,41 @@ export async function submitEvent(formData: FormData) {
     start_at: startAt,
     end_at: endAt,
     image_url: readText(formData, "image_url"),
+    source_url: eventUrl,
     status: "pending_review" as const,
     submitter_email: submitterEmail,
     submitter_phone: readText(formData, "submitter_phone"),
   };
+  let rowSlug = slug;
 
-  const { error } = await supabase.from("events").insert({ ...row, slug });
+  // 23505 = unique sudar: slug (rijedak sudar s tuđim neobjavljenim
+  // prijedlogom, vidi gore) ILI source_url (events_source_url_unique, 0024 —
+  // isti link već postoji, npr. scraper ili druga prijava istog FB eventa).
+  // Kod linka se prijedlog ipak sprema, a link seli u opis da se ne izgubi.
+  // Najviše dva ponovna pokušaja (link pa slug, ili obrnuto).
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { error } = await supabase
+      .from("events")
+      .insert({ ...row, slug: rowSlug });
 
-  if (error?.code === "23505") {
-    const retrySlug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
-    const retry = await supabase.from("events").insert({ ...row, slug: retrySlug });
-    if (retry.error) {
+    if (!error) {
+      redirect("/prijavi-dogadaj/hvala");
+    }
+    if (error.code !== "23505" || attempt === 2) {
       fail("Prijedlog nije spremljen, pokušaj ponovno.");
     }
-  } else if (error) {
-    fail("Prijedlog nije spremljen, pokušaj ponovno.");
+
+    if (error.message.includes("source_url") && row.source_url) {
+      const linkNote = `Link: ${row.source_url}`;
+      row = {
+        ...row,
+        source_url: null,
+        description: row.description
+          ? `${row.description}\n\n${linkNote}`
+          : linkNote,
+      };
+    } else {
+      rowSlug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
+    }
   }
-
-  redirect("/prijavi-dogadaj/hvala");
-}
-
-/**
- * "Imaš događaj? Pošalji nam link" — brz put pored pune ručne forme
- * (korisnikov zahtjev). Namjerno NE ide u `events` (vidi
- * 0036_event_link_submissions.sql za obrazloženje) — sprema se u
- * jednostavan inbox koji admin ručno prazni preko `/admin/dogadjaji/novi`
- * (`/admin/dogadjaji?status=prijave-linkom`).
- */
-export async function submitEventLink(formData: FormData) {
-  const url = readText(formData, "link_url");
-  const captchaA = Number(formData.get("link_captcha_a"));
-  const captchaB = Number(formData.get("link_captcha_b"));
-  const captchaAnswer = Number(formData.get("link_captcha_answer"));
-
-  if (captchaAnswer !== captchaA + captchaB) {
-    failLink("Pogrešan odgovor na računsko pitanje, pokušaj ponovno.");
-  }
-
-  if (!url) {
-    failLink("Link je obavezan.");
-  }
-
-  if (!isAbsoluteUrl(url)) {
-    failLink("Link mora biti puna adresa koja počinje s http:// ili https://.");
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.from("event_link_submissions").insert({
-    url,
-    note: readText(formData, "link_note"),
-    submitter_email: readText(formData, "link_submitter_email"),
-    submitter_phone: readText(formData, "link_submitter_phone"),
-  });
-
-  if (error) {
-    failLink("Link nije spremljen, pokušaj ponovno.");
-  }
-
-  redirect("/prijavi-dogadaj?linkSaved=1");
 }

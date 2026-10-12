@@ -11,7 +11,7 @@ const ITEMS: { key: DateNavKey; label: string; href: string }[] = [
 
 export function DateNav({ active }: { active: DateNavKey }) {
   return (
-    <nav className="border-line mb-8 flex gap-1 border-b">
+    <nav className="border-line mb-4 flex gap-1 border-b sm:mb-8">
       {ITEMS.map((item) => (
         <Link
           key={item.key}

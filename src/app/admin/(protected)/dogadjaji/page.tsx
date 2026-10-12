@@ -5,6 +5,7 @@ import {
   groupPendingEventsBySource,
   getAdminStatusCounts,
   listPublicFormSubmissions,
+  eventsListHref,
   type AdminEventListItem,
   type AdminEventSort,
   type AdminStatusCounts,
@@ -12,6 +13,7 @@ import {
 import { formatEventDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { EventThumb } from "@/components/admin/EventThumb";
+import { ScrollToEvent } from "@/components/admin/ScrollToEvent";
 import { bulkUpdateStatus, confirmBulkDelete } from "./bulk-actions";
 import { deleteLinkSubmission } from "./link-actions";
 
@@ -37,7 +39,10 @@ const STATUS_TABS: { value?: string; label: string }[] = [
   { value: "pending_review", label: "Na čekanju" },
   { value: "published", label: "Objavljeno" },
   { value: "rejected", label: "Odbijeno" },
-  { value: LINK_SUBMISSIONS_TAB, label: "Prijave linkom" },
+  // Preimenovano iz "Prijave linkom" (2026-10-12) — javna prijava linkom je
+  // ukinuta, tab sad prvenstveno pokazuje prijave kroz formu (+ eventualne
+  // stare, još neriješene linkove). URL vrijednost namjerno nepromijenjena.
+  { value: LINK_SUBMISSIONS_TAB, label: "Vanjske prijave" },
 ];
 
 // Koji AdminStatusCounts stupac ide uz koji tab — "Svi" namjerno bez
@@ -48,6 +53,9 @@ const TAB_COUNT_FIELD: Record<string, keyof AdminStatusCounts> = {
   rejected: "rejected",
   [LINK_SUBMISSIONS_TAB]: "link_submissions",
 };
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type LinkSubmission = {
   id: string;
@@ -71,6 +79,7 @@ export default async function AdminEventsPage({
     bulkError?: string;
     bulkDeleted?: string;
     sort?: string;
+    fokus?: string;
   }>;
 }) {
   const {
@@ -83,7 +92,11 @@ export default async function AdminEventsPage({
     bulkError,
     bulkDeleted,
     sort,
+    fokus,
   } = await searchParams;
+  // Upit trenutnog popisa (tab/filter/sort) koji "Uredi" nosi na stranicu
+  // uređivanja, da se nakon spremanja vrati na isti prikaz (ScrollToEvent).
+  const listQuery = eventsListHref(status, kategorija, lokacija, sort).split("?")[1] ?? "";
   const isLinkSubmissionsTab = status === LINK_SUBMISSIONS_TAB;
   // Korisnikov zahtjev — sortiranje po ID-u (redoslijed unosa) ili datumu
   // događaja; bilo koja druga/nepoznata vrijednost pada natrag na zadano.
@@ -157,6 +170,9 @@ export default async function AdminEventsPage({
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-12">
+      <ScrollToEvent
+        focusId={fokus && UUID_RE.test(fokus) ? fokus : undefined}
+      />
       <div className="flex items-center justify-between gap-4">
         <h1 className="font-display text-parchment text-3xl font-semibold tracking-tight">
           Događaji
@@ -331,8 +347,8 @@ export default async function AdminEventsPage({
       {isLinkSubmissionsTab ? (
         <>
           <p className="text-parchment-muted mt-6 text-sm">
-            Sve vanjske (javne) prijave — puna forma i brzi link — na jednom
-            mjestu.
+            Događaji koje su prijavili posjetitelji kroz javnu formu
+            (/prijavi-dogadaj).
           </p>
 
           {publicFormSubmissions.length > 0 && (
@@ -347,7 +363,12 @@ export default async function AdminEventsPage({
               </p>
               <ul className="border-line divide-line mt-2 divide-y border-t">
                 {publicFormSubmissions.map((event) => (
-                  <EventRow key={event.id} event={event} showCheckbox={false} />
+                  <EventRow
+                    key={event.id}
+                    event={event}
+                    showCheckbox={false}
+                    listQuery={listQuery}
+                  />
                 ))}
               </ul>
             </section>
@@ -355,7 +376,7 @@ export default async function AdminEventsPage({
 
           {publicFormSubmissions.length > 0 && linkSubmissions.length > 0 && (
             <h2 className="text-parchment-muted mt-8 text-sm font-semibold tracking-wide uppercase">
-              Prijava linkom ({linkSubmissions.length})
+              Stare prijave linkom ({linkSubmissions.length})
             </h2>
           )}
 
@@ -482,6 +503,7 @@ export default async function AdminEventsPage({
                         key={event.id}
                         event={event}
                         showCheckbox={showCheckboxes}
+                        listQuery={listQuery}
                       />
                     ))}
                   </ul>
@@ -495,6 +517,7 @@ export default async function AdminEventsPage({
                   key={event.id}
                   event={event}
                   showCheckbox={showCheckboxes}
+                  listQuery={listQuery}
                 />
               ))}
             </ul>
@@ -534,12 +557,17 @@ function SourceBadge({ event }: { event: AdminEventListItem }) {
 function EventRow({
   event,
   showCheckbox,
+  listQuery,
 }: {
   event: AdminEventListItem;
   showCheckbox: boolean;
+  listQuery: string;
 }) {
   return (
-    <li className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <li
+      id={`dogadjaj-${event.id}`}
+      className="flex flex-col gap-2 rounded-md py-4 sm:flex-row sm:items-center sm:justify-between"
+    >
       <div className="flex min-w-0 items-start gap-3">
         {showCheckbox && (
           <input
@@ -600,7 +628,8 @@ function EventRow({
 
       <div className="flex shrink-0 gap-3 text-sm">
         <Link
-          href={`/admin/dogadjaji/${event.id}/uredi`}
+          href={`/admin/dogadjaji/${event.id}/uredi${listQuery ? `?${listQuery}` : ""}`}
+          data-edit-link
           className="border-line text-parchment-muted hover:text-parchment rounded-md border px-3 py-1.5"
         >
           Uredi

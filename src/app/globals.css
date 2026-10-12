@@ -65,6 +65,13 @@
   }
 }
 
+/* Kratko isticanje retka na /admin/dogadjaji nakon povratka iz uređivanja
+   (ScrollToEvent.tsx). */
+.admin-row-focus {
+  background-color: rgb(212 169 74 / 0.12);
+  transition: background-color 0.6s ease-out;
+}
+
 /* Tanka scrollbar traka u boji teme za horizontalno-scrollane redove (npr.
    pill red kategorija) — potpuno sakrivanje trake (ranije probano) miču
    korisnicima bez touchpada/dodira jedini način da scrollaju mišem (nema

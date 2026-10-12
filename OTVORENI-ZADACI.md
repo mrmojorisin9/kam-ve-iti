@@ -39,6 +39,18 @@ a n8n sučelje dostupno je s bilo kojeg uređaja.
 - **Rezervni plan** ako A1 kapacitet ne bude dostupan: mali plaćeni VPS
   (~4–6 €/mj.), iste Docker postavke.
 
+### E-mail obavijest kad vanjski korisnik prijavi događaj
+Odlučeno (2026-10-12): Resend s adresom na `@kamdenes.hr`.
+- [ ] Vlasnik otvara račun na resend.com i dodaje domenu `kamdenes.hr`.
+- [ ] DNS zapisi koje Resend zatraži (SPF/DKIM) — u **Vercel** dashboardu.
+- [ ] API ključ u Vercel env (`RESEND_API_KEY`) + adresa primatelja.
+- [ ] Slanje iz `submitEvent` (`/prijavi-dogadaj`), bez nove npm ovisnosti
+  (Resend HTTP API preko `fetch`).
+
+### Provjera povratka na poziciju u `/admin/dogadjaji`
+- [ ] Uživo provjeriti (zahtijeva admin prijavu): Uredi → Spremi vraća na
+  isti tab/filter i do uređenog retka.
+
 ### Prvi stvarni JSONL uvoz kroz n8n
 - [ ] Kod prve prave datoteke u `automation/uvoz/` provjeriti da je
   premještena u `uvoz/obradjeno/` i da su događaji na čekanju u

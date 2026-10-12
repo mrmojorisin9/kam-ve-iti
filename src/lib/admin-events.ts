@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { zagrebLocalToUtcIso } from "@/lib/zagreb-time";
+import { todayInZagreb, zagrebLocalToUtcIso } from "@/lib/zagreb-time";
 
 /**
  * Dopušta samo apsolutne http(s) URL-ove za `image_url` (glavna fotografija
@@ -73,27 +73,24 @@ type AdminEventListRow = {
 export type AdminEventSort = "start_at" | "display_id";
 
 /**
- * Događaji čiji je efektivni završetak (`end_at`, ili `start_at` ako nema
- * `end_at`) prošao prije više od 24h se ne prikazuju NIGDJE u admin
- * sučelju — ni na popisu, ni u brojčanim oznakama (korisnikov zahtjev,
- * 2026-09-23: "istekle događaje mi uopće nigdje nemoj prikazivati jer
- * zbunjuju i rade nepotreban šum" — izričito uključuje i `pending_review`/
- * `rejected`, ranija iznimka za te statuse UKLONJENA istog dana na
- * korisnikov zahtjev). Čisto prikazni filter, ne dira arhiviranje —
- * događaji ostaju u bazi (3-dnevni arhivski cron, `archive_expired_events`,
- * 0030, i dalje radi neovisno). Supabase JS builder nema `coalesce` —
- * emulirano preko `.or` (prihvati red ako mu je `end_at` iza granice, ILI
- * `end_at` uopće ne postoji i `start_at` je iza granice). Dijeli je
- * `listEventsForAdmin` i `getAdminStatusCounts` — oznaka na tab-pilulama
- * mora točno odgovarati broju redaka koje popis stvarno prikaže.
+ * Završeni događaji se ne prikazuju NIGDJE u admin sučelju — ni na popisu
+ * (svi tabovi), ni u brojčanim oznakama (korisnikov zahtjev, 2026-09-23:
+ * "istekle događaje mi uopće nigdje nemoj prikazivati jer zbunjuju i rade
+ * nepotreban šum", izričito i za `pending_review`/`rejected`). Pooštreno
+ * 2026-10-12 (korisnikov zahtjev "ne želim prikaz završenih događaja"):
+ * umjesto 24h odgode, događaj nestaje čim završi — s `end_at` u trenutku
+ * kraja, bez `end_at` na kraju dana početka (Europe/Zagreb pola noći;
+ * korisnikov odabir, da ne nestane dok možda još traje). Čisto prikazni
+ * filter, ne dira arhiviranje — događaji ostaju u bazi (arhivski cron,
+ * `archive_expired_events`, 0030, radi neovisno). Supabase JS builder nema
+ * `coalesce` — emulirano preko `.or`. Dijeli je `listEventsForAdmin`,
+ * `listPublicFormSubmissions` i `getAdminStatusCounts` — oznaka na
+ * tab-pilulama mora točno odgovarati broju redaka koje popis prikaže.
  */
-const ADMIN_HIDE_EXPIRED_AFTER_MS = 24 * 60 * 60 * 1000;
-
 function notExpiredFilter(): string {
-  const cutoffIso = new Date(
-    Date.now() - ADMIN_HIDE_EXPIRED_AFTER_MS,
-  ).toISOString();
-  return `end_at.gte.${cutoffIso},and(end_at.is.null,start_at.gte.${cutoffIso})`;
+  const nowIso = new Date().toISOString();
+  const todayStartIso = zagrebLocalToUtcIso(`${todayInZagreb()}T00:00`);
+  return `end_at.gte.${nowIso},and(end_at.is.null,start_at.gte.${todayStartIso})`;
 }
 
 /**
@@ -226,7 +223,7 @@ export type AdminStatusCounts = {
 /**
  * Brojevi po statusu (korisnikov zahtjev — oznake na tab-pilulama
  * `/admin/dogadjaji` i treptajuća obavijest za prijave linkom na
- * `/admin`). Koristi ISTI 24h-sakrivanje-isteklih filter kao
+ * `/admin`). Koristi ISTI filter sakrivanja završenih kao
  * `listEventsForAdmin` (`notExpiredFilter()`) — korisnikov izričit zahtjev
  * (2026-09-23): istekli događaji se ne smiju prikazivati NIGDJE, uključujući
  * brojčane oznake, jer "zbunjuju i rade nepotreban šum". Oznaka na pilulama
@@ -312,7 +309,7 @@ type EventExportSourceRow = Omit<
  * SVI događaji, bilo kojeg statusa, za CSV izvoz na `/admin/dogadjaji/izvoz`
  * (korisnikov zahtjev — pandan `importCsv`-u, ISTI stupci istim redoslijedom
  * da izvezena datoteka bude izravno ponovno uvoziva). Namjerno bez filtera
- * (status/kategorija/lokacija/24h-sakrivanje isteklih iz
+ * (status/kategorija/lokacija/sakrivanje završenih iz
  * `listEventsForAdmin`) — ovo je potpun izvoz baze, ne prikazni popis.
  */
 export async function listAllEventsForExport(): Promise<EventExportRow[]> {

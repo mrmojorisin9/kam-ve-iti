@@ -28,13 +28,17 @@ export function SortToggle({
   basePath,
   filters,
   sortBy,
+  className = "mb-6 flex",
 }: {
   basePath: string;
   filters: EventFilters;
   sortBy?: SortOrder;
+  /** Raspored/vidljivost omota — na mobitelu se SortToggle seli u
+   * FilterBar panel (vidi FilterBar `mobileSort`). */
+  className?: string;
 }) {
   return (
-    <div className="mb-6 flex items-center gap-2 text-sm">
+    <div className={`${className} items-center gap-2 text-sm`}>
       <span className="text-parchment-muted">Sortiraj:</span>
       <Link
         href={hrefFor(basePath, filters, undefined)}

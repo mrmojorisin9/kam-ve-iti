@@ -63,12 +63,12 @@ export default async function AdminDashboardPage({
               : "border-line text-parchment-muted hover:text-parchment relative self-start rounded-md border px-4 py-2 text-sm font-medium"
           }
         >
-          Prijave linkom
+          Vanjske prijave
           {hasLinkSubmissions && (
             <>
               <span
                 className="absolute -top-1.5 -right-1.5 flex h-4 w-4"
-                title={`${counts.link_submissions} nova prijava linkom čeka`}
+                title={`${counts.link_submissions} vanjskih prijava čeka`}
               >
                 <span className="bg-gold absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" />
                 <span className="bg-gold border-oak text-night relative inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] leading-none font-bold">

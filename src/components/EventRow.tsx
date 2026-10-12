@@ -33,7 +33,7 @@ export function EventRow({
     <li className="animate-fade-in">
       <Link
         href={`/dogadjaji/${event.slug}`}
-        className="group border-line bg-oak focus-visible:outline-gold hover:border-gold/40 ring-1 ring-white/5 flex items-center gap-4 rounded-lg border p-5 shadow-sm shadow-black/20 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/40 focus-visible:outline-2 focus-visible:outline-offset-4 sm:gap-6"
+        className="group border-line bg-oak focus-visible:outline-gold hover:border-gold/40 ring-1 ring-white/5 flex items-center gap-4 rounded-lg border p-4 shadow-sm sm:p-5 shadow-black/20 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/40 focus-visible:outline-2 focus-visible:outline-offset-4 sm:gap-6"
       >
         <span className="flex shrink-0 flex-col items-center gap-1.5">
           <span className="relative">
@@ -41,7 +41,7 @@ export function EventRow({
               src={event.image_url ?? "/event-placeholder.svg"}
               alt=""
               loading="lazy"
-              className="border-line h-24 w-24 rounded-lg border object-cover sm:h-32 sm:w-32"
+              className="border-line h-20 w-20 rounded-lg border object-cover sm:h-32 sm:w-32"
             />
             {startsSoon && (
               <span
@@ -87,7 +87,10 @@ export function EventRow({
               </span>
             </span>
 
-            <span className="border-gold/40 bg-gold/10 text-gold inline-flex min-w-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs tracking-wide uppercase">
+            {/* Kategorija skrivena na mobitelu (korisnikov zahtjev, 2026-10-12)
+                — niža kartica; kategorija je i dalje vidljiva u traci
+                kategorija i na stranici događaja. */}
+            <span className="border-gold/40 bg-gold/10 text-gold hidden min-w-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs tracking-wide uppercase sm:inline-flex">
               <CategoryIcon slug={event.category_slug} className="h-3 w-3 shrink-0" />
               <span className="truncate">{event.category_name}</span>
             </span>

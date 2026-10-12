@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getEventForEdit } from "@/lib/admin-events";
+import Link from "next/link";
+import { eventsListHref, getEventForEdit } from "@/lib/admin-events";
 import { utcIsoToZagrebLocalInput } from "@/lib/zagreb-time";
 import { EventForm } from "@/components/admin/EventForm";
 import { updateEvent } from "./actions";
@@ -15,10 +16,20 @@ export default async function EditEventPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    status?: string;
+    kategorija?: string;
+    lokacija?: string;
+    sort?: string;
+  }>;
 }) {
   const { id } = await params;
-  const { error } = await searchParams;
+  const { error, status, kategorija, lokacija, sort } = await searchParams;
+  // Tab/filter/sort popisa s kojeg je došao "Uredi" — prosljeđuje se kroz
+  // formu da updateEvent vrati na isti prikaz i do ovog retka (fokus).
+  const listHref = eventsListHref(status, kategorija, lokacija, sort);
+  const backHref = `${listHref}${listHref.includes("?") ? "&" : "?"}fokus=${id}`;
 
   const [event, supabase] = await Promise.all([
     getEventForEdit(id),
@@ -39,6 +50,12 @@ export default async function EditEventPage({
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12">
+      <Link
+        href={backHref}
+        className="text-parchment-muted hover:text-parchment mb-4 self-start text-sm"
+      >
+        ← Natrag na popis
+      </Link>
       <h1 className="font-display text-parchment text-3xl font-semibold tracking-tight">
         Uredi događaj{" "}
         <span className="text-parchment-muted font-mono text-xl font-normal">
@@ -54,6 +71,18 @@ export default async function EditEventPage({
         submitLabel="Spremi izmjene"
         eventId={event.id}
         galleryImages={event.gallery}
+        beforeFields={
+          <>
+            {status && <input type="hidden" name="list_status" value={status} />}
+            {kategorija && (
+              <input type="hidden" name="list_kategorija" value={kategorija} />
+            )}
+            {lokacija && (
+              <input type="hidden" name="list_lokacija" value={lokacija} />
+            )}
+            {sort && <input type="hidden" name="list_sort" value={sort} />}
+          </>
+        }
         defaultValues={{
           title: event.title,
           description: event.description ?? undefined,

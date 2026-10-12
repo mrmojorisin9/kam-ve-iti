@@ -28,7 +28,7 @@ export function CategoryStrip({
   return (
     <nav
       aria-label="Kategorije"
-      className="scrollbar-subtle -mx-6 mb-6 overflow-x-auto px-6 pb-2"
+      className="scrollbar-subtle -mx-6 mb-3 overflow-x-auto px-6 pb-2 sm:mb-6"
     >
       <ul className="flex w-max gap-2">
         <li>

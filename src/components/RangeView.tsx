@@ -110,7 +110,7 @@ export async function RangeView({
   return (
     <>
       <PageHeader />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-20 md:max-w-3xl lg:max-w-5xl">
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 pt-5 pb-12 sm:py-20 md:max-w-3xl lg:max-w-5xl">
         {showTrending && <TrendingPanel event={featuredEvent} />}
         {showSponsored && <SponsoredPanel events={sponsoredEvents} />}
 
@@ -132,6 +132,16 @@ export async function RangeView({
           selectedRegion={filters.regionSlug}
           smartFilters={filters}
           showCategory={!showCategoryStrip}
+          mobileSort={
+            events.length > 1 && (
+              <SortToggle
+                basePath={path}
+                filters={filters}
+                sortBy={sortBy}
+                className="flex"
+              />
+            )
+          }
         />
 
         <ActiveFilters
@@ -142,7 +152,12 @@ export async function RangeView({
         />
 
         {events.length > 1 && (
-          <SortToggle basePath={path} filters={filters} sortBy={sortBy} />
+          <SortToggle
+            basePath={path}
+            filters={filters}
+            sortBy={sortBy}
+            className="mb-6 hidden sm:flex"
+          />
         )}
 
         {events.length === 0 ? (

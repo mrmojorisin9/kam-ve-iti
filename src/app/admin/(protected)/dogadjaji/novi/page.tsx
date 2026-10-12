@@ -34,7 +34,7 @@ export default async function NewEventPage({
         <p className="text-parchment-muted mt-2 text-sm">
           Pred-popunjeno iz{" "}
           <Link href="/admin/dogadjaji?status=prijave-linkom" className="hover:text-parchment underline">
-            prijave linkom
+            vanjske prijave (link)
           </Link>
           .
         </p>
