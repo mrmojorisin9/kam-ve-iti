@@ -34,6 +34,37 @@ const BLOCKED_USER_AGENT = new RegExp(
 );
 
 /**
+ * Stroga CSP za skripte (sigurnosni audit 2026-07-21, ADR-018 "poznat
+ * sljedeći korak"; zatvoreno 2026-10-13): jednokratni nonce po zahtjevu,
+ * Next.js ga sam dodaje svojim skriptama (čita ga iz CSP zaglavlja zahtjeva
+ * — node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md).
+ * Namjerno ograničava SAMO skripte (+ object/base/form/frame) — slike,
+ * stilovi i fetch prema Supabaseu/Resendu ostaju neograničeni (manji
+ * dobitak, veći rizik loma). Sve stranice su već dinamičke (ƒ), pa nonce ne
+ * mijenja način renderiranja.
+ *
+ * NE vrijedi za /pdf (samostalni PDF uređivač: inline skripte + pdf.js
+ * `eval`/`new Function`), /api i statične datoteke (putanje s točkom) —
+ * one zadržavaju blaži CSP iz next.config.ts.
+ */
+function buildScriptCsp(nonce: string): string {
+  const isDev = process.env.NODE_ENV === "development";
+  return [
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join("; ");
+}
+
+function needsScriptCsp(pathname: string): boolean {
+  if (pathname === "/pdf" || pathname.startsWith("/api/")) return false;
+  const lastSegment = pathname.split("/").pop() ?? "";
+  return !lastSegment.includes(".");
+}
+
+/**
  * Osvježava Supabase session cookie na svaki zahtjev prema /admin i štiti
  * te rute od neautenticiranog pristupa (optimistic check — vidi ADR-007;
  * stvarna provjera se ponavlja u admin layoutu, blizu podataka).
@@ -44,11 +75,24 @@ export async function proxy(request: NextRequest) {
   }
 
   const { pathname } = request.nextUrl;
+
+  const csp = needsScriptCsp(pathname)
+    ? buildScriptCsp(Buffer.from(crypto.randomUUID()).toString("base64"))
+    : null;
+  const requestHeaders = new Headers(request.headers);
+  if (csp) {
+    requestHeaders.set("Content-Security-Policy", csp);
+  }
+  const withCsp = (response: NextResponse) => {
+    if (csp) response.headers.set("Content-Security-Policy", csp);
+    return response;
+  };
+
   if (!pathname.startsWith("/admin")) {
-    return NextResponse.next();
+    return withCsp(NextResponse.next({ request: { headers: requestHeaders } }));
   }
 
-  let response = NextResponse.next({ request });
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -62,7 +106,11 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
-          response = NextResponse.next({ request });
+          // request.cookies.set ažurira cookie zaglavlje zahtjeva — nova
+          // kopija zaglavlja nosi i osvježene kolačiće i CSP (nonce).
+          const refreshedHeaders = new Headers(request.headers);
+          if (csp) refreshedHeaders.set("Content-Security-Policy", csp);
+          response = NextResponse.next({ request: { headers: refreshedHeaders } });
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options),
           );
@@ -87,7 +135,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  return response;
+  return withCsp(response);
 }
 
 export const config = {

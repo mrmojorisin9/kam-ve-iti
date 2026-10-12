@@ -52,8 +52,6 @@ a n8n sučelje dostupno je s bilo kojeg uređaja.
 
 ## Poznato, nižeg prioriteta
 
-- **Sigurnost (audit 2026-07-21, bez kritičnih nalaza):** CSP bez
-  `script-src` (ADR-018, treba nonce infrastruktura).
 
 ## Ideje (backlog, bez dogovorenog redoslijeda)
 
