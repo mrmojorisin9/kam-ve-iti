@@ -95,6 +95,9 @@ export default async function EditEventPage({
             : undefined,
           organizer_name: event.organizer_name ?? undefined,
           organizer_contact: event.organizer_contact ?? undefined,
+          performer: event.performer ?? undefined,
+          price_eur:
+            event.price_eur === null ? undefined : String(Number(event.price_eur)),
           source_url: event.source_url ?? undefined,
           image_url: event.image_url ?? undefined,
           status: event.status,

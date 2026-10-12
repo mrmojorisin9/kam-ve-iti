@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getEventBySlug, getSimilarActiveEvents } from "@/lib/events";
-import { formatEventDateTime, formatEventEnd } from "@/lib/format";
+import { formatEventDateTime, formatEventEnd, formatPriceEur } from "@/lib/format";
 import {
   buildEventJsonLd,
   jsonLdToScriptString,
@@ -137,6 +137,24 @@ export default async function EventPage({ params }: Props) {
             {event.venue_name ? `, ${event.venue_name}` : ""}
           </dd>
         </div>
+
+        {event.performer && (
+          <div className="flex gap-2">
+            <dt className="text-parchment-muted w-24 shrink-0">Izvođač</dt>
+            <dd className="text-parchment">{event.performer}</dd>
+          </div>
+        )}
+
+        {(event.is_free || event.price_eur !== null) && (
+          <div className="flex gap-2">
+            <dt className="text-parchment-muted w-24 shrink-0">Ulaz</dt>
+            <dd className="text-parchment">
+              {event.is_free || event.price_eur === 0
+                ? "Besplatno"
+                : `od ${formatPriceEur(event.price_eur as number)}`}
+            </dd>
+          </div>
+        )}
 
         {event.organizer_name && (
           <div className="flex gap-2">

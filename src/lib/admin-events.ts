@@ -555,6 +555,9 @@ export type AdminEventDetail = {
   end_at: string | null;
   organizer_name: string | null;
   organizer_contact: string | null;
+  performer: string | null;
+  /** PostgREST numeric može doći kao string. */
+  price_eur: number | string | null;
   source_url: string | null;
   image_url: string | null;
   status: string;
@@ -585,6 +588,7 @@ export async function getEventForEdit(
     .select(
       `id, display_id, slug, title, description, category_id, location_id,
        venue_name, start_at, end_at, organizer_name, organizer_contact,
+       performer, price_eur,
        source_url, image_url, status, is_free, is_family_friendly,
        is_dog_friendly, is_solo_friendly, is_romantic, is_hidden_gem,
        is_admin_featured, sponsored_until, submitter_email, submitter_phone,
@@ -631,6 +635,7 @@ export async function getEventsForMerge(
     .select(
       `id, display_id, slug, title, description, category_id, location_id,
        venue_name, start_at, end_at, organizer_name, organizer_contact,
+       performer, price_eur,
        source_url, image_url, status, is_free, is_family_friendly,
        is_dog_friendly, is_solo_friendly, is_romantic, is_hidden_gem,
        is_admin_featured, sponsored_until, submitter_email, submitter_phone,
@@ -664,6 +669,22 @@ function readFormBool(formData: FormData, field: string): boolean {
   return formData.get(field) === "on";
 }
 
+/**
+ * "Cijena ulaznice od (€)" (0039) — prazno = NULL (nepoznato). Prihvaća i
+ * decimalni zarez ("12,50"). Vraća `undefined` za neispravan unos, da
+ * pozivatelj vrati poruku greške umjesto tihog brisanja vrijednosti.
+ */
+export function readFormPrice(
+  formData: FormData,
+  field = "price_eur",
+): number | null | undefined {
+  const raw = readFormText(formData, field);
+  if (raw === null) return null;
+  const value = Number(raw.replace(",", "."));
+  if (!Number.isFinite(value) || value < 0 || value > 999999) return undefined;
+  return Math.round(value * 100) / 100;
+}
+
 type AdminEditTrackedBefore = {
   title: string;
   description: string | null;
@@ -673,6 +694,10 @@ type AdminEditTrackedBefore = {
   start_at: string;
   end_at: string | null;
   image_url: string | null;
+  organizer_name: string | null;
+  performer: string | null;
+  price_eur: number | string | null;
+  is_free: boolean;
 };
 
 type AdminEditTrackedNext = {
@@ -684,7 +709,15 @@ type AdminEditTrackedNext = {
   start_at?: string;
   end_at?: string | null;
   image_url?: string | null;
+  organizer_name?: string | null;
+  performer?: string | null;
+  price_eur?: number | null;
+  is_free?: boolean;
 };
+
+/** Stupci koje diffAdminEditedFields uspoređuje (+ admin_edited_fields). */
+const ADMIN_TRACKED_SELECT =
+  "title, description, category_id, location_id, venue_name, start_at, end_at, image_url, organizer_name, performer, price_eur, is_free, admin_edited_fields";
 
 /**
  * "Sticky admin edits" (DECISIONS.md ADR-020 dopuna, 2026-08-07) — računa
@@ -712,10 +745,22 @@ function diffAdminEditedFields(
     ["location_id", before.location_id, next.location_id],
     ["venue_name", before.venue_name, next.venue_name],
     ["image_url", before.image_url, next.image_url],
+    // Dodano 2026-10-13: scraper sad puni i ova polja (extract.py), pa
+    // ručna admin vrijednost mora biti zaštićena isto kao ostale.
+    ["organizer_name", before.organizer_name, next.organizer_name],
+    ["performer", before.performer, next.performer],
   ];
   for (const [field, oldValue, newValue] of textPairs) {
     if (newValue === undefined) continue;
     if (oldValue !== newValue) changed.push(field);
+  }
+
+  if (next.price_eur !== undefined) {
+    const oldPrice = before.price_eur === null ? null : Number(before.price_eur);
+    if (oldPrice !== next.price_eur) changed.push("price_eur");
+  }
+  if (next.is_free !== undefined && before.is_free !== next.is_free) {
+    changed.push("is_free");
   }
 
   const MINUTE_MS = 60_000;
@@ -780,6 +825,14 @@ export async function applyEventFormUpdate(
     return { error: "Kraj događaja ne može biti prije početka." };
   }
 
+  const priceEur = readFormPrice(formData);
+  if (priceEur === undefined) {
+    return { error: "Cijena ulaznice mora biti broj veći ili jednak 0 (npr. 10 ili 12,50)." };
+  }
+  const performer = readFormText(formData, "performer");
+  const organizerName = readFormText(formData, "organizer_name");
+  const isFree = readFormBool(formData, "is_free");
+
   if (imageUrlText && !hasImageFile && !isAbsoluteUrl(imageUrlText)) {
     return {
       error:
@@ -832,14 +885,12 @@ export async function applyEventFormUpdate(
   // automatskog otkljucavanja).
   const { data: beforeRow } = await supabase
     .from("events")
-    .select(
-      "title, description, category_id, location_id, venue_name, start_at, end_at, image_url, admin_edited_fields",
-    )
+    .select(ADMIN_TRACKED_SELECT)
     .eq("id", id)
     .maybeSingle();
 
   const newlyEditedFields = beforeRow
-    ? diffAdminEditedFields(beforeRow, {
+    ? diffAdminEditedFields(beforeRow as AdminEditTrackedBefore, {
         title,
         description,
         category_id: categoryId,
@@ -848,6 +899,10 @@ export async function applyEventFormUpdate(
         image_url: imageUrl,
         start_at: startAt,
         end_at: endAt,
+        organizer_name: organizerName,
+        performer,
+        price_eur: priceEur,
+        is_free: isFree,
       })
     : [];
   const adminEditedFields = Array.from(
@@ -896,12 +951,14 @@ export async function applyEventFormUpdate(
       venue_name: venueName,
       start_at: startAt,
       end_at: endAt,
-      organizer_name: readFormText(formData, "organizer_name"),
+      organizer_name: organizerName,
       organizer_contact: readFormText(formData, "organizer_contact"),
+      performer,
+      price_eur: priceEur,
       source_url: readFormText(formData, "source_url"),
       image_url: imageUrl,
       status,
-      is_free: readFormBool(formData, "is_free"),
+      is_free: isFree,
       is_family_friendly: readFormBool(formData, "is_family_friendly"),
       is_dog_friendly: readFormBool(formData, "is_dog_friendly"),
       is_solo_friendly: readFormBool(formData, "is_solo_friendly"),
@@ -969,9 +1026,7 @@ export async function applyCsvRowUpdate(
 ): Promise<{ error: string | null; notFound: boolean }> {
   const { data: beforeRow, error: fetchError } = await supabase
     .from("events")
-    .select(
-      "id, title, description, category_id, location_id, venue_name, start_at, end_at, image_url, admin_edited_fields",
-    )
+    .select(`id, ${ADMIN_TRACKED_SELECT}`)
     .eq("display_id", displayId)
     .maybeSingle();
 
@@ -982,18 +1037,19 @@ export async function applyCsvRowUpdate(
     return { error: null, notFound: true };
   }
 
-  const newlyEditedFields = diffAdminEditedFields(beforeRow, fields);
+  const before = beforeRow as unknown as AdminEditTrackedBefore & {
+    id: string;
+    admin_edited_fields: string[] | null;
+  };
+  const newlyEditedFields = diffAdminEditedFields(before, fields);
   const adminEditedFields = Array.from(
-    new Set([
-      ...((beforeRow.admin_edited_fields as string[] | null) ?? []),
-      ...newlyEditedFields,
-    ]),
+    new Set([...(before.admin_edited_fields ?? []), ...newlyEditedFields]),
   );
 
   const { error } = await supabase
     .from("events")
     .update({ ...fields, admin_edited_fields: adminEditedFields })
-    .eq("id", beforeRow.id);
+    .eq("id", before.id);
 
   if (error) {
     return { error: error.message, notFound: false };

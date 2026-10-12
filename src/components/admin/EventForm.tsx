@@ -19,6 +19,8 @@ export type EventFormValues = {
   end_at?: string;
   organizer_name?: string;
   organizer_contact?: string;
+  performer?: string;
+  price_eur?: string;
   source_url?: string;
   image_url?: string;
   status?: string;
@@ -188,6 +190,34 @@ export function EventForm({
             type="text"
             name="organizer_contact"
             defaultValue={defaultValues?.organizer_contact}
+            className={inputClass}
+          />
+        </label>
+      </div>
+
+      {/* Cijena + izvođač (0039) — prikazuju se na stranici događaja i
+          šalju Googleu kao offers/performer (GSC preporučena polja). */}
+      <div className="flex flex-col gap-4 sm:flex-row">
+        <label className="flex-1 text-sm">
+          <span className={labelClass}>Izvođač</span>
+          <input
+            type="text"
+            name="performer"
+            defaultValue={defaultValues?.performer}
+            placeholder="npr. ime benda, glumca, predavača"
+            className={inputClass}
+          />
+        </label>
+
+        <label className="text-sm sm:w-48">
+          <span className={labelClass}>Cijena ulaznice od (€)</span>
+          <input
+            type="number"
+            name="price_eur"
+            min="0"
+            step="0.01"
+            defaultValue={defaultValues?.price_eur}
+            placeholder="prazno = nepoznato"
             className={inputClass}
           />
         </label>

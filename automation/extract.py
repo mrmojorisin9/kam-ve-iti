@@ -53,6 +53,24 @@ EXTRACT_TOOL = {
                 "description": "ISO 8601 ili null ako dogadaj nema naveden zavrsetak.",
             },
             "venue_name": {"type": ["string", "null"]},
+            # Dodano 2026-10-13 (GSC preporucena polja offers/performer/
+            # organizer, migracija 0039) — SAMO kad ih tekst izricito navodi.
+            "organizer_name": {
+                "type": ["string", "null"],
+                "description": "Organizator (udruga, ustanova, tvrtka) ako je izricito naveden, inace null.",
+            },
+            "performer": {
+                "type": ["string", "null"],
+                "description": "Izvodac/izvodaci (bend, glumci, predavac) ako su izricito navedeni, inace null. Uvijek u NOMINATIVU (npr. 'Tamburaski sastav Ravnica', ne 'Tamburaskim sastavom Ravnica').",
+            },
+            "price_eur": {
+                "type": ["number", "null"],
+                "description": "NAJNIZA navedena cijena ulaznice u eurima (ukljucujuci pretprodaju/popuste) ako je izricito navedena, inace null. Ne pretvaraj druge valute nagadanjem.",
+            },
+            "is_free": {
+                "type": ["boolean", "null"],
+                "description": "true SAMO ako tekst izricito kaze da je ulaz besplatan/slobodan; inace null.",
+            },
             "category_slug": {
                 "type": "string",
                 "description": "Mora biti TOCNO jedan od ponudenih slugova kategorija.",
@@ -89,7 +107,11 @@ Dostupne lokacije (koristi TOCNO jedan slug — Medimurska zupanija, grad ili op
 {location_list}
 
 Ako datum pocetka, kategorija ili lokacija nisu jasni iz teksta, postavi
-confident=false umjesto pogadanja."""
+confident=false umjesto pogadanja.
+
+Organizator, izvodac, cijena ulaznice i besplatan ulaz popuni SAMO ako ih
+tekst izricito navodi — inace null (nikad ne izmisljaj niti zakljucuj iz
+opceg znanja)."""
 
 
 def normalize(

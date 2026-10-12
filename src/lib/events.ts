@@ -35,6 +35,10 @@ export type EventListItem = {
 export type EventDetail = EventListItem & {
   organizer_name: string | null;
   organizer_contact: string | null;
+  /** Najniža cijena ulaznice u eurima ("od"), NULL = nepoznato (0039). */
+  price_eur: number | null;
+  /** Izvođač/izvođači, slobodan tekst (0039). */
+  performer: string | null;
   source_url: string | null;
   /** Dodatne fotografije (do 6), odvojeno od naslovne image_url — vidi C4/ADR napomenu u CHANGELOG.md. */
   gallery: { id: string; url: string }[];
@@ -153,6 +157,8 @@ type EventBySlugRow = {
   image_url: string | null;
   organizer_name: string | null;
   organizer_contact: string | null;
+  price_eur: number | string | null;
+  performer: string | null;
   source_url: string | null;
   category_id: string;
   location_id: string;
@@ -789,6 +795,8 @@ export const getEventBySlug = cache(
         image_url,
         organizer_name,
         organizer_contact,
+        price_eur,
+        performer,
         source_url,
         category_id,
         location_id,
@@ -829,6 +837,9 @@ export const getEventBySlug = cache(
       image_url: row.image_url,
       organizer_name: row.organizer_name,
       organizer_contact: row.organizer_contact,
+      // PostgREST numeric može doći kao string — normalizirano na broj.
+      price_eur: row.price_eur === null ? null : Number(row.price_eur),
+      performer: row.performer,
       source_url: row.source_url,
       category_id: row.category_id,
       location_id: row.location_id,

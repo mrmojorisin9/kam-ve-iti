@@ -30,7 +30,10 @@ export function buildEventJsonLd(event: EventDetail, siteUrl: string) {
     "@type": "Event",
     name: event.title,
     startDate: event.start_at,
-    ...(event.end_at ? { endDate: event.end_at } : {}),
+    // GSC preporučuje endDate; bez poznatog kraja (čest slučaj kod
+    // scrapanih najava) ide jednak početku umjesto izostavljanja
+    // (korisnikov odabir 2026-10-13) — ne izmišlja trajanje.
+    endDate: event.end_at ?? event.start_at,
     eventStatus: "https://schema.org/EventScheduled",
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     location: {
@@ -45,19 +48,21 @@ export function buildEventJsonLd(event: EventDetail, siteUrl: string) {
     },
     ...(event.description ? { description: event.description } : {}),
     ...(images.length > 0 ? { image: images } : {}),
-    // Cijena ulaznica se još ne prikuplja (Prioritet 3, C3, nije rađeno) —
-    // "offers" bez cijene bi bio nevažeći Schema.org zapis, pa se dodaje
-    // samo za besplatne događaje gdje je cijena poznata i uvijek 0.
-    ...(event.is_free
+    // "offers" samo kad je cijena poznata — besplatno (is_free) ili upisana
+    // cijena ulaznice (price_eur, 0039). Bez cijene bi bio nevažeći zapis.
+    ...(event.is_free || event.price_eur !== null
       ? {
           offers: {
             "@type": "Offer",
-            price: "0",
+            price: event.is_free ? "0" : String(event.price_eur),
             priceCurrency: "EUR",
             availability: "https://schema.org/InStock",
             url: eventUrl,
           },
         }
+      : {}),
+    ...(event.performer
+      ? { performer: { "@type": "PerformingGroup", name: event.performer } }
       : {}),
     ...(event.organizer_name
       ? {

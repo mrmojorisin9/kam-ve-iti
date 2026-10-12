@@ -84,6 +84,15 @@ SEEN_REASONS = {
 }
 
 
+def _valid_price(value) -> float | None:
+    """Cijena iz Claude ekstrakcije — samo nenegativan broj (0039 CHECK), inace None."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if value < 0 or value > 999999:
+        return None
+    return round(float(value), 2)
+
+
 def seen_skip_reason(seen: dict | None, raw_hash: str) -> str | None:
     """Razlog preskakanja Claude poziva za zapis bez events retka, ili None."""
     if not seen or seen.get("content_hash") != raw_hash:
@@ -340,7 +349,15 @@ def run(
             "source_name": raw.source_name,
             "image_url": raw.image_url,
             "source_content_hash": raw_hash,
+            "organizer_name": normalized.get("organizer_name"),
+            "performer": normalized.get("performer"),
+            "price_eur": _valid_price(normalized.get("price_eur")),
         }
+        # is_free je NOT NULL u bazi — upisuje se samo kad tekst izricito kaze
+        # da je besplatno (nikad False iz scrapera: odsutnost informacije nije
+        # dokaz da se ulaz placa). Update put ionako preskace None vrijednosti.
+        if normalized.get("is_free") is True:
+            event["is_free"] = True
 
         if existing:
             stats["updated"] += 1

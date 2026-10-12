@@ -62,6 +62,9 @@ function computeMergedDefaults(
       : undefined,
     organizer_name: primary.organizer_name ?? undefined,
     organizer_contact: primary.organizer_contact ?? undefined,
+    performer: primary.performer ?? undefined,
+    price_eur:
+      primary.price_eur === null ? undefined : String(Number(primary.price_eur)),
     source_url: primary.source_url ?? undefined,
     image_url: primary.image_url ?? undefined,
     status: primary.status,
@@ -99,6 +102,9 @@ function toQuickFillValues(
     end_at: candidate.end_at ? utcIsoToZagrebLocalInput(candidate.end_at) : "",
     organizer_name: candidate.organizer_name ?? "",
     organizer_contact: candidate.organizer_contact ?? "",
+    performer: candidate.performer ?? "",
+    price_eur:
+      candidate.price_eur === null ? "" : String(Number(candidate.price_eur)),
     source_url: candidate.source_url ?? "",
     image_url: candidate.image_url ?? "",
     status: candidate.status,

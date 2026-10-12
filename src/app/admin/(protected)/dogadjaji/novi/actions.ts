@@ -9,6 +9,7 @@ import {
   uploadEventImage,
   clearOtherAdminFeatured,
   isAbsoluteUrl,
+  readFormPrice,
 } from "@/lib/admin-events";
 
 function readText(formData: FormData, field: string): string | null {
@@ -68,6 +69,11 @@ export async function createEvent(formData: FormData) {
   const isHiddenGem = readBool(formData, "is_hidden_gem");
   const isAdminFeatured = readBool(formData, "is_admin_featured");
 
+  const priceEur = readFormPrice(formData);
+  if (priceEur === undefined) {
+    fail("Cijena ulaznice mora biti broj veći ili jednak 0 (npr. 10 ili 12,50).");
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -117,6 +123,8 @@ export async function createEvent(formData: FormData) {
     end_at: endAt,
     organizer_name: readText(formData, "organizer_name"),
     organizer_contact: readText(formData, "organizer_contact"),
+    performer: readText(formData, "performer"),
+    price_eur: priceEur,
     source_url: readText(formData, "source_url"),
     image_url: imageUrl,
     status,

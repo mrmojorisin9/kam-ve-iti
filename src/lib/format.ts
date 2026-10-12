@@ -7,6 +7,16 @@ export function formatEventTime(iso: string): string {
   }).format(new Date(iso));
 }
 
+/** Cijena u eurima (npr. "10 €", "12,50 €") — decimale samo kad postoje. */
+export function formatPriceEur(price: number): string {
+  return new Intl.NumberFormat("hr-HR", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: Number.isInteger(price) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(price);
+}
+
 /** Naslovni datum stranice (npr. "utorak, 14. srpnja") za YYYY-MM-DD ulaz. */
 export function formatHeaderDate(dateStr: string): string {
   // Podne izbjegava rubne slučajeve oko ponoći pri DST prijelazu.
