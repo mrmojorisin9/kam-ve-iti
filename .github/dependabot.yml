@@ -1,0 +1,42 @@
+# Kam denes — automatska provjera ovisnosti (sigurnosni audit 2026-07-21,
+# otvorena stavka "nema Dependabota"; zatvoreno 2026-10-13).
+#
+# Dependabot jednom tjedno otvara PR-ove za zastarjele pakete. NIŠTA se ne
+# spaja automatski — svaki PR pregledati (Vercel za njega napravi preview
+# deploy). Minor/patch nadogradnje grupirane u jedan PR po ekosustavu da ne
+# bude buke; major verzije (npr. novi Next.js) dolaze zasebno i traže
+# čitanje node_modules/next/dist/docs/ prije spajanja (AGENTS.md).
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/Zagreb"
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # Scraper pipeline (automation/requirements.txt). Nakon spajanja treba
+  # rebuild Docker kontejnera (automation/deploy/README.md).
+  - package-ecosystem: "pip"
+    directory: "/automation"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/Zagreb"
+    open-pull-requests-limit: 3
+    groups:
+      pip-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # Bazna slika automation kontejnera (automation/deploy/Dockerfile).
+  - package-ecosystem: "docker"
+    directory: "/automation/deploy"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 1

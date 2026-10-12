@@ -57,8 +57,7 @@ a n8n sučelje dostupno je s bilo kojeg uređaja.
   dok ne ispadnu iz vremenskog prozora.
 - **Sigurnost (audit 2026-07-21, bez kritičnih nalaza):** captcha na
   `/prijavi-dogadaj` je jednostavno računsko pitanje; CSP bez `script-src`
-  (ADR-018, treba nonce infrastruktura); nema Dependabota/automatskog
-  skeniranja ovisnosti.
+  (ADR-018, treba nonce infrastruktura).
 
 ## Ideje (backlog, bez dogovorenog redoslijeda)
 
