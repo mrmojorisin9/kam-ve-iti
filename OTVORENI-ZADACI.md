@@ -39,11 +39,6 @@ a n8n sučelje dostupno je s bilo kojeg uređaja.
 - **Rezervni plan** ako A1 kapacitet ne bude dostupan: mali plaćeni VPS
   (~4–6 €/mj.), iste Docker postavke.
 
-### Migracija 0038 (scraper pamti obrađene zapise)
-- [ ] Vlasnik primjenjuje `supabase/migrations/0038_scraper_seen.sql` u
-  Supabase SQL Editoru.
-- [ ] Provjera upisa/čitanja tablice + rebuild `automation` kontejnera.
-
 ### Prvi stvarni JSONL uvoz kroz n8n
 - [ ] Kod prve prave datoteke u `automation/uvoz/` provjeriti da je
   premještena u `uvoz/obradjeno/` i da su događaji na čekanju u
@@ -51,9 +46,6 @@ a n8n sučelje dostupno je s bilo kojeg uređaja.
 
 ## Poznato, nižeg prioriteta
 
-- **Google Search Console — 4 upozorenja** (`performer`, `offers`,
-  `organizer`, `endDate` nedostaju na dijelu događaja): zahtijeva nova polja
-  u admin formi (cijena ulaznice, izvođač…).
 - **Dedup — rubni slučaj:** isti višednevni događaj s dva izvora, datumi
   pomaknuti 1 dan + vrlo različiti naslovi ne prepoznaje se kao duplikat
   („Notorious Festival”, DECISIONS ADR-020 dopuna).
