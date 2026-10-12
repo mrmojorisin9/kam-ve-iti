@@ -745,7 +745,7 @@ function diffAdminEditedFields(
     ["location_id", before.location_id, next.location_id],
     ["venue_name", before.venue_name, next.venue_name],
     ["image_url", before.image_url, next.image_url],
-    // Dodano 2026-10-13: scraper sad puni i ova polja (extract.py), pa
+    // Dodano 2026-10-12: scraper sad puni i ova polja (extract.py), pa
     // ručna admin vrijednost mora biti zaštićena isto kao ostale.
     ["organizer_name", before.organizer_name, next.organizer_name],
     ["performer", before.performer, next.performer],

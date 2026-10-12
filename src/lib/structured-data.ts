@@ -32,7 +32,7 @@ export function buildEventJsonLd(event: EventDetail, siteUrl: string) {
     startDate: event.start_at,
     // GSC preporučuje endDate; bez poznatog kraja (čest slučaj kod
     // scrapanih najava) ide jednak početku umjesto izostavljanja
-    // (korisnikov odabir 2026-10-13) — ne izmišlja trajanje.
+    // (korisnikov odabir 2026-10-12) — ne izmišlja trajanje.
     endDate: event.end_at ?? event.start_at,
     eventStatus: "https://schema.org/EventScheduled",
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",

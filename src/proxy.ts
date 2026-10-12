@@ -35,7 +35,7 @@ const BLOCKED_USER_AGENT = new RegExp(
 
 /**
  * Stroga CSP za skripte (sigurnosni audit 2026-07-21, ADR-018 "poznat
- * sljedeći korak"; zatvoreno 2026-10-13): jednokratni nonce po zahtjevu,
+ * sljedeći korak"; zatvoreno 2026-10-12): jednokratni nonce po zahtjevu,
  * Next.js ga sam dodaje svojim skriptama (čita ga iz CSP zaglavlja zahtjeva
  * — node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md).
  * Namjerno ograničava SAMO skripte (+ object/base/form/frame) — slike,

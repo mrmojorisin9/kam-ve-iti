@@ -1,6 +1,6 @@
 -- Kam denes — cijena ulaznice i izvođač na događaju (Google Search Console
 -- upozorenja "offers"/"performer" nedostaju, otvorena stavka od 2026-08;
--- korisnikov odabir 2026-10-13: polja u admin formi + Claude ih izvlači pri
+-- korisnikov odabir 2026-10-12: polja u admin formi + Claude ih izvlači pri
 -- scrapanju kad ih izvor navodi).
 --
 -- price_eur: najniža cijena ulaznice u eurima ("od"); NULL = nepoznato.

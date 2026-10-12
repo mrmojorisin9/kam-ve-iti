@@ -7,7 +7,7 @@ se **zamrzava u trenutnom stanju** — sljedeća promjena koda može doći tek z
 predajnom trenutku; ne ažurira se ubuduće (za tekuće stanje nakon što razvoj
 nastavi, vidi opet `CHANGELOG.md`, koji se nastavlja puniti).
 
-> **Napomena (2026-10-13):** razvoj se nastavio u rujnu 2026. Operativne
+> **Napomena (2026-10-12):** razvoj se nastavio u rujnu 2026. Operativne
 > činjenice koje su se u međuvremenu promijenile (scraper izvori, sponzor,
 > DNS put, e-mail) ispravljene su ovdje izravno; ostalo je i dalje snimka
 > stanja na 2026-08-12. Tekući otvoreni zadaci: `OTVORENI-ZADACI.md`.

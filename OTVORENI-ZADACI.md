@@ -66,7 +66,7 @@ Od 2026-10-12 mnovine.hr odbija naš scraper (Cloudflare bot zaštita, i za
 ## Poznato, nižeg prioriteta
 
 Trenutno ništa — sve stavke iz sigurnosnog audita, GSC upozorenja, dedup i
-scraper trošak zatvoreni 2026-10-13 (vidi CHANGELOG).
+scraper trošak zatvoreni 2026-10-12 (vidi CHANGELOG).
 
 ## Ideje (backlog, bez dogovorenog redoslijeda)
 

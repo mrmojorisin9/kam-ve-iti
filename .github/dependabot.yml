@@ -1,5 +1,5 @@
 # Kam denes — automatska provjera ovisnosti (sigurnosni audit 2026-07-21,
-# otvorena stavka "nema Dependabota"; zatvoreno 2026-10-13).
+# otvorena stavka "nema Dependabota"; zatvoreno 2026-10-12).
 #
 # Dependabot jednom tjedno otvara PR-ove za zastarjele pakete. NIŠTA se ne
 # spaja automatski — svaki PR pregledati (Vercel za njega napravi preview

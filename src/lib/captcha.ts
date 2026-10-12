@@ -3,7 +3,7 @@ import { createHmac, randomInt, timingSafeEqual } from "crypto";
 /**
  * Računsko pitanje za /prijavi-dogadaj, ojačano bez vanjske usluge
  * (sigurnosni audit 2026-07-21, otvorena stavka "captcha bez kriptografskog
- * potpisa"; zatvoreno 2026-10-13). Ranije su oba pribrojnika bila u
+ * potpisa"; zatvoreno 2026-10-12). Ranije su oba pribrojnika bila u
  * skrivenim poljima forme — bot ih je mogao pročitati ili podmetnuti
  * vlastite (npr. 0 + 0 = 0). Sad:
  *  - pribrojnici + vrijeme izdavanja idu u HMAC-potpisan žeton (ne mogu se

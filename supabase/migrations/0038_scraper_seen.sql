@@ -1,6 +1,6 @@
 -- Kam denes — pamćenje već obrađenih scraper zapisa koji NEMAJU vlastiti
 -- events redak (otvorena stavka "trošak ponovne ekstrakcije", ADR-020
--- dopuna 2026-08-07; zatvoreno 2026-10-13).
+-- dopuna 2026-08-07; zatvoreno 2026-10-12).
 --
 -- Problem: content-hash preskakanje (0028) radi samo za zapise koji imaju
 -- events redak (hash je u events.source_content_hash). Zapisi koje dedup

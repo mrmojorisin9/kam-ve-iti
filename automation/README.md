@@ -157,7 +157,7 @@ Trenutno nema odgođenih izvora. **evento.sh/ck** je ovdje stajao od
 zahtjeva) — riješeno hvatanjem stvarnog mrežnog zahtjeva i dodan kao
 aktivan izvor 2026-08-11/12 (`adapters/evento.py`, vidi CHANGELOG).
 
-## Aktivni izvori (stanje 2026-10-13)
+## Aktivni izvori (stanje 2026-10-12)
 
 | Izvor | Adapter | Napomena |
 | --- | --- | --- |

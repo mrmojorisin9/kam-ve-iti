@@ -3,7 +3,7 @@
 Slojevi: (1) exact match na `source_url` — baza-razine unique constraint
 (0024 migracija) vec to garantira, ovdje samo odlucujemo insert vs. upsert;
 (2) exact match na `start_at` medu kandidatima iste lokacije — od
-2026-10-13 duplikat samo uz gotovo iste naslove ili Claudeovu potvrdu
+2026-10-12 duplikat samo uz gotovo iste naslove ili Claudeovu potvrdu
 (vidi dopunu niže); (3) fuzzy match naslova (rapidfuzz) medu kandidatima istog dana/
 lokacije; (4) semanticka usporedba (Claude, `extract.is_same_event`) samo za
 rijetke sumnjive parove koje (3) ne moze razlikovati.
@@ -13,7 +13,7 @@ Faza 6-7) otkrio pravi duplikat koji je fuzzy title match propustio:
 "Notorious Festival 2026." (mnovine) vs. "NOTORIOUS FESTIVAL - Dvodnevni
 spektakl elektronicke glazbe" (emedjimurje).
 
-Dopuna 2026-10-13 (zatvoreno "poznato preostalo ogranicenje" iz ADR-020 —
+Dopuna 2026-10-12 (zatvoreno "poznato preostalo ogranicenje" iz ADR-020 —
 isti par s pocetkom pomaknutim 1 dan):
 - usporedba naslova sad ignorira velika/mala slova i interpunkciju
   (`utils.default_process`) — ranije je "NOTORIOUS" vs "Notorious" sam po
@@ -99,7 +99,7 @@ def find_fuzzy_duplicate(
             and candidate_instant is not None
             and new_instant == candidate_instant
         ):
-            # Dopuna 2026-10-13: "ista minuta + ista lokacija" NIJE sam po
+            # Dopuna 2026-10-12: "ista minuta + ista lokacija" NIJE sam po
             # sebi siguran znak — lokacija je cijeli grad/opcina, pa dva
             # razlicita dogadaja u Cakovcu u 20:00 nisu rijetkost (evaluacija:
             # "Kazaliste, Poco Loco" vs "Moto susret" su bili lazno

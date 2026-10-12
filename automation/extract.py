@@ -53,7 +53,7 @@ EXTRACT_TOOL = {
                 "description": "ISO 8601 ili null ako dogadaj nema naveden zavrsetak.",
             },
             "venue_name": {"type": ["string", "null"]},
-            # Dodano 2026-10-13 (GSC preporucena polja offers/performer/
+            # Dodano 2026-10-12 (GSC preporucena polja offers/performer/
             # organizer, migracija 0039) — SAMO kad ih tekst izricito navodi.
             "organizer_name": {
                 "type": ["string", "null"],
@@ -137,7 +137,7 @@ SAME_EVENT_TOOL = {
 
 
 def is_same_event(a: dict, b: dict) -> bool:
-    """Semanticka usporedba dva zapisa (Faza 6-7 dedup, 2026-10-13) — poziva
+    """Semanticka usporedba dva zapisa (Faza 6-7 dedup, 2026-10-12) — poziva
     se SAMO za rijetke sumnjive parove koje dedup.py ne moze razlikovati
     usporedbom teksta (ista lokacija, +/- 1 dan, razliciti izvori, dijele
     specificnu rijec u naslovu). `a`/`b`: {title, start_at, venue_name?,
