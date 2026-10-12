@@ -12,6 +12,10 @@
 FROM python:3.12-slim
 
 WORKDIR /repo
+# Bez ovoga Python bufferira stdout kad nije TTY pa `docker logs` ne
+# prikazuje ispis pipelinea (koji je izvor preskočen/duplikat i sl.) —
+# otkriveno 2026-10-13 pri provjeri prvog runa s novim kodom.
+ENV PYTHONUNBUFFERED=1
 COPY automation/requirements.txt automation/requirements.txt
 RUN pip install --no-cache-dir -r automation/requirements.txt
 COPY automation/ automation/
