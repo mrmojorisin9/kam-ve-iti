@@ -39,19 +39,17 @@ a n8n sučelje dostupno je s bilo kojeg uređaja.
 - **Rezervni plan** ako A1 kapacitet ne bude dostupan: mali plaćeni VPS
   (~4–6 €/mj.), iste Docker postavke.
 
-### Prvi dnevni run s novim scraper kodom
-- [ ] Nakon sljedećeg n8n runa pogledati izlaz čvorova: rade li
-  `scraper_seen` preskakanja ("preskoceno: …, bez Claude poziva"), stižu li
-  cijena/izvođač na nove događaje, i nema li grešaka (kontejner rebuildan
-  2026-10-13 s kodom 0038/0039/dedup).
-
-### Prvi stvarni JSONL uvoz kroz n8n
-- [ ] Kod prve prave datoteke u `automation/uvoz/` provjeriti da je
-  premještena u `uvoz/obradjeno/` i da su događaji na čekanju u
-  `/admin/dogadjaji` (do sad provjereno samo dry-runom i testom bez upisa).
+### mnovine.hr blokira scraper (403, Cloudflare)
+Od 2026-10-12 mnovine.hr odbija naš scraper (Cloudflare bot zaštita, i za
+`robots.txt`). Ne zaobilazi se lažiranjem preglednika. Odluka vlasnika:
+- [ ] isključiti izvor (dio njihovih događaja ionako dolazi i preko
+  emedjimurje.net.hr), ili
+- [ ] javiti se mnovine.hr i zamoliti da propuste `KamDenesBot`.
 
 ## Poznato, nižeg prioriteta
 
+Trenutno ništa — sve stavke iz sigurnosnog audita, GSC upozorenja, dedup i
+scraper trošak zatvoreni 2026-10-13 (vidi CHANGELOG).
 
 ## Ideje (backlog, bez dogovorenog redoslijeda)
 
