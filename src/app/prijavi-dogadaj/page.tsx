@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { createCaptcha } from "@/lib/captcha";
 import { submitEvent } from "./actions";
 
 export const metadata: Metadata = {
@@ -12,10 +13,6 @@ export const metadata: Metadata = {
 const inputClass =
   "border-line bg-oak text-parchment w-full rounded-md border px-3 py-2 text-sm";
 const labelClass = "text-parchment-muted mb-1 block";
-
-function randomInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
 
 export default async function ProposeEventPage({
   searchParams,
@@ -33,8 +30,7 @@ export default async function ProposeEventPage({
     supabase.from("locations").select("id, name").order("name"),
   ]);
 
-  const captchaA = randomInt(1, 10);
-  const captchaB = randomInt(1, 10);
+  const captcha = createCaptcha();
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 md:max-w-3xl">
@@ -163,16 +159,24 @@ export default async function ProposeEventPage({
           </label>
         </div>
 
+        {/* Honeypot — skriveno od ljudi (izvan ekrana, ne display:none, jer
+            neki botovi preskaču nevidljiva polja), botovi ga popune. */}
+        <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+          <label>
+            Web stranica
+            <input type="text" name="website" tabIndex={-1} autoComplete="off" />
+          </label>
+        </div>
+
         <fieldset className="border-line rounded-md border p-4">
           <legend className="text-parchment-muted px-1 text-sm">
             Provjera da nisi robot
           </legend>
           <label className="text-sm">
             <span className={labelClass}>
-              Koliko je {captchaA} + {captchaB}? *
+              Koliko je {captcha.question}? *
             </span>
-            <input type="hidden" name="captcha_a" value={captchaA} />
-            <input type="hidden" name="captcha_b" value={captchaB} />
+            <input type="hidden" name="captcha_token" value={captcha.token} />
             <input
               type="number"
               name="captcha_answer"

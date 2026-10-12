@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { sendSubmissionNotice } from "@/lib/notify";
+import { verifyCaptcha } from "@/lib/captcha";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
 import { zagrebLocalToUtcIso } from "@/lib/zagreb-time";
@@ -25,12 +26,24 @@ export async function submitEvent(formData: FormData) {
   const endAtLocal = readText(formData, "end_at");
   const submitterEmail = readText(formData, "submitter_email");
 
-  const captchaA = Number(formData.get("captcha_a"));
-  const captchaB = Number(formData.get("captcha_b"));
-  const captchaAnswer = Number(formData.get("captcha_answer"));
+  // Honeypot popunjen = bot. Tiho "uspjeh" bez upisa — bot ne dobiva
+  // signal da je otkriven (pa ne prilagođava pokušaj).
+  if (readText(formData, "website")) {
+    redirect("/prijavi-dogadaj/hvala");
+  }
 
-  if (captchaAnswer !== captchaA + captchaB) {
+  const captcha = verifyCaptcha(
+    String(formData.get("captcha_token") ?? ""),
+    String(formData.get("captcha_answer") ?? ""),
+  );
+  if (captcha === "wrong") {
     fail("Pogrešan odgovor na računsko pitanje, pokušaj ponovno.");
+  }
+  if (captcha === "too_fast") {
+    fail("Obrazac je poslan prebrzo — pričekaj trenutak i pokušaj ponovno.");
+  }
+  if (captcha !== "ok") {
+    fail("Obrazac je istekao, ispuni ga ponovno.");
   }
 
   if (!title || !categoryId || !locationId || !startAtLocal || !submitterEmail) {

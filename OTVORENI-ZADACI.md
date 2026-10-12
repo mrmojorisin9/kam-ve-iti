@@ -55,9 +55,8 @@ a n8n sučelje dostupno je s bilo kojeg uređaja.
 - **Trošak ponovne ekstrakcije:** zapisi odbačeni kao duplikat drugog izvora
   nemaju `source_content_hash` pa dobiju Claude poziv na svakom dnevnom runu
   dok ne ispadnu iz vremenskog prozora.
-- **Sigurnost (audit 2026-07-21, bez kritičnih nalaza):** captcha na
-  `/prijavi-dogadaj` je jednostavno računsko pitanje; CSP bez `script-src`
-  (ADR-018, treba nonce infrastruktura).
+- **Sigurnost (audit 2026-07-21, bez kritičnih nalaza):** CSP bez
+  `script-src` (ADR-018, treba nonce infrastruktura).
 
 ## Ideje (backlog, bez dogovorenog redoslijeda)
 
