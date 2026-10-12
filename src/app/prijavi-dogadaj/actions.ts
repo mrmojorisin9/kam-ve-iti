@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
+import { sendSubmissionNotice } from "@/lib/notify";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
 import { zagrebLocalToUtcIso } from "@/lib/zagreb-time";
@@ -103,6 +105,24 @@ export async function submitEvent(formData: FormData) {
       .insert({ ...row, slug: rowSlug });
 
     if (!error) {
+      // Mail adminu nakon odgovora (after) — prijavitelj ne čeka slanje, a
+      // neuspjeh slanja ne može poništiti već spremljenu prijavu.
+      const notice = row;
+      after(() =>
+        sendSubmissionNotice({
+          title: notice.title,
+          categoryId: notice.category_id,
+          locationId: notice.location_id,
+          venueName: notice.venue_name,
+          startAt: notice.start_at,
+          endAt: notice.end_at,
+          description: notice.description,
+          // Kod source_url sudara link je već u opisu (vidi niže).
+          eventUrl: notice.source_url,
+          submitterEmail: notice.submitter_email,
+          submitterPhone: notice.submitter_phone,
+        }),
+      );
       redirect("/prijavi-dogadaj/hvala");
     }
     if (error.code !== "23505" || attempt === 2) {
