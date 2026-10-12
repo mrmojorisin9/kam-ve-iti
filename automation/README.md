@@ -152,19 +152,24 @@ okida samo dok je računalo upaljeno i Docker Desktop pokrenut.
 
 ## Odgođeni izvori (tehnicki razlog, ne kvaliteta)
 
-- **evento.sh/ck** (2026-08-07) — potvrđeno da je ovo stvarna
-  Međimurska županija stranica na profesionalno građenoj event-platformi
-  (kategorija/geolokacija/slika već gotovi po događaju, ~20 događaja u
-  jednom prefetch popisu) — potencijalno najbogatiji kandidat od svih
-  razmotrenih. Podaci se NE nalaze u statičnom HTML-u (moderna React
-  Router SPA) — stvaran JSON API (`api.evento.sh/api`) postoji i vraća
-  prave zapise, ali pogodeni parametar filtriranja po županiji
-  (`countyCode=ck`) vratio je nepovezan događaj iz Istre umjesto
-  Međimurja, znači stvaran oblik zahtjeva nije pouzdano utvrđen ovom
-  analizom. Treba zaseban zadatak fokusiran na hvatanje stvarnog mrežnog
-  zahtjeva (Browser pane network inspekcija dok stranica radi, ne samo
-  statični `curl`) prije pisanja adaptera. Korisnikova odluka: odgoditi,
-  ne trošiti dodatno vrijeme u ovoj sesiji.
+Trenutno nema odgođenih izvora. **evento.sh/ck** je ovdje stajao od
+2026-08-07 (SPA bez podataka u statičnom HTML-u, neutvrđen oblik API
+zahtjeva) — riješeno hvatanjem stvarnog mrežnog zahtjeva i dodan kao
+aktivan izvor 2026-08-11/12 (`adapters/evento.py`, vidi CHANGELOG).
+
+## Aktivni izvori (stanje 2026-10-13)
+
+| Izvor | Adapter | Napomena |
+| --- | --- | --- |
+| emedjimurje.net.hr | `adapters/emedjimurje.py` | pilot izvor, "The Events Calendar" (tribe) |
+| mnovine.hr | `adapters/mnovine.py` | tribe, dijeli dio baze s emedjimurje |
+| prelog.hr | `adapters/prelog.py` | |
+| evento.sh | `adapters/evento.py` | REST API |
+| eventinfo.com.hr | `adapters/eventinfo.py` | JSON API, u cronu od 2026-09-23 |
+| lokalne `.jsonl` datoteke | `adapters/local_jsonl.py` | `--file`, `--uvoz` / mapa `automation/uvoz/` |
+
+Svih pet web izvora i mapa `uvoz` imaju vlastiti čvor u n8n workflowu
+(`n8n/scraper-workflow.json`).
 
 ## Dodavanje novog izvora
 

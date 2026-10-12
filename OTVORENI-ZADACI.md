@@ -59,9 +59,6 @@ a n8n sučelje dostupno je s bilo kojeg uređaja.
   `/prijavi-dogadaj` je jednostavno računsko pitanje; CSP bez `script-src`
   (ADR-018, treba nonce infrastruktura); nema Dependabota/automatskog
   skeniranja ovisnosti.
-- **Zastarjela dokumentacija:** `HANDOFF.md` navodi 4 scraper izvora (sad
-  5); `automation/README.md` drži evento.sh pod „Odgođeni izvori” iako je
-  aktivan od kolovoza.
 
 ## Ideje (backlog, bez dogovorenog redoslijeda)
 

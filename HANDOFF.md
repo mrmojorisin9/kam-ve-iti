@@ -7,6 +7,11 @@ se **zamrzava u trenutnom stanju** — sljedeća promjena koda može doći tek z
 predajnom trenutku; ne ažurira se ubuduće (za tekuće stanje nakon što razvoj
 nastavi, vidi opet `CHANGELOG.md`, koji se nastavlja puniti).
 
+> **Napomena (2026-10-13):** razvoj se nastavio u rujnu 2026. Operativne
+> činjenice koje su se u međuvremenu promijenile (scraper izvori, sponzor,
+> DNS put, e-mail) ispravljene su ovdje izravno; ostalo je i dalje snimka
+> stanja na 2026-08-12. Tekući otvoreni zadaci: `OTVORENI-ZADACI.md`.
+
 **Svrha ove datoteke:** sve što novi developer treba na jednom mjestu da
 sigurno nastavi rad — pristupe, arhitekturu, poznata ograničenja i gdje dalje
 čitati. Ovo NIJE zamjena za `PROJECT_BRIEF.md` (što/zašto), `DECISIONS.md`
@@ -37,7 +42,8 @@ pristupe; novi developer treba tražiti sljedeće od njega prije prvog rada:
 | **GitHub** | repo `mrmojorisin9/kam-ve-iti` | Naziv repoa je i dalje stari `kam-ve-iti`, namjerno nije preimenovan (ADR-011) — ne dati se zbuniti, to je isti "Kam denes" projekt |
 | **Vercel** | hosting, deploy, env varijable, domena | Projekt spojen izravno na GitHub repo, push na `main` = produkcijski deploy |
 | **Supabase** | baza podataka, auth, storage | Dashboard pristup nužan — vidi §5, migracije se dosad primjenjivale ručno kroz SQL Editor, NE preko CLI-ja |
-| **Domena kamdenes.hr** | registrar: domenar.hr (branding "Kuhada") | DNS je **u potpunosti delegiran na Vercelove nameservere** (`ns1/ns2.vercel-dns.com`) od 2026-08-06. Svaki budući DNS zapis (npr. MX/SPF za e-mail) mora ići u **Vercel dashboard → Domains → kamdenes.hr → Records**, NE u domenar.hr panel — taj više ne kontrolira živu zonu |
+| **Domena kamdenes.hr** | registrar: domenar.hr (branding "Kuhada") | DNS je **u potpunosti delegiran na Vercelove nameservere** (`ns1/ns2.vercel-dns.com`) od 2026-08-06. Svaki budući DNS zapis (npr. MX/SPF za e-mail) mora ići u **Vercel → Domains na razini tima** (`vercel.com/kamveiti/~/domains/kamdenes.hr`; stranica *projekta* Settings → Domains NE prikazuje DNS zapise), NE u domenar.hr panel — taj više ne kontrolira živu zonu. Postojeći mail zapisi: Resend (poddomena `send`, `resend._domainkey`) |
+| **Resend** | slanje e-mail obavijesti (nova vanjska prijava događaja) | Domena `kamdenes.hr` verificirana 2026-10-12; ključ (samo slanje) u Vercel env `RESEND_API_KEY` i `.env.local` |
 | **Anthropic API (Claude)** | ekstrakcija/kategorizacija u `automation/` pipelineu | Ključ u `automation/.env` (lokalno) i `automation/deploy/.env` (Docker) — nikad committan |
 | **Admin login portala** | `kamdenes.hr/admin/login` | Račun kreiran ručno u Supabase Dashboardu (ADR-007) — nema self-service signup, namjerno |
 | **n8n instanca** | cron orkestracija scrapera | Trenutno **lokalno na vlasnikovom Windows računalu** preko Docker Desktopa (`localhost:5678`), NE u cloudu — vidi §7 |
@@ -219,8 +225,10 @@ vlasnikovom Windows računalu:
   `Dockerfile` na pravi VM (Oracle Cloud je bio prvotni plan, ali
   registracija blokirana njihovim anti-fraud sustavom — vidi ADR-020,
   ponovni pokušaj ili druga VM opcija je otvorena stavka)
-- 4 aktivna izvora: `emedjimurje.net.hr`, `mnovine.hr`, `prelog.hr`,
-  `evento.sh` (posljednji dodan 2026-08-11/12, čisti REST API)
+- 5 aktivnih web izvora: `emedjimurje.net.hr`, `mnovine.hr`, `prelog.hr`,
+  `evento.sh` (2026-08-11/12, REST API), `eventinfo.com.hr` (2026-09-23,
+  JSON API) + lokalne `.jsonl` datoteke iz mape `automation/uvoz/`
+  (2026-10-06) — popis u `automation/README.md` ("Aktivni izvori")
 - Svaki novi izvor: pratiti checklistu u `automation/README.md`
   ("Dodavanje novog izvora") PRIJE pisanja adaptera — sprječava trošenje
   Claude API kredita na izvore koji se pokažu neisplativima
@@ -240,13 +248,11 @@ vlasnikovom Windows računalu:
 
 Ovo je da novi developer ne "popravlja" namjerne odluke bez pitanja:
 
-- *(Zastarjelo — od najkasnije 2026-10-06 aktivan je stvaran sponzor, RTK
-  inženjering d.o.o.; sponzor se prikazuje i na `/pdf` preko
-  `public/pdf-addons.js`.)* **"Test Sponzor d.o.o." može biti vidljiv na produkciji** (splash/widget/
-  modal generalnog sponzora) — placeholder test podatak koji je vlasnik
-  eksplicitno zatražio da ostane vidljiv umjesto gašenja, dok se ne nađe
-  stvarni sponzor. Provjeriti `/admin/sponzor` za trenutno stanje, ne
-  pretpostavljati da je zaboravljen test podatak.
+- **Generalni sponzor:** od najkasnije 2026-10-06 aktivan je stvaran
+  sponzor (RTK inženjering d.o.o.), prikazuje se i na `/pdf` preko
+  `public/pdf-addons.js`. (Na dan predaje bio je vidljiv namjerno ostavljen
+  placeholder "Test Sponzor d.o.o.".) Trenutno stanje uvijek u
+  `/admin/sponzor`.
 - **GitHub repo i Vercel projekt i dalje se zovu `kam-ve-iti`**, ne
   "kam-denes" — namjerno nepreimenovano (ADR-011), izbjegava se rizik
   rewrite-a URL-ova. Kod/dokumentacija/domena koriste "Kam denes".
