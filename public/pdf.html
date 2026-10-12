@@ -251,11 +251,10 @@ dialog li { margin: 5px 0; }
 #pagesWorkspace { flex: 1; display: flex; flex-direction: column; min-height: 0; background: var(--canvas-bg); }
 #pagesWorkspace[hidden] { display: none; }
 .pages-ws-scroll { flex: 1; overflow: auto; padding: 18px; }
-.pages-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; align-content: start; }
-.pgtile { position: relative; border: 2px solid var(--border); border-radius: 10px; padding: 8px; text-align: center; cursor: grab; background: var(--panel); box-shadow: 0 1px 2px rgba(0,0,0,.06); transition: transform .12s, box-shadow .12s; user-select: none; }
+.pages-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--pgtile, 150px), 1fr)); gap: 16px; align-content: start; }
+.pgtile { position: relative; border: 2px solid var(--border); border-radius: 10px; padding: 8px; text-align: center; cursor: pointer; background: var(--panel); box-shadow: 0 1px 2px rgba(0,0,0,.06); transition: transform .12s, box-shadow .12s; user-select: none; }
 .pgtile:hover { border-color: var(--accent); }
-.pgtile.cur { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
-.pgtile.sel { outline: 2px solid var(--danger); outline-offset: -2px; }
+.pgtile.sel { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); background: var(--accent-soft); }
 .pgtile.dragging { opacity: .4; cursor: grabbing; }
 .pgtile:active { cursor: grabbing; }
 .pgtile .pgFrame { position: relative; width: 100%; aspect-ratio: 1 / 1; margin-bottom: 6px; pointer-events: none; }
@@ -263,14 +262,14 @@ dialog li { margin: 5px 0; }
 .pgtile .pgPaper canvas { width: 100%; height: 100%; display: block; }
 .pgtile .pgNum { font-size: 12.5px; color: var(--muted); font-weight: 600; display: block; }
 .pgtile .pgFmt { font-size: 11px; color: var(--muted); display: block; margin-top: 1px; }
-.pgtile .pgSel { position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; margin: 0; z-index: 2; cursor: pointer; accent-color: var(--danger); }
+.pgtile .pgSel { position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; margin: 0; z-index: 2; cursor: pointer; accent-color: var(--accent); }
 .pgtile .pgHandle { position: absolute; top: 6px; right: 7px; color: var(--muted); font-size: 13px; line-height: 1; letter-spacing: -1px; z-index: 2; }
 
 [hidden] { display: none !important; }
 
 /* ---- "Paket" tab: short how-to + results preview in the main workspace */
 .howto { background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.45; margin: 0 0 6px; }
-.howto ol { margin: 6px 0 6px 18px; padding: 0; }
+.howto ol, .howto ul { margin: 6px 0 6px 18px; padding: 0; }
 .howto li { margin: 2px 0; }
 .bfiles { list-style: none; margin: 4px 0 6px; padding: 0; font-size: 12.5px; max-height: 120px; overflow: auto; }
 .bfiles li { padding: 2px 0; color: var(--muted); display: flex; align-items: center; gap: 6px; }
@@ -720,37 +719,34 @@ dialog li { margin: 5px 0; }
     <!-- ============ STRANICE ============ -->
     <section class="tabpane" id="panePages" role="tabpanel" hidden>
       <div class="btnrow" style="margin:0 0 12px"><button class="btn small" id="btnUndoPages" type="button" disabled title="Ctrl+Z">↶ Poništi zadnju promjenu</button></div>
+      <div class="howto">
+        <b>Označite stranice u sredini</b>
+        <ul>
+          <li><b>Klik</b> na sličicu označi / odznači stranicu, <b>Shift+klik</b> označi sve od zadnje kliknute.</li>
+          <li><b>Označi sve</b> je na traci iznad sličica. <b>Esc</b> odznači sve.</li>
+          <li><b>Delete</b> ili „Briši označene” briše označene stranice.</li>
+          <li>Sličicu <b>povucite</b> za promjenu redoslijeda; <b>dvoklik</b> otvara stranicu za uređivanje.</li>
+        </ul>
+      </div>
+      <div class="sect">Označene stranice <span class="muted" id="pgSelCount" style="font-weight:400;text-transform:none;letter-spacing:0">· nijedna</span></div>
       <div class="btnrow" style="margin-top:0">
-        <button class="btn small" id="pgRotL" type="button" title="Zakreni ulijevo">⟲ Zakreni</button>
-        <button class="btn small" id="pgRotR" type="button" title="Zakreni udesno">⟳ Zakreni</button>
-        <button class="btn small" id="pgLeft" type="button" title="Pomakni ranije">◀ Ranije</button>
-        <button class="btn small" id="pgRight" type="button" title="Pomakni kasnije">Kasnije ▶</button>
+        <button class="btn small" id="pgRotL" type="button" title="Zakreni označene ulijevo">⟲ Zakreni</button>
+        <button class="btn small" id="pgRotR" type="button" title="Zakreni označene udesno">⟳ Zakreni</button>
+        <button class="btn small" id="pgLeft" type="button" title="Pomakni označene jedno mjesto ranije">◀ Ranije</button>
+        <button class="btn small" id="pgRight" type="button" title="Pomakni označene jedno mjesto kasnije">Kasnije ▶</button>
       </div>
       <div class="btnrow">
-        <button class="btn small" id="pgDup" type="button">Dupliciraj</button>
-        <button class="btn small" id="pgBlank" type="button">Umetni praznu iza</button>
-        <button class="btn small danger" id="pgDel" type="button">Obriši stranicu</button>
+        <button class="btn small" id="pgDup" type="button" title="Kopija svake označene stranice odmah iza nje">Dupliciraj</button>
+        <button class="btn small" id="pgBlank" type="button" title="Prazna stranica iza svake označene">Umetni praznu iza</button>
+        <button class="btn small" id="pgExtract" type="button" title="Spremi označene stranice kao novi PDF">Spremi izdvojeno</button>
       </div>
-      <div class="btnrow">
+      <p class="hint" id="pgActHint">Najprije označite jednu ili više stranica u sredini.</p>
+      <div class="sect">Dodaj stranice</div>
+      <div class="btnrow" style="margin-top:0">
         <button class="btn small" id="pgAppend" type="button">Dodaj stranice iz drugih PDF-ova…</button>
         <input type="file" id="pgAppendFile" accept="application/pdf,.pdf" multiple hidden>
       </div>
-      <p class="hint" style="margin-top:0">Možete odabrati više PDF datoteka odjednom – njihove će se stranice dodati na kraj, redoslijedom kojim ste ih odabrali.</p>
-      <div class="row" style="margin-top:8px">
-        <input type="text" id="pgRange" placeholder="Izdvoji stranice, npr. 1-3,5" autocomplete="off">
-        <button class="btn small" id="pgExtract" type="button" style="flex:none">Spremi izdvojeno</button>
-      </div>
-      <p class="hint">Radnje se odnose na stranicu koja je trenutačno otvorena (označena okvirom). Sve se može poništiti.</p>
-
-      <div class="sect">Označavanje stranica</div>
-      <div class="btnrow" style="margin-top:0">
-        <label class="check" style="margin:0"><input type="checkbox" id="pgSelAll"> Odaberi sve stranice</label>
-        <span class="muted" id="pgSelCount" style="align-self:center">Odabrano: 0</span>
-      </div>
-      <div class="btnrow">
-        <button class="btn small danger" id="pgDelSel" type="button" disabled>Briši selektirano</button>
-      </div>
-      <p class="hint">Kvačicom u kutu sličice odaberite jednu ili više stranica (ili „Odaberi sve stranice” za sve odjednom), pa ih obrišite jednim klikom. Pregled svih stranica je u glavnom prozoru – povucite sličicu da promijenite redoslijed.</p>
+      <p class="hint" style="margin-top:0">Možete odabrati više PDF datoteka odjednom – njihove stranice dodaju se na kraj, redoslijedom kojim ste ih odabrali. Sve se može poništiti.</p>
     </section>
 
     <!-- ============ PAKET ============ -->
@@ -842,9 +838,14 @@ dialog li { margin: 5px 0; }
         <span class="sep"></span>
         <span class="muted">Povucite sličicu da premjestite stranicu na novo mjesto</span>
         <span class="spacer"></span>
-        <span class="muted" id="pagesWsSelCount">Odabrano: 0</span>
-        <button class="btn small" id="pagesWsSelAllBtn" type="button" disabled>Odaberi sve</button>
-        <button class="btn small danger" id="pagesWsDelSelBtn" type="button" disabled>Briši selektirano</button>
+        <span class="muted">Veličina:</span>
+        <button class="btn small" id="pgZoomOut" type="button" title="Manje sličice (Ctrl + kotačić)">−</button>
+        <span id="pgZoomLbl" style="min-width:42px;text-align:center">100%</span>
+        <button class="btn small" id="pgZoomIn" type="button" title="Veće sličice (Ctrl + kotačić)">+</button>
+        <span class="sep"></span>
+        <span class="muted" id="pagesWsSelCount">Označeno: 0</span>
+        <button class="btn small" id="pagesWsSelAllBtn" type="button" disabled>Označi sve</button>
+        <button class="btn small danger" id="pagesWsDelSelBtn" type="button" disabled title="Delete">Briši označene</button>
       </div>
       <div class="pages-ws-scroll" id="pagesWsScroll" hidden>
         <div class="pages-grid" id="pagesGrid"></div>
@@ -902,7 +903,7 @@ dialog li { margin: 5px 0; }
     <li><b>Slika · crno-bijelo</b> – potpis s crno-bijelog ispisa, fotokopije ili skena (i fotografiran mobitelom): aplikacija to prepozna sama (ili u koraku 2 odaberite „Crno-bijela”), ukloni sivu zrnatu pozadinu, sjene i linije tablice i ostavi samo poteze potpisa. Alatom „Zadrži samo odabrano” okvirom označite koji potpis želite (ostalo, npr. datum, nestaje); u koraku 4 ga po želji prebojite u plavo.</li>
     <li><b>Slika</b> – uvezite sliku potpisa/pečata/loga (ili isijecite dio izravno s trenutačno otvorene PDF stranice povlačenjem pravokutnika) i obradite je jednim od dva podalata: <b>Ručno brisanje</b> (gumica – prijeđite mišem preko dijela koji želite ukloniti, bez obzira na boju) ili <b>Pametno brisanje</b> (izdvaja stvarne piksele plave tinte – kemijska olovka, pečat – s fotografije i zadržava im izvornu boju, uz podesive RGB/HSV pragove, mekoću ruba, uklanjanje šuma i predloške); zatim po želji preboji preostalo i obreži prazan rub. Pregled i mala usporedba original/maska prikazuju se uživo. Kad završite, spremite je za karticu „Potpis”.</li>
     <li><b>Potpis</b> – pripremljenu sliku samo pozicionirate na dokument: veličina, kut, prozirnost; povuci mišem.</li>
-    <li><b>Stranice</b> – sličice, okretanje, premještanje, dupliciranje, umetanje prazne, brisanje (pojedinačno ili više odjednom), dodavanje iz jednog ili više drugih PDF-ova, izdvajanje raspona.</li>
+    <li><b>Stranice</b> – kliknite sličice da označite stranice (Shift+klik = raspon, „Označi sve”, Esc odznači); okretanje, premještanje, dupliciranje, umetanje prazne, izdvajanje i brisanje (Delete) odnose se na označene stranice. Sličice povećajte/smanjite gumbima − / + ili Ctrl+kotačić; povucite sličicu za promjenu redoslijeda.</li>
     <li><b>Paket</b> – ista zamjena teksta u više PDF-ova odjednom: odaberite datoteke, upišite što tražite i čime zamijeniti, kliknite „Pronađi”. Svaki nalaz vidi se u sredini s isječkom plana – maknite kvačicu s onih koje ne želite mijenjati, pa „Zamijeni označeno i spremi”. Originali ostaju netaknuti.</li>
   </ul>
   <p><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd> poništi / ponovi · <kbd>Ctrl</kbd>+<kbd>S</kbd> spremi · <kbd>Del</kbd> briše odabrani tekst · strelice pomiču natpis · <kbd>Esc</kbd> izlaz iz aktivnog alata (ako postoji nešto nespremljeno, pita želite li to spremiti)</p>
@@ -5634,16 +5635,12 @@ function buildPagesGrid() {
   const els = [];
   for (let i = 0; i < n; i++) {
     const d = document.createElement('div');
-    d.className = 'pgtile' + (i === S.page - 1 ? ' cur' : '') + (S.selPages.has(i) ? ' sel' : '');
-    d.dataset.i = i; d.draggable = true; d.title = 'Povucite za promjenu redoslijeda';
+    d.className = 'pgtile' + (S.selPages.has(i) ? ' sel' : '');
+    d.dataset.i = i; d.draggable = true; d.title = 'Klik: označi / odznači · Shift+klik: raspon · povucite: premjesti · dvoklik: otvori stranicu';
     const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'pgSel'; cb.checked = S.selPages.has(i);
     cb.setAttribute('aria-label', `Odaberi stranicu ${i + 1}`);
     cb.addEventListener('click', (e) => e.stopPropagation());
-    cb.addEventListener('change', () => {
-      if (cb.checked) S.selPages.add(i); else S.selPages.delete(i);
-      d.classList.toggle('sel', cb.checked);
-      updatePageSelUi();
-    });
+    cb.addEventListener('change', () => { setPageSelected(i, cb.checked); S.pgLastClick = i; });
     const handle = document.createElement('span'); handle.className = 'pgHandle'; handle.textContent = '⠿'; handle.setAttribute('aria-hidden', 'true');
     // fixed square frame; the page itself sits centred inside it with its TRUE proportions, so a
     // landscape page reads as landscape (wide + short) and a portrait page as portrait -- even
@@ -5658,7 +5655,8 @@ function buildPagesGrid() {
     const fmt = document.createElement('span'); fmt.className = 'pgFmt'; fmt.textContent = info.label;
     fmt.title = `${info.wmm} × ${info.hmm} mm`;
     d.appendChild(cb); d.appendChild(handle); d.appendChild(frame); d.appendChild(lbl); d.appendChild(fmt);
-    d.addEventListener('click', () => { if (!pgDragEl) gotoPage(+d.dataset.i + 1); });
+    d.addEventListener('click', (e) => { if (!pgDragEl) onPageTileClick(+d.dataset.i, e); });
+    d.addEventListener('dblclick', (e) => { e.preventDefault(); const k = +d.dataset.i; setTab('sel'); gotoPage(k + 1); });
     d.addEventListener('dragstart', (e) => {
       pgDragEl = d; d.classList.add('dragging');
       e.dataTransfer.effectAllowed = 'move';
@@ -5703,11 +5701,23 @@ let thumbRunning = 0;
 const _thumbKeysByDoc = new WeakMap();
 function thumbCacheGet(k) { const c = thumbCache.get(k); if (c) { thumbCache.delete(k); thumbCache.set(k, c); } return c; }
 function thumbCachePut(k, c) {
-  thumbCache.set(k, c);
-  while (thumbCache.size > THUMB_CACHE_MAX) thumbCache.delete(thumbCache.keys().next().value);
+  thumbCache.delete(k); thumbCache.set(k, c);
+  // limit by entries and by total pixels (big zoom = big canvases)
+  let px = 0; for (const v of thumbCache.values()) px += v.width * v.height;
+  while (thumbCache.size > 1 && (thumbCache.size > THUMB_CACHE_MAX || px > 60e6)) {
+    const k0 = thumbCache.keys().next().value; const v0 = thumbCache.get(k0); px -= v0.width * v0.height; thumbCache.delete(k0);
+  }
 }
 /** longest side of a thumbnail in canvas pixels (tiles are ~150-170 CSS px) */
-function thumbPx() { return Math.round(180 * Math.min(1.5, Math.max(1, window.devicePixelRatio || 1))); }
+/** canvas size (longest side) the tiles currently need -- follows the tile zoom, in a few steps so
+ * a small zoom change does not re-render everything */
+const THUMB_STEPS = [180, 260, 380, 540, 760, 1000];
+function thumbPx() {
+  const want = pgZoom * 1.1 * Math.min(1.5, Math.max(1, window.devicePixelRatio || 1));
+  return THUMB_STEPS.find((v) => v >= want) || THUMB_STEPS[THUMB_STEPS.length - 1];
+}
+/** true when the cached thumbnail for key k is missing or too small for the current zoom */
+function thumbTooSmall(k) { const c = thumbCache.get(k); return !c || Math.max(c.width, c.height) < thumbPx() * 0.95; }
 function _fnvSample(bytes, h) {
   const n = bytes.length; const K = 1024;
   const take = (a, b) => { for (let i = a; i < b; i++) { h ^= bytes[i]; h = Math.imul(h, 16777619); } };
@@ -5733,7 +5743,7 @@ function pageThumbKey(doc, i) {
     if (xo instanceof PDFDict) for (const [k, v] of xo.entries()) { parts.push(k.toString(), String(v)); let o = null; try { o = ctx.lookup(v); } catch (e) { o = null; } const b = bytesOf(o); if (b) parts.push(b.length); }
     const mb = p.getMediaBox(); parts.push(p.getRotation().angle, mb.x, mb.y, mb.width, mb.height);
   } catch (e) { parts.push('err' + i + ':' + Math.random()); }
-  return thumbPx() + '|' + parts.join('|') + '#' + h;
+  return parts.join('|') + '#' + h;
 }
 function thumbKeys() {
   let a = _thumbKeysByDoc.get(S.doc);
@@ -5753,7 +5763,7 @@ function showThumb(d, src) {
 function updateThumbProgress() {
   const el = $('#pagesWsThumbProg'); if (!el) return;
   if (S.tab !== 'pages' || !S.doc) { el.hidden = true; return; }
-  const keys = thumbKeys(); let done = 0; for (const k of keys) if (thumbCache.has(k)) done++;
+  const keys = thumbKeys(); let done = 0; for (const k of keys) if (!thumbTooSmall(k)) done++;
   el.hidden = done >= keys.length;
   el.textContent = `· pregledi ${done}/${keys.length}`;
 }
@@ -5762,7 +5772,7 @@ function updateThumbProgress() {
 function nextThumbJob() {
   if (!S.doc || !S.pdfjs) return -1;
   const keys = thumbKeys();
-  const want = (i) => { const k = keys[i]; return k && !thumbCache.has(k) && !thumbInflight.has(k); };
+  const want = (i) => { const k = keys[i]; return k && thumbTooSmall(k) && !thumbInflight.has(k); };
   if (S.tab === 'pages') {
     let rest = -1;
     for (const d of $('#pagesGrid').children) {
@@ -5808,7 +5818,6 @@ async function renderThumb(i) {
 function markPagesGrid(scroll) {
   const box = $('#pagesGrid');
   if (box.dataset.stale === '1' && S.tab === 'pages') { buildPagesGrid(); return; }
-  for (const d of box.children) d.classList.toggle('cur', +d.dataset.i === S.page - 1);
   if (scroll) { const c = box.children[S.page - 1]; if (c && c.scrollIntoView) c.scrollIntoView({ block: 'nearest' }); }
 }
 
@@ -5834,48 +5843,74 @@ function commitPagesReorder() {
   const order = Array.from(grid.children).map((el) => +el.dataset.i);
   if (order.every((v, idx) => v === idx)) return; // dropped back where it started -- nothing to do
   const newPos = order.indexOf(curIdx()) + 1;
+  const newSel = order.map((old, pos) => (S.selPages.has(old) ? pos : -1)).filter((v) => v >= 0);
   pageEdit('Promjena redoslijeda stranica', () => {
     const pages = S.doc.getPages();
     const ordered = order.map((i) => pages[i]);
     for (let k = S.doc.getPageCount() - 1; k >= 0; k--) S.doc.removePage(k);
     ordered.forEach((p, idx) => S.doc.insertPage(idx, p));
-  }, newPos > 0 ? newPos : S.page);
+  }, newPos > 0 ? newPos : S.page, newSel);
 }
 
-function pageEdit(desc, fn, page) {
-  // any structural page change can shift indices, so drop the multi-select beforehand
-  S.selPages.clear();
+/** One undoable page edit. `newSel` = which pages (indices AFTER the edit) stay marked. */
+function pageEdit(desc, fn, page, newSel) {
+  S.selPages = new Set(newSel || []);
   return doEdit(desc, fn, { page });
 }
 const curIdx = () => S.page - 1;
 
-// ---- multi-select (checkboxes on the thumbnails) + delete selected
+// ---- marking pages (the ONE selection on this tab): click / Shift+click / mark all / Esc / Delete.
+// Every page action (rotate, move, duplicate, blank, extract, delete) works on the marked pages.
+function selPagesSorted() { return Array.from(S.selPages).sort((a, b) => a - b); }
+function setPageSelected(i, on) {
+  if (on) S.selPages.add(i); else S.selPages.delete(i);
+  const d = $('#pagesGrid').querySelector(`.pgtile[data-i="${i}"]`);
+  if (d) { d.classList.toggle('sel', on); const cb = d.querySelector('.pgSel'); if (cb) cb.checked = on; }
+  updatePageSelUi();
+}
+function onPageTileClick(i, e) {
+  if (e.shiftKey && S.pgLastClick !== undefined && S.pgLastClick !== null && S.pgLastClick < S.numPages) {
+    const a = Math.min(S.pgLastClick, i); const b = Math.max(S.pgLastClick, i);
+    for (let k = a; k <= b; k++) setPageSelected(k, true);
+  } else setPageSelected(i, !S.selPages.has(i));
+  S.pgLastClick = i;
+}
+function pagesLabel(idx) { // [0,1,2,4] -> "1-3, 5"
+  const out = []; let k = 0;
+  while (k < idx.length) { let j = k; while (j + 1 < idx.length && idx[j + 1] === idx[j] + 1) j++; out.push(j > k ? `${idx[k] + 1}-${idx[j] + 1}` : `${idx[k] + 1}`); k = j + 1; }
+  return out.join(', ');
+}
 function updatePageSelUi() {
   const n = S.selPages.size; const total = S.numPages || 0;
   const allSel = total > 0 && n === total;
-  $('#pgSelCount').textContent = 'Odabrano: ' + n;
-  $('#pagesWsSelCount').textContent = 'Odabrano: ' + n;
-  const delDisabled = !S.doc || S.busy || n === 0 || n >= total;
-  $('#pgDelSel').disabled = delDisabled;
-  $('#pgSelAll').checked = allSel;
-  $('#pgSelAll').indeterminate = n > 0 && n < total;
+  const idx = selPagesSorted();
+  $('#pgSelCount').textContent = n ? `· ${n} (str. ${pagesLabel(idx)})` : '· nijedna';
+  $('#pagesWsSelCount').textContent = 'Označeno: ' + n;
+  const has = !!S.doc && !S.busy && n > 0;
+  for (const id of ['pgRotL', 'pgRotR', 'pgDup', 'pgBlank', 'pgExtract']) $('#' + id).disabled = !has;
+  $('#pgLeft').disabled = !has || idx[0] === 0 && idx.every((v, k) => v === k);
+  $('#pgRight').disabled = !has || idx[idx.length - 1] === total - 1 && idx.every((v, k) => v === total - n + k);
+  $('#pgAppend').disabled = !S.doc || S.busy;
+  $('#pgActHint').textContent = n ? (allSel ? 'Označene su sve stranice.' : `Radnje iznad odnose se na ${n === 1 ? 'označenu stranicu' : 'označene stranice'}.`) : 'Najprije označite jednu ili više stranica u sredini.';
   const btn = $('#pagesWsSelAllBtn');
-  if (btn) { btn.textContent = allSel ? 'Poništi odabir' : 'Odaberi sve'; btn.disabled = total === 0; }
+  if (btn) { btn.textContent = allSel ? 'Odznači sve' : 'Označi sve'; btn.disabled = total === 0 || !S.doc; }
   const delBtn = $('#pagesWsDelSelBtn');
-  if (delBtn) delBtn.disabled = delDisabled;
+  if (delBtn) { delBtn.disabled = !has || n >= total; delBtn.title = n >= total && n ? 'Ne mogu se obrisati sve stranice' : 'Delete'; }
 }
-/** Deletes every currently-selected page, as one undoable edit; shared by the sidebar "Briši
- * selektirano" button and the same-named button on the main-toolbar. */
+/** Deletes every marked page, as one undoable edit. */
 function deleteSelectedPages() {
-  const idx = Array.from(S.selPages).sort((a, b) => a - b);
+  const idx = selPagesSorted();
   if (!idx.length) return;
   if (idx.length >= S.numPages) { toast('Dokument mora imati barem jednu stranicu.', 'err'); return; }
-  const desc = idx.length === 1 ? `Brisanje stranice ${idx[0] + 1}` : `Brisanje ${idx.length} odabranih stranica`;
+  const desc = idx.length === 1 ? `Brisanje stranice ${idx[0] + 1}` : `Brisanje ${idx.length} označenih stranica (${pagesLabel(idx)})`;
   const newCur = Math.max(1, Math.min(S.page, S.numPages - idx.length));
-  pageEdit(desc, () => { for (let k = idx.length - 1; k >= 0; k--) S.doc.removePage(idx[k]); }, newCur);
+  pageEdit(desc, () => { for (let k = idx.length - 1; k >= 0; k--) S.doc.removePage(idx[k]); }, newCur, []);
 }
-/** Selects every page (select=true) or clears the selection (select=false); used by both the
- * sidebar "Odaberi sve stranice" checkbox and the main-toolbar "Odaberi sve"/"Poništi odabir" button. */
+function confirmDeleteSelectedPages() {
+  const n = S.selPages.size; if (!n || S.busy) return;
+  if (n >= S.numPages) { toast('Dokument mora imati barem jednu stranicu – sve se stranice ne mogu obrisati.', 'err'); return; }
+  if (window.confirm(`Obrisati ${n === 1 ? 'označenu stranicu' : n + ' označenih stranica'} (str. ${pagesLabel(selPagesSorted())})? Može se poništiti s Ctrl+Z.`)) deleteSelectedPages();
+}
 function setAllPagesSelected(select) {
   S.selPages = select ? new Set(Array.from({ length: S.numPages }, (_, i) => i)) : new Set();
   for (const d of $('#pagesGrid').children) {
@@ -5884,37 +5919,52 @@ function setAllPagesSelected(select) {
   }
   updatePageSelUi();
 }
-$('#pgSelAll').onchange = () => setAllPagesSelected($('#pgSelAll').checked);
 $('#pagesWsSelAllBtn').onclick = () => setAllPagesSelected(S.selPages.size < S.numPages);
-$('#pgDelSel').onclick = deleteSelectedPages;
 $('#pagesWsDelSelBtn').onclick = deleteSelectedPages;
 
-$('#pgRotL').onclick = () => pageEdit('Zakretanje stranice ulijevo', () => { const p = S.doc.getPage(curIdx()); p.setRotation(degrees((p.getRotation().angle + 270) % 360)); }, S.page);
-$('#pgRotR').onclick = () => pageEdit('Zakretanje stranice udesno', () => { const p = S.doc.getPage(curIdx()); p.setRotation(degrees((p.getRotation().angle + 90) % 360)); }, S.page);
-async function movePage(delta) {
-  const i = curIdx(); const j = i + delta;
-  if (j < 0 || j >= S.numPages) return;
-  await pageEdit(`Premještanje stranice ${i + 1} → ${j + 1}`, () => {
-    const p = S.doc.getPage(i);
-    S.doc.removePage(i);
-    S.doc.insertPage(j, p);
-  }, j + 1);
+function rotateSelected(deltaDeg) {
+  const idx = selPagesSorted(); if (!idx.length) return;
+  pageEdit(`Zakretanje ${idx.length === 1 ? 'stranice ' + (idx[0] + 1) : idx.length + ' stranica'} ${deltaDeg < 0 ? 'ulijevo' : 'udesno'}`, () => {
+    for (const i of idx) { const p = S.doc.getPage(i); p.setRotation(degrees((p.getRotation().angle + deltaDeg + 360) % 360)); }
+  }, S.page, idx);
 }
-$('#pgLeft').onclick = () => movePage(-1);
-$('#pgRight').onclick = () => movePage(1);
-$('#pgDup').onclick = () => pageEdit(`Dupliciranje stranice ${S.page}`, async () => {
-  const [cp] = await S.doc.copyPages(S.doc, [curIdx()]);
-  S.doc.insertPage(curIdx() + 1, cp);
-}, S.page + 1);
-$('#pgBlank').onclick = () => pageEdit(`Prazna stranica iza ${S.page}`, () => {
-  const p = S.doc.getPage(curIdx()); const { width, height } = p.getSize();
-  const rot = p.getRotation().angle;
-  const np = S.doc.insertPage(curIdx() + 1, rot % 180 ? [height, width] : [width, height]);
-  if (rot) np.setRotation(degrees(rot));
-}, S.page + 1);
-$('#pgDel').onclick = () => {
-  if (S.numPages <= 1) { toast('Dokument mora imati barem jednu stranicu.', 'err'); return; }
-  pageEdit(`Brisanje stranice ${S.page}`, () => { S.doc.removePage(curIdx()); }, Math.min(S.page, S.numPages - 1));
+$('#pgRotL').onclick = () => rotateSelected(-90);
+$('#pgRotR').onclick = () => rotateSelected(90);
+/** Moves every marked page one place earlier (delta -1) or later (+1); a marked block moves together. */
+function moveSelected(delta) {
+  const n = S.numPages; const sel = new Set(S.selPages); if (!sel.size) return;
+  const order = Array.from({ length: n }, (_, i) => i);
+  const positions = delta < 0 ? Array.from({ length: n }, (_, k) => k) : Array.from({ length: n }, (_, k) => n - 1 - k);
+  for (const pos of positions) {
+    const pg = order[pos]; if (!sel.has(pg)) continue;
+    const to = pos + delta; if (to < 0 || to >= n || sel.has(order[to])) continue;
+    order[pos] = order[to]; order[to] = pg;
+  }
+  if (order.every((v, k) => v === k)) return;
+  const newSel = order.map((old, pos) => (sel.has(old) ? pos : -1)).filter((v) => v >= 0);
+  pageEdit(`Premještanje ${sel.size === 1 ? 'stranice' : sel.size + ' stranica'} ${delta < 0 ? 'ranije' : 'kasnije'}`, () => {
+    const pages = S.doc.getPages(); const ordered = order.map((i) => pages[i]);
+    for (let k = S.doc.getPageCount() - 1; k >= 0; k--) S.doc.removePage(k);
+    ordered.forEach((p, k) => S.doc.insertPage(k, p));
+  }, S.page, newSel);
+}
+$('#pgLeft').onclick = () => moveSelected(-1);
+$('#pgRight').onclick = () => moveSelected(1);
+$('#pgDup').onclick = () => {
+  const idx = selPagesSorted(); if (!idx.length) return;
+  pageEdit(`Dupliciranje ${idx.length === 1 ? 'stranice ' + (idx[0] + 1) : idx.length + ' stranica'}`, async () => {
+    for (let k = idx.length - 1; k >= 0; k--) { const [cp] = await S.doc.copyPages(S.doc, [idx[k]]); S.doc.insertPage(idx[k] + 1, cp); }
+  }, S.page, idx.map((v, k) => v + k));
+};
+$('#pgBlank').onclick = () => {
+  const idx = selPagesSorted(); if (!idx.length) return;
+  pageEdit(`Prazna stranica iza ${idx.length === 1 ? 'stranice ' + (idx[0] + 1) : idx.length + ' stranica'}`, () => {
+    for (let k = idx.length - 1; k >= 0; k--) {
+      const p = S.doc.getPage(idx[k]); const { width, height } = p.getSize(); const rot = p.getRotation().angle;
+      const np = S.doc.insertPage(idx[k] + 1, rot % 180 ? [height, width] : [width, height]);
+      if (rot) np.setRotation(degrees(rot));
+    }
+  }, S.page, idx.map((v, k) => v + k));
 };
 /** Appends every page of the given PDF files onto the end of the current document, as one undoable
  * edit. Shared by "Dodaj stranice iz drugih PDF-ova…" (a document is already open) and the "Stranice"
@@ -5949,29 +5999,37 @@ $('#pagesOpenFile').onchange = async (e) => {
   const files = Array.from(e.target.files || []); e.target.value = ''; if (!files.length) return;
   await openPdfFiles(files, null);
 };
-function parseRange(str, n) {
-  const out = [];
-  for (const part of String(str).split(/[,;\s]+/).filter(Boolean)) {
-    const m = /^(\d*)-(\d*)$/.exec(part);
-    if (m) { const a = m[1] ? +m[1] : 1; const b = m[2] ? +m[2] : n; for (let k = Math.max(1, a); k <= Math.min(n, b); k++) out.push(k - 1); }
-    else if (/^\d+$/.test(part)) { const k = +part; if (k >= 1 && k <= n) out.push(k - 1); }
-    else return null;
-  }
-  return out;
-}
 $('#pgExtract').onclick = async () => {
-  if (!S.doc) return;
-  const idx = parseRange($('#pgRange').value, S.numPages);
-  if (!idx || !idx.length) { toast('Upišite raspon stranica, npr. 1-3,5.', 'err'); return; }
+  const idx = selPagesSorted();
+  if (!S.doc || !idx.length) { toast('Najprije označite stranice koje želite izdvojiti.', 'err'); return; }
   setBusy(true, 'Izdvajam stranice…');
   try {
     const out = await PDFDocument.create();
     const pages = await out.copyPages(S.doc, idx);
     pages.forEach((p) => out.addPage(p));
     const bytes = await out.save();
-    await saveOut(bytes, S.name.replace(/\.pdf$/i, '') + ` (str. ${$('#pgRange').value.replace(/\s+/g, '')}).pdf`);
+    await saveOut(bytes, S.name.replace(/\.pdf$/i, '') + ` (str. ${pagesLabel(idx).replace(/\s+/g, '')}).pdf`);
   } catch (err) { console.error(err); toast('Greška: ' + err.message, 'err'); } finally { setBusy(false); }
 };
+
+// ---- zoom of the page tiles (− / + on the bar, or Ctrl + mouse wheel over the tiles)
+const PG_ZOOM_MIN = 100; const PG_ZOOM_MAX = 520; const PG_ZOOM_BASE = 150;
+let pgZoom = (() => { try { const v = +window.localStorage.getItem('pdfUredivac.pgZoom'); return v >= PG_ZOOM_MIN && v <= PG_ZOOM_MAX ? v : PG_ZOOM_BASE; } catch (e) { return PG_ZOOM_BASE; } })();
+function applyPgZoom() {
+  $('#pagesGrid').style.setProperty('--pgtile', pgZoom + 'px');
+  $('#pgZoomLbl').textContent = Math.round((pgZoom / PG_ZOOM_BASE) * 100) + '%';
+  $('#pgZoomOut').disabled = pgZoom <= PG_ZOOM_MIN; $('#pgZoomIn').disabled = pgZoom >= PG_ZOOM_MAX;
+  try { window.localStorage.setItem('pdfUredivac.pgZoom', String(pgZoom)); } catch (e) { /* ignore */ }
+  updateThumbProgress(); pumpThumbs(); // bigger tiles -> sharper thumbnails are rendered (visible first)
+}
+function setPgZoom(v) { pgZoom = Math.round(clamp(v, PG_ZOOM_MIN, PG_ZOOM_MAX)); applyPgZoom(); }
+$('#pgZoomIn').onclick = () => setPgZoom(pgZoom * 1.25);
+$('#pgZoomOut').onclick = () => setPgZoom(pgZoom / 1.25);
+$('#pagesWsScroll').addEventListener('wheel', (e) => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  e.preventDefault(); setPgZoom(pgZoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12));
+}, { passive: false });
+applyPgZoom();
 
 // ============================================================ "Paket": the same replacement in many PDFs
 // Flow: pick PDFs -> "Pronađi" analyses every file and shows EVERY hit in the main workspace (a crop
@@ -6433,9 +6491,6 @@ function updateButtons() {
   $('#btnImgSnip').disabled = !S.doc || S.busy;
   $('#btnImgExport').disabled = !S.img || !S.img.canvas || S.busy;
   $('#btnImgDone').disabled = !S.img || !S.img.canvas || S.busy;
-  const has = !!S.doc && !S.busy;
-  for (const id of ['pgRotL', 'pgRotR', 'pgLeft', 'pgRight', 'pgDup', 'pgBlank', 'pgDel', 'pgAppend', 'pgExtract']) $('#' + id).disabled = !has;
-  if (has) { $('#pgLeft').disabled = S.page <= 1; $('#pgRight').disabled = S.page >= S.numPages; $('#pgDel').disabled = S.numPages <= 1; }
   updatePageSelUi();
 }
 
@@ -6526,6 +6581,7 @@ window.addEventListener('keydown', (e) => {
   if (mod && !e.shiftKey && k === 'z') { e.preventDefault(); goHist(S.hi - 1); }
   else if (mod && (k === 'y' || (e.shiftKey && k === 'z'))) { e.preventDefault(); goHist(S.hi + 1); }
   else if (e.key === 'Delete' && S.sel && S.tab === 'sel') { e.preventDefault(); deleteSel(); }
+  else if (e.key === 'Delete' && S.tab === 'pages' && S.selPages.size) { e.preventDefault(); confirmDeleteSelectedPages(); }
   else if (/^Arrow(Left|Right|Up|Down)$/.test(e.key) && S.sel && S.tab === 'sel' && selCanMove()) {
     e.preventDefault(); nudge(e.key.slice(5).toLowerCase(), e.shiftKey ? 5 : 1);
   } else if (/^Arrow(Left|Right|Up|Down)$/.test(e.key) && S.tab === 'add' && addMode === 'text' && S.addPos) {
