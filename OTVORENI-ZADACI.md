@@ -15,13 +15,15 @@ preusmjerava `kamdenes.hr` → `www.kamdenes.hr` (308), a sve stranice (i
 sitemap, 306 URL-ova) navode canonical `https://kamdenes.hr/…` — Google
 dobiva kružne signale. GSC svojstvo je `https://kamdenes.hr` (vidi samo
 preusmjeravanja). 23 "noindex" su `/pretraga?q=` — namjerno, u redu.
-- [ ] Vercel → Settings → Domains: `kamdenes.hr` → Production (bez
+- [x] Vercel → Settings → Domains: `kamdenes.hr` → Production (bez
   preusmjeravanja); `www.kamdenes.hr` → Redirect na `kamdenes.hr` (308).
-  Kod ne treba mijenjati (canonical/sitemap/OG već koriste kamdenes.hr).
-- [ ] Provjera uživo: `kamdenes.hr` 200, `www` 308 → `kamdenes.hr`.
-- [ ] GSC: ponovno poslati sitemap, "Zatraži indeksiranje" za naslovnu i
-  glavne stranice, "Potvrdi popravak" za "Stranica s preusmjeravanjem".
-- [ ] Za nekoliko tjedana: novi GSC izvoz, provjeriti oporavak.
+  Kod nije trebalo mijenjati (canonical/sitemap/OG već koriste kamdenes.hr).
+- [x] Provjera uživo (2026-10-12): `kamdenes.hr` 200, `www` 308 →
+  `kamdenes.hr` (isprva 307, ispravljeno na 308), canonical = kamdenes.hr.
+- [x] GSC: ponovno poslan sitemap, zatraženo indeksiranje glavnih stranica,
+  pokrenuta potvrda popravka za "Stranica s preusmjeravanjem".
+- [ ] Za 1–2 tjedna: "Indeksirano" u GSC-u bi trebalo rasti iznad 13;
+  za 3–4 tjedna novi GSC izvoz i usporedba s 2026-10-12.
 
 ### Scraper (n8n) na Oracle Cloud — rad 24/7 i pristup od bilo kuda
 Cilj: n8n + `automation` ne ovise o tome je li vlasnikovo računalo upaljeno,
