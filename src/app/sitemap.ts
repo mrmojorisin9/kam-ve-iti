@@ -19,9 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: `${SITE_URL}/dogadjaji/${event.slug}`,
     lastModified: event.updatedAt,
     changeFrequency: "daily",
-    // Arhivirani (završeni, SEO-zadržani) događaji ostaju u sitemapu radi
-    // vec indeksiranih URL-ova, ali s nizim prioritetom od aktivnih.
-    priority: event.isArchived ? 0.3 : 0.6,
+    priority: 0.6,
   }));
 
   return [...staticPages, ...eventPages];

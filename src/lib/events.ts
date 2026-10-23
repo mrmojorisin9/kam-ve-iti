@@ -735,14 +735,19 @@ export async function getCategories(): Promise<FilterOption[]> {
 export type SitemapEntry = {
   slug: string;
   updatedAt: string;
-  isArchived: boolean;
 };
 
 /**
- * Slug + zadnja izmjena svih objavljenih događaja, za `sitemap.ts`. RLS
- * ("events_public_read_published") već ograničava na objavljene za
- * neautenticirani zahtjev kojim crawler dohvaća /sitemap.xml — eksplicitni
- * filter ovdje samo dokumentira namjeru.
+ * Slug + zadnja izmjena aktivnih (objavljenih, nearhiviranih) događaja, za
+ * `sitemap.ts`. RLS ("events_public_read_published") već ograničava na
+ * objavljene za neautenticirani zahtjev kojim crawler dohvaća /sitemap.xml —
+ * eksplicitni filter statusa ovdje samo dokumentira namjeru.
+ *
+ * Arhivirani događaji (ADR-022) namjerno NISU u sitemapu: stranica ima ~780
+ * znakova teksta bez opisa/slike/JSON-LD-a i nije linkana ni s jedne liste,
+ * pa je Google ostavlja u "Otkriveno/Pretraženo – nije indeksirano" i troši
+ * crawl na njih umjesto na aktivne događaje (GSC izvoz 2026-10-23). URL i
+ * dalje vraća 200 OK, pa već indeksirani arhivirani URL-ovi ne dobivaju 404.
  */
 export async function getPublishedEventsForSitemap(): Promise<
   SitemapEntry[]
@@ -750,8 +755,9 @@ export async function getPublishedEventsForSitemap(): Promise<
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("events")
-    .select("slug, updated_at, is_archived")
-    .eq("status", "published");
+    .select("slug, updated_at")
+    .eq("status", "published")
+    .eq("is_archived", false);
 
   if (error) {
     console.error("getPublishedEventsForSitemap:", error.message);
@@ -761,7 +767,6 @@ export async function getPublishedEventsForSitemap(): Promise<
   return (data ?? []).map((row) => ({
     slug: row.slug,
     updatedAt: row.updated_at,
-    isArchived: row.is_archived,
   }));
 }
 
