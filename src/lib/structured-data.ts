@@ -80,6 +80,24 @@ export function buildEventJsonLd(event: EventDetail, siteUrl: string) {
   };
 }
 
+/**
+ * Schema.org WebSite JSON-LD za naslovnicu — Googleov "naziv web-lokacije"
+ * (structured data za site name). `alternateName: "Kamdenes"` povezuje
+ * jednorječni upis (domena je kamdenes.hr, brend se piše "Kam denes") s
+ * ovom web-lokacijom: Google je upit "kamdenes" do sada ispravljao u
+ * "kamdes" (GSC/Google provjera 2026-10-23).
+ */
+export function buildWebSiteJsonLd(siteUrl: string) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Kam denes",
+    alternateName: "Kamdenes",
+    url: `${siteUrl}/`,
+    inLanguage: "hr",
+  };
+}
+
 /** Escapira `<` da JSON-LD sadržaj (npr. opis događaja) ne može prekinuti <script> tag. */
 export function jsonLdToScriptString(data: unknown): string {
   return JSON.stringify(data).replace(/</g, "\\u003c");

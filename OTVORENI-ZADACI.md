@@ -8,7 +8,7 @@ _Zadnje ažuriranje: 2026-10-23_
 
 ## U tijeku
 
-### ⚠️ PRIORITET: Google indeksiranje — kamdenes.hr ↔ www kružno preusmjeravanje
+### ⚠️ PRIORITET: Google indeksiranje — preusmjeravanje, sitemap, brend upit "kamdenes"
 GSC izvoz 2026-10-12: indeksirano palo s 92 (11. 8.) na 13, nije
 indeksirano 283, pojavljivanja ~0. Uzrok (provjereno uživo): Vercel
 preusmjerava `kamdenes.hr` → `www.kamdenes.hr` (308), a sve stranice (i
@@ -33,9 +33,9 @@ preusmjeravanja). 23 "noindex" su `/pretraga?q=` — namjerno, u redu.
   JSON-LD-a), nigdje linkane. Maknuti iz sitemapa u kodu (2026-10-23,
   `getPublishedEventsForSitemap` filtrira `is_archived = false`); stranice i
   dalje vraćaju 200 (ADR-022). Lokalno: sitemap 360 → 148 URL-ova, build čist.
-- [ ] **Promjena sitemapa još nije na produkciji** — commit + push (Vercel
-  deploy), zatim provjeriti `https://kamdenes.hr/sitemap.xml` (očekuje se
-  ~148 URL-ova) i u GSC-u ponovno poslati sitemap.
+- [x] Promjena sitemapa na produkciji (commit `0d193fb`, 2026-10-23):
+  `https://kamdenes.hr/sitemap.xml` ima 148 URL-ova, sitemap ponovno poslan
+  u GSC-u (Status "Uspješno", 148 otkrivenih stranica).
 - [ ] Oko 2026-11-06: novi GSC izvoz i usporedba s 2026-10-23 (očekivanje:
   "Stranica s preusmjeravanjem" pada prema 0, "Indeksirano" raste prema
   ~150 = broj aktivnih događaja). Za potvrdu uzroka 170: GSC → Indeksiranje
@@ -53,6 +53,34 @@ preusmjeravanja). 23 "noindex" su `/pretraga?q=` — namjerno, u redu.
   umjesto 404 (`src/app/dogadjaji/[slug]/loading.tsx` pošalje 200 prije
   `notFound()`). Google to ne kažnjava, ali obrisani/spojeni duplikati ne
   dobivaju pravi 404.
+
+**Brend upit "kamdenes" (dijagnoza 2026-10-23):** stranica NIJE izbačena iz
+Googlea — `kamdenes` s `&nfpr=1` (bez automatskog ispravka), `kamdenes.hr`,
+`kam denes` i `site:kamdenes.hr` daju kamdenes.hr kao prvi rezultat. Obični
+upit `kamdenes` Google ispravlja u "kamdes" (Kamdesh, selo u Afganistanu) i
+prikazuje rezultate o toj temi. Uzrok: jednorječni zapis je Googleu još
+nepoznata riječ (brend se piše "Kam denes", domena je `kamdenes.hr`), domena
+nova i do prije par tjedana zahvaćena kružnim preusmjeravanjem.
+- [x] Kod (2026-10-23, lokalno provjereno; `tsc`/`eslint`/`next build`
+  čisto): naslovnica ima `WebSite` JSON-LD (`name` "Kam denes",
+  `alternateName` "Kamdenes", `url`, `inLanguage` hr) —
+  `buildWebSiteJsonLd` u `src/lib/structured-data.ts`, ispis u
+  `src/app/(home)/page.tsx`; title "Kam denes (kamdenes.hr) — događanja u
+  Međimurskoj županiji"; novi meta description (naslovnica, OG isto).
+- [ ] **Nije još na produkciji** — commit + push (Vercel deploy); zatim u GSC
+  → Pregled URL-a → `https://kamdenes.hr/` → "Zatraži indeksiranje", i
+  provjeriti JSON-LD u Rich Results Testu / validator.schema.org.
+- [ ] Ručni koraci (vlasnik): link na `https://kamdenes.hr` u opisu Facebook
+  stranice "Kam denes", YouTube kanala i Instagrama; zamoliti partnere
+  (organizatori, eMedjimurje, TZ Međimurske županije, lokalni portali) za
+  link s tekstom "Kam denes"/"kamdenes.hr"; u objavama/potpisima pisati
+  `kamdenes.hr`; GSC → Uspješnost → Upiti: pratiti "kamdenes" i "kam denes".
+- [ ] GSC: dodati svojstvo **domene** `kamdenes.hr` (TXT zapis u Vercel DNS-u,
+  ne kod registrara) — vidi i `www` i `http`, pa se prati čišćenje starih
+  `www.kamdenes.hr` URL-ova koji su još u Googleovim rezultatima.
+- [ ] Praćenje: provjeriti `google.com/search?q=kamdenes` (bez `nfpr=1`) za
+  2–4 tjedna; realno tjedni do mjeseci. Opcionalno kasnije: `Organization`
+  JSON-LD sa `sameAs` (treba točan URL Facebook stranice i ostalih profila).
 
 ### Scraper (n8n) na Oracle Cloud — rad 24/7 i pristup od bilo kuda
 Cilj: n8n + `automation` ne ovise o tome je li vlasnikovo računalo upaljeno,
