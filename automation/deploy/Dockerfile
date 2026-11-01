@@ -9,7 +9,7 @@
 # (vidi docker-compose.yml, `automation/server.py`).
 #
 # Build context MORA biti korijen repoa (docker-compose.yml, `context: ../..`).
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 WORKDIR /repo
 # Bez ovoga Python bufferira stdout kad nije TTY pa `docker logs` ne
