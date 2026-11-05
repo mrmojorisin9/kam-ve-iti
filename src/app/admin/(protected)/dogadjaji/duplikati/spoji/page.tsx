@@ -160,20 +160,6 @@ export default async function MergeDuplicatesPage({
   const primary = pickPrimary(candidates);
   const mergedDefaults = computeMergedDefaults(candidates, primary);
 
-  const galleryByUrl = new Map<string, { id: string; url: string }>();
-  const orderedCandidates = [
-    primary,
-    ...candidates.filter((c) => c.id !== primary.id),
-  ];
-  for (const candidate of orderedCandidates) {
-    for (const image of candidate.gallery) {
-      if (!galleryByUrl.has(image.url)) {
-        galleryByUrl.set(image.url, image);
-      }
-    }
-  }
-  const unionGallery = [...galleryByUrl.values()];
-
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12">
       <h1 className="font-display text-parchment text-3xl font-semibold tracking-tight">
@@ -207,7 +193,6 @@ export default async function MergeDuplicatesPage({
         error={error}
         submitLabel="Spoji i objavi"
         eventId={primary.id}
-        galleryImages={unionGallery}
         defaultValues={mergedDefaults}
         beforeFields={
           <>

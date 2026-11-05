@@ -12,7 +12,6 @@ import { CategoryIcon } from "@/components/CategoryIcon";
 import { PinIcon } from "@/components/PinIcon";
 import { ViewTracker } from "@/components/ViewTracker";
 import { ShareButtons } from "@/components/ShareButtons";
-import { EventGallery } from "@/components/EventGallery";
 import { EventRow } from "@/components/EventRow";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -49,10 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: path,
       type: "article",
-      images: [
-        event.image_url ?? "/opengraph-image",
-        ...event.gallery.map((img) => img.url),
-      ],
+      images: [event.image_url ?? "/opengraph-image"],
     },
   };
 }
@@ -106,8 +102,6 @@ export default async function EventPage({ params }: Props) {
         alt=""
         className="border-line mb-6 aspect-video w-full rounded-lg border object-cover"
       />
-
-      <EventGallery images={event.gallery} />
 
       <span className="border-gold/40 bg-gold/10 text-gold inline-flex w-fit items-center gap-1.5 rounded-full border px-3 py-1 text-xs tracking-wide uppercase">
         <CategoryIcon slug={event.category_slug} className="h-3.5 w-3.5" />

@@ -571,11 +571,6 @@ export type AdminEventDetail = {
   sponsored_until: string | null;
   submitter_email: string | null;
   submitter_phone: string | null;
-  gallery: { id: string; url: string }[];
-};
-
-type AdminEventDetailRow = Omit<AdminEventDetail, "gallery"> & {
-  event_images: { id: string; url: string; sort_order: number }[] | null;
 };
 
 /** Jedan događaj (bilo kojeg statusa) za admin formu za uređivanje. */
@@ -591,8 +586,7 @@ export async function getEventForEdit(
        performer, price_eur,
        source_url, image_url, status, is_free, is_family_friendly,
        is_dog_friendly, is_solo_friendly, is_romantic, is_hidden_gem,
-       is_admin_featured, sponsored_until, submitter_email, submitter_phone,
-       event_images ( id, url, sort_order )`,
+       is_admin_featured, sponsored_until, submitter_email, submitter_phone`,
     )
     .eq("id", id)
     .maybeSingle();
@@ -602,27 +596,12 @@ export async function getEventForEdit(
     return null;
   }
 
-  const row = data as AdminEventDetailRow | null;
-  if (!row) return null;
-
-  const { event_images, ...rest } = row;
-  return {
-    ...rest,
-    gallery: (event_images ?? [])
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map((img) => ({ id: img.id, url: img.url })),
-  };
+  return (data as AdminEventDetail | null) ?? null;
 }
 
 export type MergeCandidateEvent = AdminEventDetail & {
   source_name: string | null;
   created_at: string;
-};
-
-type MergeCandidateRow = Omit<AdminEventDetail, "gallery"> & {
-  source_name: string | null;
-  created_at: string;
-  event_images: { id: string; url: string; sort_order: number }[] | null;
 };
 
 /** Puni skup polja za N kandidata istovremeno, za alat spajanja duplikata. */
@@ -639,8 +618,7 @@ export async function getEventsForMerge(
        source_url, image_url, status, is_free, is_family_friendly,
        is_dog_friendly, is_solo_friendly, is_romantic, is_hidden_gem,
        is_admin_featured, sponsored_until, submitter_email, submitter_phone,
-       source_name, created_at,
-       event_images ( id, url, sort_order )`,
+       source_name, created_at`,
     )
     .in("id", ids);
 
@@ -649,15 +627,43 @@ export async function getEventsForMerge(
     return [];
   }
 
-  return ((data ?? []) as unknown as MergeCandidateRow[]).map((row) => {
-    const { event_images, ...rest } = row;
+  return (data ?? []) as unknown as MergeCandidateEvent[];
+}
+
+/**
+ * Rezultat spremanja `EventForm`a. `field` je `name` atribut polja zbog kojeg
+ * je spremanje odbijeno (ako se greška veže uz jedno polje) — klijent ga
+ * fokusira/označi, a sve ostale unose ostavlja netaknute.
+ */
+export type EventFormActionResult = { error: string | null; field?: string };
+
+/** Prvo obavezno polje koje nije popunjeno (redoslijedom kao u formi), ili null. */
+export function findMissingRequiredField(values: {
+  title: string | null;
+  categoryId: string | null;
+  locationId: string | null;
+  startAtLocal: string | null;
+  hasImage: boolean;
+}): { error: string; field: string } | null {
+  if (!values.title) {
+    return { error: "Naziv je obavezan.", field: "title" };
+  }
+  if (!values.categoryId) {
+    return { error: "Odaberi kategoriju.", field: "category_id" };
+  }
+  if (!values.locationId) {
+    return { error: "Odaberi lokaciju.", field: "location_id" };
+  }
+  if (!values.startAtLocal) {
+    return { error: "Početak je obavezan.", field: "start_at" };
+  }
+  if (!values.hasImage) {
     return {
-      ...rest,
-      gallery: (event_images ?? [])
-        .sort((a, b) => a.sort_order - b.sort_order)
-        .map((img) => ({ id: img.id, url: img.url })),
+      error: "Fotografija je obavezna (upiši URL ili priloži datoteku).",
+      field: "image_url",
     };
-  });
+  }
+  return null;
 }
 
 function readFormText(formData: FormData, field: string): string | null {
@@ -756,7 +762,8 @@ function diffAdminEditedFields(
   }
 
   if (next.price_eur !== undefined) {
-    const oldPrice = before.price_eur === null ? null : Number(before.price_eur);
+    const oldPrice =
+      before.price_eur === null ? null : Number(before.price_eur);
     if (oldPrice !== next.price_eur) changed.push("price_eur");
   }
   if (next.is_free !== undefined && before.is_free !== next.is_free) {
@@ -785,16 +792,17 @@ function diffAdminEditedFields(
 /**
  * Jezgra validacije + upisa `EventForm` podataka — dijeli je `updateEvent`
  * (uredi/actions.ts) i `mergeEvents` (duplikati/spoji/actions.ts), oba
- * ciljaju isti oblik forme. `options.existingGallery` nadjačava interni upit
- * za postojeću galeriju — nužno za spajanje, gdje se strop od 6 slika mora
- * računati preko unije galerija svih kandidata, ne samo cilja `id`.
+ * ciljaju isti oblik forme.
+ *
+ * Greška uz sebe nosi `field` (name atribut polja u formi) kad se može
+ * pripisati jednom polju — forma tada samo označi/fokusira to polje i ne
+ * dira ostale unose (zahtjev 2026-11-05).
  */
 export async function applyEventFormUpdate(
   supabase: SupabaseClient,
   id: string,
   formData: FormData,
-  options?: { existingGallery?: { id: string; url: string }[] },
-): Promise<{ error: string | null }> {
+): Promise<EventFormActionResult> {
   const title = readFormText(formData, "title");
   const categoryId = readFormText(formData, "category_id");
   const locationId = readFormText(formData, "location_id");
@@ -805,29 +813,32 @@ export async function applyEventFormUpdate(
   const hasImageFile = imageFile instanceof File && imageFile.size > 0;
   const status = readFormText(formData, "status") ?? "published";
 
-  if (
-    !title ||
-    !categoryId ||
-    !locationId ||
-    !startAtLocal ||
-    (!imageUrlText && !hasImageFile)
-  ) {
-    return {
-      error:
-        "Naslov, kategorija, lokacija, početak i fotografija (URL ili datoteka) su obavezni.",
-    };
-  }
+  const missing = findMissingRequiredField({
+    title,
+    categoryId,
+    locationId,
+    startAtLocal,
+    hasImage: Boolean(imageUrlText) || hasImageFile,
+  });
+  if (missing) return missing;
 
-  const startAt = zagrebLocalToUtcIso(startAtLocal);
+  const startAt = zagrebLocalToUtcIso(startAtLocal!);
   const endAt = endAtLocal ? zagrebLocalToUtcIso(endAtLocal) : null;
 
   if (endAt && endAt < startAt) {
-    return { error: "Kraj događaja ne može biti prije početka." };
+    return {
+      error: "Kraj događaja ne može biti prije početka.",
+      field: "end_at",
+    };
   }
 
   const priceEur = readFormPrice(formData);
   if (priceEur === undefined) {
-    return { error: "Cijena ulaznice mora biti broj veći ili jednak 0 (npr. 10 ili 12,50)." };
+    return {
+      error:
+        "Cijena ulaznice mora biti broj veći ili jednak 0 (npr. 10 ili 12,50).",
+      field: "price_eur",
+    };
   }
   const performer = readFormText(formData, "performer");
   const organizerName = readFormText(formData, "organizer_name");
@@ -837,6 +848,7 @@ export async function applyEventFormUpdate(
     return {
       error:
         "Fotografija (URL) mora biti puna adresa koja počinje s http:// ili https://.",
+      field: "image_url",
     };
   }
 
@@ -855,12 +867,13 @@ export async function applyEventFormUpdate(
     const { data: category } = await supabase
       .from("categories")
       .select("slug")
-      .eq("id", categoryId)
+      .eq("id", categoryId!)
       .maybeSingle();
     if (category?.slug === "manifestacije-i-feste") {
       return {
         error:
           '"Skriveni dragulj" ne može biti označen uz kategoriju "Velike Manifestacije" (proturječno).',
+        field: "is_hidden_gem",
       };
     }
   }
@@ -870,7 +883,7 @@ export async function applyEventFormUpdate(
     try {
       imageUrl = await uploadEventImage(supabase, imageFile);
     } catch (err) {
-      return { error: (err as Error).message };
+      return { error: (err as Error).message, field: "image_file" };
     }
   }
 
@@ -891,10 +904,10 @@ export async function applyEventFormUpdate(
 
   const newlyEditedFields = beforeRow
     ? diffAdminEditedFields(beforeRow as AdminEditTrackedBefore, {
-        title,
+        title: title!,
         description,
-        category_id: categoryId,
-        location_id: locationId,
+        category_id: categoryId!,
+        location_id: locationId!,
         venue_name: venueName,
         image_url: imageUrl,
         start_at: startAt,
@@ -911,35 +924,6 @@ export async function applyEventFormUpdate(
       ...newlyEditedFields,
     ]),
   );
-
-  const galleryFiles = formData
-    .getAll("gallery_files")
-    .filter((f): f is File => f instanceof File && f.size > 0);
-  const deleteGalleryIds = new Set<string>();
-  for (const key of formData.keys()) {
-    if (key.startsWith("delete_gallery_") && formData.get(key) === "on") {
-      deleteGalleryIds.add(key.slice("delete_gallery_".length));
-    }
-  }
-
-  let gallery: { id: string; url: string }[];
-  if (options?.existingGallery) {
-    gallery = options.existingGallery;
-  } else {
-    const { data: existingGallery } = await supabase
-      .from("event_images")
-      .select("id, url")
-      .eq("event_id", id);
-    gallery = (existingGallery ?? []) as { id: string; url: string }[];
-  }
-  const imagesToDelete = gallery.filter((img) => deleteGalleryIds.has(img.id));
-  const remainingCount = gallery.length - imagesToDelete.length;
-
-  if (remainingCount + galleryFiles.length > 6) {
-    return {
-      error: `Galerija smije imati najviše 6 slika (ostalo bi ${remainingCount}, pokušaj dodati ${galleryFiles.length}).`,
-    };
-  }
 
   const { error } = await supabase
     .from("events")
@@ -972,13 +956,6 @@ export async function applyEventFormUpdate(
 
   if (error) {
     return { error: error.message };
-  }
-
-  await deleteEventGalleryImages(supabase, imagesToDelete);
-  try {
-    await addEventGalleryImages(supabase, id, galleryFiles, remainingCount);
-  } catch (err) {
-    return { error: (err as Error).message };
   }
 
   return { error: null };
@@ -1097,7 +1074,7 @@ const EVENT_IMAGES_URL_MARKER = "/storage/v1/object/public/event-images/";
  * Dan 22, vidi 0004_event_images_bucket.sql) i vraća njen javni URL. Naziv
  * datoteke je nasumičan (ne slug) jer slug pri kreiranju događaja u tom
  * trenutku možda još nije poznat. Dijele je glavna fotografija
- * (`uploadEventImage`) i galerija (`addEventGalleryImages`).
+ * (`uploadEventImage`).
  */
 async function uploadImageFile(
   supabase: SupabaseClient,
@@ -1127,45 +1104,6 @@ export async function uploadEventImage(
   file: File,
 ): Promise<string> {
   return uploadImageFile(supabase, file);
-}
-
-const MAX_GALLERY_IMAGES = 6;
-
-/**
- * Uploada nove galerija-slike i upisuje retke u `event_images` (Faza 8,
- * Dan 74, C4). Baca grešku prije ikakvog uploada ako bi ukupan broj
- * (postojeće + nove) prešao `MAX_GALLERY_IMAGES` — izbjegava djelomično
- * uploadane slike koje bi ionako trebalo ručno počistiti.
- */
-export async function addEventGalleryImages(
-  supabase: SupabaseClient,
-  eventId: string,
-  files: File[],
-  currentCount: number,
-): Promise<void> {
-  if (files.length === 0) return;
-
-  if (currentCount + files.length > MAX_GALLERY_IMAGES) {
-    throw new Error(
-      `Galerija smije imati najviše ${MAX_GALLERY_IMAGES} slika (trenutno ${currentCount}, pokušaj dodati ${files.length}).`,
-    );
-  }
-
-  const urls: string[] = [];
-  for (const file of files) {
-    urls.push(await uploadImageFile(supabase, file));
-  }
-
-  const rows = urls.map((url, index) => ({
-    event_id: eventId,
-    url,
-    sort_order: currentCount + index,
-  }));
-
-  const { error } = await supabase.from("event_images").insert(rows);
-  if (error) {
-    throw new Error(`Galerija: ${error.message}`);
-  }
 }
 
 /**

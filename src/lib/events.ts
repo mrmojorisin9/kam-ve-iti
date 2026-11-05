@@ -40,8 +40,6 @@ export type EventDetail = EventListItem & {
   /** Izvođač/izvođači, slobodan tekst (0039). */
   performer: string | null;
   source_url: string | null;
-  /** Dodatne fotografije (do 6), odvojeno od naslovne image_url — vidi C4/ADR napomenu u CHANGELOG.md. */
-  gallery: { id: string; url: string }[];
   /** Vidi 0030 migraciju — arhivirani dogadaj ima ocisceno description,
    * image_url, organizer polja, source_url i galeriju; stranica prikazuje
    * fiksnu obavijest umjesto 404 (SEO — vec indeksirani URL-ovi ostaju 200 OK). */
@@ -171,7 +169,6 @@ type EventBySlugRow = {
   is_romantic: boolean;
   is_hidden_gem: boolean;
   is_archived: boolean;
-  event_images: { id: string; url: string; sort_order: number }[] | null;
 };
 
 function zagrebDateFromInstant(instant: Date): string {
@@ -813,8 +810,7 @@ export const getEventBySlug = cache(
         is_solo_friendly,
         is_romantic,
         is_hidden_gem,
-        is_archived,
-        event_images ( id, url, sort_order )
+        is_archived
       `,
       )
       .eq("slug", slug)
@@ -859,9 +855,6 @@ export const getEventBySlug = cache(
       is_romantic: row.is_romantic,
       is_hidden_gem: row.is_hidden_gem,
       is_archived: row.is_archived,
-      gallery: (row.event_images ?? [])
-        .sort((a, b) => a.sort_order - b.sort_order)
-        .map((img) => ({ id: img.id, url: img.url })),
     };
   },
 );

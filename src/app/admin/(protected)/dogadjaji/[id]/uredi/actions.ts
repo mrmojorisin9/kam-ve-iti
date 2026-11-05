@@ -2,7 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { applyEventFormUpdate, eventsListHref } from "@/lib/admin-events";
+import {
+  applyEventFormUpdate,
+  eventsListHref,
+  type EventFormActionResult,
+} from "@/lib/admin-events";
 
 function readListParam(formData: FormData, field: string): string | null {
   const value = String(formData.get(field) ?? "").trim();
@@ -20,26 +24,27 @@ function readListParam(formData: FormData, field: string): string | null {
  * gradi preko `eventsListHref` (fiksna putanja + query), bez
  * open-redirect površine.
  */
-export async function updateEvent(formData: FormData) {
+export async function updateEvent(
+  _prevState: EventFormActionResult,
+  formData: FormData,
+): Promise<EventFormActionResult> {
   const id = String(formData.get("id") ?? "");
   const status = readListParam(formData, "list_status");
   const kategorija = readListParam(formData, "list_kategorija");
   const lokacija = readListParam(formData, "list_lokacija");
   const sort = readListParam(formData, "list_sort");
   const listHref = eventsListHref(status, kategorija, lokacija, sort);
-  const listQuery = listHref.split("?")[1];
 
   if (!id) {
     redirect(listHref);
   }
 
   const supabase = await createClient();
-  const { error } = await applyEventFormUpdate(supabase, id, formData);
+  const result = await applyEventFormUpdate(supabase, id, formData);
 
-  if (error) {
-    redirect(
-      `/admin/dogadjaji/${id}/uredi?error=${encodeURIComponent(error)}${listQuery ? `&${listQuery}` : ""}`,
-    );
+  // Greška se vraća kao stanje (ne redirect) da forma zadrži sve unose.
+  if (result.error) {
+    return result;
   }
 
   const separator = listHref.includes("?") ? "&" : "?";

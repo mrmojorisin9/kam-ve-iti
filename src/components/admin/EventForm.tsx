@@ -1,3 +1,14 @@
+"use client";
+
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import type { EventFormActionResult } from "@/lib/admin-events";
+
 const STATUS_OPTIONS = [
   { value: "published", label: "Objavljeno" },
   { value: "pending_review", label: "Na čekanju" },
@@ -5,8 +16,8 @@ const STATUS_OPTIONS = [
   { value: "rejected", label: "Odbijeno" },
 ];
 
-const inputClass =
-  "border-line bg-oak text-parchment w-full rounded-md border px-3 py-2 text-sm";
+const inputBase =
+  "bg-oak text-parchment w-full rounded-md border px-3 py-2 text-sm";
 const labelClass = "text-parchment-muted mb-1 block";
 
 export type EventFormValues = {
@@ -52,21 +63,74 @@ export function EventForm({
   submitLabel,
   defaultValues,
   eventId,
-  galleryImages,
   beforeFields,
 }: {
   categories: { id: string; name: string }[];
   locations: { id: string; name: string }[];
-  action: (formData: FormData) => void | Promise<void>;
+  action: (
+    prevState: EventFormActionResult,
+    formData: FormData,
+  ) => Promise<EventFormActionResult>;
+  /** Početna greška (npr. iz query stringa); nakon spremanja vrijedi `state.error`. */
   error?: string;
   submitLabel: string;
   defaultValues?: EventFormValues;
   eventId?: string;
-  galleryImages?: { id: string; url: string }[];
   beforeFields?: React.ReactNode;
 }) {
+  const [state, formAction, pending] = useActionState<
+    EventFormActionResult,
+    FormData
+  >(action, { error: null });
+  const formRef = useRef<HTMLFormElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  // Stanje za koje je korisnik već počeo ispravljati označeno polje.
+  const [dismissedState, setDismissedState] =
+    useState<EventFormActionResult | null>(null);
+
+  const invalidField =
+    state.error && state.field && dismissedState !== state ? state.field : null;
+
+  // Zahtjev 2026-11-05: ako obavezno polje nije uredno popunjeno, forma se NE
+  // briše — samo se fokusira/označi problematično polje. Zato se akcija ne
+  // veže na `<form action>` (React bi nakon nje resetirao sva polja) nego se
+  // poziva ručno iz onSubmit, pa DOM zadržava sve unose (i odabranu datoteku).
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    startTransition(() => formAction(formData));
+  }
+
+  useEffect(() => {
+    if (!state.error) return;
+    const field = state.field
+      ? formRef.current?.elements.namedItem(state.field)
+      : null;
+    const target =
+      field instanceof RadioNodeList ? field[0] : (field as HTMLElement | null);
+    if (target instanceof HTMLElement) {
+      target.scrollIntoView({ block: "center", behavior: "smooth" });
+      target.focus({ preventScroll: true });
+    } else {
+      errorRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }, [state]);
+
+  function fieldClass(name: string): string {
+    return `${inputBase} ${invalidField === name ? "border-wine-light ring-wine-light ring-1" : "border-line"}`;
+  }
+  const inputClass = `${inputBase} border-line`;
+
   return (
-    <form action={action} className="mt-8 flex flex-col gap-4">
+    <form
+      ref={formRef}
+      onSubmit={handleSubmit}
+      onInput={(event) => {
+        const name = (event.target as HTMLInputElement).name;
+        if (invalidField && name === invalidField) setDismissedState(state);
+      }}
+      className="mt-8 flex flex-col gap-4"
+    >
       {eventId && <input type="hidden" name="id" value={eventId} />}
 
       {beforeFields}
@@ -78,7 +142,8 @@ export function EventForm({
           </p>
           <p className="text-parchment mt-1">
             {defaultValues.submitter_email}
-            {defaultValues.submitter_phone && ` · ${defaultValues.submitter_phone}`}
+            {defaultValues.submitter_phone &&
+              ` · ${defaultValues.submitter_phone}`}
           </p>
         </div>
       )}
@@ -90,7 +155,8 @@ export function EventForm({
           name="title"
           required
           defaultValue={defaultValues?.title}
-          className={inputClass}
+          className={fieldClass("title")}
+          aria-invalid={invalidField === "title"}
         />
       </label>
 
@@ -111,7 +177,8 @@ export function EventForm({
             name="category_id"
             required
             defaultValue={defaultValues?.category_id ?? ""}
-            className={inputClass}
+            className={fieldClass("category_id")}
+            aria-invalid={invalidField === "category_id"}
           >
             <option value="">Odaberi</option>
             {categories.map((category) => (
@@ -128,7 +195,8 @@ export function EventForm({
             name="location_id"
             required
             defaultValue={defaultValues?.location_id ?? ""}
-            className={inputClass}
+            className={fieldClass("location_id")}
+            aria-invalid={invalidField === "location_id"}
           >
             <option value="">Odaberi</option>
             {locations.map((location) => (
@@ -141,7 +209,9 @@ export function EventForm({
       </div>
 
       <label className="text-sm">
-        <span className={labelClass}>Mjesto održavanja (dvorana, adresa...)</span>
+        <span className={labelClass}>
+          Mjesto održavanja (dvorana, adresa...)
+        </span>
         <input
           type="text"
           name="venue_name"
@@ -158,7 +228,8 @@ export function EventForm({
             name="start_at"
             required
             defaultValue={defaultValues?.start_at}
-            className={inputClass}
+            className={fieldClass("start_at")}
+            aria-invalid={invalidField === "start_at"}
           />
         </label>
 
@@ -168,7 +239,8 @@ export function EventForm({
             type="datetime-local"
             name="end_at"
             defaultValue={defaultValues?.end_at}
-            className={inputClass}
+            className={fieldClass("end_at")}
+            aria-invalid={invalidField === "end_at"}
           />
         </label>
       </div>
@@ -218,7 +290,8 @@ export function EventForm({
             step="0.01"
             defaultValue={defaultValues?.price_eur}
             placeholder="prazno = nepoznato"
-            className={inputClass}
+            className={fieldClass("price_eur")}
+            aria-invalid={invalidField === "price_eur"}
           />
         </label>
       </div>
@@ -249,62 +322,21 @@ export function EventForm({
           name="image_url"
           placeholder="https://..."
           defaultValue={defaultValues?.image_url}
-          className={inputClass}
+          className={fieldClass("image_url")}
+          aria-invalid={invalidField === "image_url"}
         />
 
         <input
           type="file"
           name="image_file"
           accept="image/*"
-          className={`${inputClass} mt-2`}
+          className={`${fieldClass("image_file")} mt-2`}
         />
 
         <span className="text-parchment-muted mt-1 block text-xs">
           Ako priložiš datoteku, ona ima prednost pred URL poljem.
         </span>
       </div>
-
-      {eventId && (
-        <fieldset className="border-line rounded-md border p-4">
-          <legend className="text-parchment-muted px-1 text-sm">
-            Galerija slika (do 6)
-          </legend>
-
-          {galleryImages && galleryImages.length > 0 && (
-            <div className="mb-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
-              {galleryImages.map((image) => (
-                <label
-                  key={image.id}
-                  className="flex flex-col items-center gap-1 text-xs"
-                >
-                  <img
-                    src={image.url}
-                    alt=""
-                    className="border-line h-20 w-full rounded-md border object-cover"
-                  />
-                  <span className="text-parchment flex items-center gap-1.5">
-                    <input type="checkbox" name={`delete_gallery_${image.id}`} />
-                    Ukloni
-                  </span>
-                </label>
-              ))}
-            </div>
-          )}
-
-          <input
-            type="file"
-            name="gallery_files"
-            accept="image/*"
-            multiple
-            className={inputClass}
-          />
-
-          <span className="text-parchment-muted mt-1 block text-xs">
-            {galleryImages?.length ?? 0}/6 slika. Nove datoteke se dodaju uz
-            postojeće; premašiš li 6, spremanje javlja grešku.
-          </span>
-        </fieldset>
-      )}
 
       <fieldset className="border-line rounded-md border p-4">
         <legend className="text-parchment-muted px-1 text-sm">
@@ -322,8 +354,7 @@ export function EventForm({
                 name={field.name}
                 defaultChecked={
                   defaultValues?.[field.name as keyof EventFormValues] as
-                    | boolean
-                    | undefined
+                    boolean | undefined
                 }
               />
               {field.label}
@@ -340,10 +371,10 @@ export function EventForm({
           <span className="text-parchment">💎 Skriveni dragulj</span>
         </label>
         <p className="text-parchment-muted mt-1 text-xs">
-          Označi samo za manje, intimne događaje u naselju ili lokalnom
-          prostoru (ne glavni trg/dvorana grada), koje organizira mjesni
-          odbor/udruga/OPG (ne grad/TZ), s okvirnim kapacitetom do ~150-200
-          ljudi. Nikad zajedno s kategorijom &quot;Velike Manifestacije&quot;.
+          Označi samo za manje, intimne događaje u naselju ili lokalnom prostoru
+          (ne glavni trg/dvorana grada), koje organizira mjesni odbor/udruga/OPG
+          (ne grad/TZ), s okvirnim kapacitetom do ~150-200 ljudi. Nikad zajedno
+          s kategorijom &quot;Velike Manifestacije&quot;.
         </p>
       </fieldset>
 
@@ -362,9 +393,9 @@ export function EventForm({
         </label>
         <p className="text-parchment-muted mt-1 text-xs">
           Ovaj događaj dobiva prvo mjesto u panelu &quot;U trendu&quot; na
-          naslovnoj, neovisno o algoritamskom rezultatu popularnosti. Samo
-          jedan događaj može biti istaknut u isto vrijeme — označavanje
-          ovog automatski uklanja oznaku s prethodno istaknutog događaja.
+          naslovnoj, neovisno o algoritamskom rezultatu popularnosti. Samo jedan
+          događaj može biti istaknut u isto vrijeme — označavanje ovog
+          automatski uklanja oznaku s prethodno istaknutog događaja.
         </p>
       </fieldset>
 
@@ -385,9 +416,9 @@ export function EventForm({
         <p className="text-parchment-muted mt-1 text-xs">
           Prazno = nije sponzorirano. Postavi budući datum/vrijeme da događaj
           dobije oznaku &quot;📢 Sponzorirano&quot; i mjesto u zasebnom panelu
-          na naslovnoj — automatski prestaje po isteku, bez potrebe da ga
-          ručno isključiš. Više događaja može biti sponzorirano istovremeno
-          (za razliku od panela &quot;U trendu&quot; iznad).
+          na naslovnoj — automatski prestaje po isteku, bez potrebe da ga ručno
+          isključiš. Više događaja može biti sponzorirano istovremeno (za
+          razliku od panela &quot;U trendu&quot; iznad).
         </p>
       </fieldset>
 
@@ -406,17 +437,18 @@ export function EventForm({
         </select>
       </label>
 
-      {error && (
-        <p className="text-wine-light text-sm" role="alert">
-          {error}
+      {(state.error ?? error) && (
+        <p ref={errorRef} className="text-wine-light text-sm" role="alert">
+          {state.error ?? error}
         </p>
       )}
 
       <button
         type="submit"
-        className="border-gold text-gold hover:bg-gold hover:text-night focus-visible:outline-gold mt-2 self-start rounded-md border px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
+        disabled={pending}
+        className="border-gold text-gold hover:bg-gold hover:text-night focus-visible:outline-gold mt-2 self-start rounded-md border px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60"
       >
-        {submitLabel}
+        {pending ? "Spremam..." : submitLabel}
       </button>
     </form>
   );

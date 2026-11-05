@@ -6,6 +6,9 @@ Format se temelji na [Keep a Changelog](https://keepachangelog.com/), a projekt 
 ## [Unreleased]
 
 ### Changed
+- **2026-11-05 — admin obrazac za događaj:** greška pri spremanju (novi/uredi/spoji) više ne briše formu — akcije vraćaju stanje (`useActionState`), forma ostaje s unesenim podacima, a neispravno polje se označi i fokusira.
+- **2026-11-05 — galerija slika uklonjena:** događaj ima samo jednu fotografiju. Maknuti upload/brisanje galerije iz admin forme, spajanja duplikata, javne stranice događaja i JSON-LD-a. Tablica `event_images` i postojeći redovi u bazi nisu dirani (brisanje događaja i dalje čisti stare galerijske datoteke).
+- **2026-11-05 — duplikati:** uz postotak sličnosti, naslovi se uspoređuju po riječima (bez dijakritika, padeži, redni brojevi: "2." = "drugi" = "II"); jedna zajednička značajna riječ unutar iste lokacije i 24h je dovoljna za mogući duplikat. Nova opcija "Podudaranje riječi" i prikaz zajedničkih riječi po grupi.
 - Radni naziv projekta promijenjen: **Međimurje Events → Kam ve iti** (uključuje `package.json`, metadata stranice, README, PROJECT_BRIEF.md).
 - **2026-07-16 — radni naziv projekta ponovno promijenjen: Kam ve iti → Kam denes**, prema ažuriranom master promptu (v2) — vidi `DECISIONS.md` ADR-011. Ažurirano u kodu (`package.json`, sve `metadata`/UI naslove u `src/app/**`, `PageHeader.tsx`, `globals.css` komentar), `README.md`, `PROJECT_BRIEF.md` (bump na v0.2, dodana §10 Dugoročna vizija i §11 Backlog ideja). SQL migracije i povijesni CHANGELOG zapisi namjerno NISU mijenjani (povijesni zapis, isto kao git commit poruke). Infrastruktura (GitHub repo `kam-ve-iti`, Vercel projekt, domena — plan `kamdenes.hr`, još nekupljena) ostaje neizmijenjena dok korisnik to zasebno ne provede. Usput: pretraživanje (search) eksplicitno izbačeno iz plana; javni obrazac "Prijavi događaj" ide u backlog (zahtijeva novi ADR prije rada, sudara se s ADR-004/ADR-007).
 

@@ -10,6 +10,8 @@ import {
   clearOtherAdminFeatured,
   isAbsoluteUrl,
   readFormPrice,
+  findMissingRequiredField,
+  type EventFormActionResult,
 } from "@/lib/admin-events";
 
 function readText(formData: FormData, field: string): string | null {
@@ -21,11 +23,19 @@ function readBool(formData: FormData, field: string): boolean {
   return formData.get(field) === "on";
 }
 
-function fail(message: string): never {
-  redirect(`/admin/dogadjaji/novi?error=${encodeURIComponent(message)}`);
+function fail(error: string, field?: string): EventFormActionResult {
+  return { error, field };
 }
 
-export async function createEvent(formData: FormData) {
+/**
+ * Greška se NE vraća redirectom nego kao stanje (`useActionState` u
+ * `EventForm`) — forma ostaje kakva jest, a samo se označi neispravno polje
+ * (`field`). Redirect ostaje samo za uspjeh.
+ */
+export async function createEvent(
+  _prevState: EventFormActionResult,
+  formData: FormData,
+): Promise<EventFormActionResult> {
   const title = readText(formData, "title");
   const categoryId = readText(formData, "category_id");
   const locationId = readText(formData, "location_id");
@@ -36,29 +46,29 @@ export async function createEvent(formData: FormData) {
   const hasImageFile = imageFile instanceof File && imageFile.size > 0;
   const status = readText(formData, "status") ?? "published";
 
-  if (
-    !title ||
-    !categoryId ||
-    !locationId ||
-    !startAtLocal ||
-    (!imageUrlText && !hasImageFile)
-  ) {
-    fail(
-      "Naslov, kategorija, lokacija, početak i fotografija (URL ili datoteka) su obavezni.",
-    );
-  }
+  const missing = findMissingRequiredField({
+    title,
+    categoryId,
+    locationId,
+    startAtLocal,
+    hasImage: Boolean(imageUrlText) || hasImageFile,
+  });
+  if (missing) return fail(missing.error, missing.field);
 
-  const startAt = zagrebLocalToUtcIso(startAtLocal);
+  const startAt = zagrebLocalToUtcIso(startAtLocal!);
   const endAt = endAtLocal ? zagrebLocalToUtcIso(endAtLocal) : null;
 
   if (endAt && endAt < startAt) {
-    fail("Kraj događaja ne može biti prije početka.");
+    return fail("Kraj događaja ne može biti prije početka.", "end_at");
   }
 
   // Datoteka ima prednost pa se URL polje tada zanemaruje (vidi niže) —
   // validacija ima smisla samo kad URL stvarno postaje spremljena vrijednost.
   if (imageUrlText && !hasImageFile && !isAbsoluteUrl(imageUrlText)) {
-    fail("Fotografija (URL) mora biti puna adresa koja počinje s http:// ili https://.");
+    return fail(
+      "Fotografija (URL) mora biti puna adresa koja počinje s http:// ili https://.",
+      "image_url",
+    );
   }
 
   const sponsoredUntilLocal = readText(formData, "sponsored_until");
@@ -71,7 +81,10 @@ export async function createEvent(formData: FormData) {
 
   const priceEur = readFormPrice(formData);
   if (priceEur === undefined) {
-    fail("Cijena ulaznice mora biti broj veći ili jednak 0 (npr. 10 ili 12,50).");
+    return fail(
+      "Cijena ulaznice mora biti broj veći ili jednak 0 (npr. 10 ili 12,50).",
+      "price_eur",
+    );
   }
 
   const supabase = await createClient();
@@ -87,11 +100,12 @@ export async function createEvent(formData: FormData) {
     const { data: category } = await supabase
       .from("categories")
       .select("slug")
-      .eq("id", categoryId)
+      .eq("id", categoryId!)
       .maybeSingle();
     if (category?.slug === "manifestacije-i-feste") {
-      fail(
+      return fail(
         '"Skriveni dragulj" ne može biti označen uz kategoriju "Velike Manifestacije" (proturječno).',
+        "is_hidden_gem",
       );
     }
   }
@@ -102,13 +116,13 @@ export async function createEvent(formData: FormData) {
     try {
       imageUrl = await uploadEventImage(supabase, imageFile);
     } catch (err) {
-      fail((err as Error).message);
+      return fail((err as Error).message, "image_file");
     }
   }
 
-  const baseSlug = slugify(title);
+  const baseSlug = slugify(title!);
   if (!baseSlug) {
-    fail("Naslov mora sadržavati barem jedno slovo ili broj.");
+    return fail("Naslov mora sadržavati barem jedno slovo ili broj.", "title");
   }
   const slug = await uniqueSlug(supabase, baseSlug);
 
@@ -140,7 +154,7 @@ export async function createEvent(formData: FormData) {
   });
 
   if (error) {
-    fail(error.message);
+    return fail(error.message);
   }
 
   redirect(`/admin?created=${encodeURIComponent(slug)}`);

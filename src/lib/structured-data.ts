@@ -19,10 +19,7 @@ export function buildEventJsonLd(event: EventDetail, siteUrl: string) {
   // placeholder je stvaran, dostupan URL, ne izmisljena vrijednost.
   const toAbsolute = (url: string) =>
     URL_PATTERN.test(url) ? url : `${siteUrl}${url}`;
-  const images = [
-    event.image_url ?? "/event-placeholder.svg",
-    ...event.gallery.map((img) => img.url),
-  ].map(toAbsolute);
+  const images = [event.image_url ?? "/event-placeholder.svg"].map(toAbsolute);
   const eventUrl = `${siteUrl}/dogadjaji/${event.slug}`;
 
   return {
